@@ -150,4 +150,11 @@ async def chat(req:ChatRequest,request:Request,tenant:str=Query(DEFAULT_TENANT),
     return {"reply":ans,"sources":srcs}
 
 # ────────────────── Config & Widget endpoints ──────────────
-WIDGET_JS=r"""(function(){function g(k){return([...Array(30)]).map(()=>Math.random().toString(36)[2]).join('');}const sid=sessionStorage.getItem('cq_sid')||(()=>{const i=g();sessionStorage.setItem('cq_sid',i);return i;})();const p=new URLSearchParams(location.search);const tenant=p.get('tenant')||'public';const agent=p.get('agent')||'default';const msgs=[];function $(id){return document.getElementById(id);}function el(t,c){const e=document.createElement(t);if(c)e.className=c;return e;}async function send(q){msgs.push({role:'user',content:q});const r=await fetch(`/chat?tenant=${tenant}&agent=${agent}`,{method:'POST',headers:{'Content-Type':'application/json','X-Session-Id':sid},body:JSON.stringify({messages:msgs})});const d=await r.json();msgs.push({role:'assistant',content:d.reply});append('assistant',d.reply,d.sources);}function append(role,txt,src){const pane=$('cq_chat_pane');const w=el('div',role);w.textContent=txt;if(src&&src.length){const det=el('details');det.innerHTML='<summary>Sources</summary>';src.forEach(s=>{const dv=el('div');dv.textContent=s.source;det.appendChild(dv);});w.appendChild(det);}pane.appendChild
+# ────────────────── Config & Widget endpoints ──────────────
+WIDGET_JS = r"""(function(){
+const p=new URLSearchParams(location.search);
+const tenant=p.get('tenant')||'public';
+const agent=p.get('agent')||'default';
+const sid=sessionStorage.getItem('cq_sid')||(()=>{const r=Math.random().toString(36).slice(2);sessionStorage.setItem('cq_sid',r);return r})();
+const msgs=[];
+function $(id){return document.getElementById(id);}"""
