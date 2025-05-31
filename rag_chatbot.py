@@ -2120,3 +2120,877 @@ async def health_check():
         "version": "7.0",
         "timestamp": datetime.now(datetime.UTC).isoformat()
     }
+
+# Add these enhanced endpoints to your rag_chatbot.py file
+# REQUESTED A WEB INTERFACE
+
+# Enhanced configuration model with widget parameters
+class EnhancedConfigUpdateRequest(BaseModel):
+    bot_name: Optional[str] = None
+    system_prompt: Optional[str] = None
+    primary_color: Optional[str] = None
+    secondary_color: Optional[str] = None
+    avatar_url: Optional[str] = None
+    mode: Optional[str] = None
+    auto_open: Optional[bool] = None
+    llm_provider: Optional[str] = None
+    llm_model: Optional[str] = None
+    temperature: Optional[float] = None
+    allowed_domains: Optional[List[str]] = None
+    # New widget feature parameters
+    enable_voice: Optional[bool] = None
+    enable_files: Optional[bool] = None
+    enable_tts: Optional[bool] = None
+    enable_dark_mode: Optional[bool] = None
+    widget_position: Optional[str] = None  # "bottom-right", "bottom-left", etc.
+    widget_size: Optional[str] = None      # "small", "medium", "large"
+    welcome_message: Optional[str] = None
+    placeholder_text: Optional[str] = None
+
+# Enhanced load_config function
+def load_config(t: str, a: str) -> Dict[str, object]:
+    p = cfg_path(t, a)
+    if p.exists():
+        return json.loads(p.read_text())
+    p.parent.mkdir(parents=True, exist_ok=True)
+    cfg = {
+        "bot_name": f"{t}-{a}-Bot", 
+        "system_prompt": "You are a helpful assistant.",
+        "primary_color": "#1E88E5", 
+        "secondary_color": "#FFFFFF", 
+        "avatar_url": "",
+        "mode": "inline", 
+        "auto_open": False,
+        "llm_provider": "openai",
+        "llm_model": "gpt-4o-mini",
+        "temperature": 0.3,
+        "allowed_domains": ["*"],
+        # Enhanced widget parameters
+        "enable_voice": True,
+        "enable_files": True,
+        "enable_tts": False,
+        "enable_dark_mode": True,
+        "widget_position": "bottom-right",
+        "widget_size": "medium",
+        "welcome_message": "Hello! How can I help you today?",
+        "placeholder_text": "Type your message..."
+    }
+    p.write_text(json.dumps(cfg, indent=2))
+    return cfg
+
+# Serve the web interface
+@app.get("/admin", response_class=HTMLResponse)
+async def get_admin_interface():
+    """Serve the web administration interface"""
+    # In production, you'd serve this from a static file
+    # For now, we'll return a redirect to the HTML file
+    return HTMLResponse("""
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Redirecting...</title>
+        <script>
+            window.location.href = '/admin.html';
+        </script>
+    </head>
+    <body>
+        <p>Redirecting to admin interface...</p>
+    </body>
+    </html>
+    """)
+
+# Enhanced config endpoint with full widget parameters
+@app.put("/config")
+async def update_config_enhanced(
+    config: EnhancedConfigUpdateRequest,
+    tenant: str = Query(DEFAULT_TENANT),
+    agent: str = Query(DEFAULT_AGENT),
+    current_user: User = Depends(get_admin_user)
+):
+    cfg = load_config(tenant, agent)
+    
+    # Update only provided fields
+    for field, value in config.dict(exclude_unset=True).items():
+        if value is not None:
+            cfg[field] = value
+    
+    save_config(tenant, agent, cfg)
+    return {"message": "Configuration updated successfully", "config": cfg}
+
+# Get full config including widget parameters
+@app.get("/config/full")
+async def get_full_config(
+    tenant: str = Query(DEFAULT_TENANT),
+    agent: str = Query(DEFAULT_AGENT),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get full configuration including all widget parameters for admin interface"""
+    
+    # Check if user has access to this tenant
+    if current_user.tenant != "*" and current_user.tenant != tenant:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this tenant"
+        )
+    
+    cfg = load_config(tenant, agent)
+    return cfg
+
+# Enhanced widget JavaScript with configurable parameters
+def generate_enhanced_widget_js(tenant: str, agent: str) -> str:
+    """Generate widget JavaScript with configuration-based parameters"""
+    
+    cfg = load_config(tenant, agent)
+    
+    return f"""(function(){{
+const p=new URLSearchParams(location.search);
+const tenant=p.get('tenant')||'{tenant}';
+const agent=p.get('agent')||'{agent}';
+const sid=sessionStorage.getItem('cq_sid')||(()=>{{const r=Math.random().toString(36).slice(2);sessionStorage.setItem('cq_sid',r);return r}})();
+const msgs=[];
+function $(id){{return document.getElementById(id);}}
+
+// Configuration from server
+const config = {json.dumps(cfg)};
+
+// Create widget container
+const container = document.createElement('div');
+container.id = 'cq-widget-container';
+document.body.appendChild(container);
+
+// Features based on configuration
+const features = {{
+  typing: true,
+  fileAttachments: config.enable_files || false,
+  voiceInput: config.enable_voice || false,
+  darkMode: config.enable_dark_mode || false,
+  responseSpeech: config.enable_tts || false
+}};
+
+// Authentication mechanism
+let authToken = localStorage.getItem('cq_auth_token');
+const headers = {{
+  'Content-Type': 'application/json',
+  'X-Session-Id': sid
+}};
+if (authToken) headers['Authorization'] = `Bearer ${{authToken}}`;
+
+function initWidget() {{
+  // Dynamic positioning based on config
+  const position = config.widget_position || 'bottom-right';
+  const [vPos, hPos] = position.split('-');
+  
+  // Size configuration
+  const size = config.widget_size || 'medium';
+  const sizes = {{
+    small: {{ width: '300px', height: '400px' }},
+    medium: {{ width: '350px', height: '500px' }},
+    large: {{ width: '400px', height: '600px' }}
+  }};
+  
+  const widgetSize = sizes[size] || sizes.medium;
+  
+  // Create chat interface with dynamic configuration
+  container.innerHTML = `
+    <div id="cq-chat-widget" style="--primary:${{config.primary_color}};--secondary:${{config.secondary_color}};width:${{widgetSize.width}};height:${{widgetSize.height}}">
+      <div id="cq-header">
+        <img src="${{config.avatar_url || '/default-avatar.png'}}" alt="${{config.bot_name}}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2232%22 height=%2232%22><circle cx=%2216%22 cy=%2216%22 r=%2215%22 fill=%22%23ddd%22/><text x=%2216%22 y=%2220%22 text-anchor=%22middle%22 font-size=%2216%22>🤖</text></svg>'">
+        <h3>${{config.bot_name}}</h3>
+        <div class="cq-controls">
+          ${{features.darkMode ? '<button id="cq-dark-toggle" title="Toggle dark mode">🌓</button>' : ''}}
+          <button id="cq-settings">⚙️</button>
+          <button id="cq-close">×</button>
+        </div>
+      </div>
+      <div id="cq-messages">
+        ${{config.welcome_message ? `<div class="cq-welcome-message">${{config.welcome_message}}</div>` : ''}}
+      </div>
+      <div id="cq-typing" style="display:none">
+        <div class="cq-dot"></div>
+        <div class="cq-dot"></div>
+        <div class="cq-dot"></div>
+      </div>
+      <div id="cq-footer">
+        <div id="cq-attachments"></div>
+        <textarea id="cq-input" placeholder="${{config.placeholder_text || 'Type your message...'}}"></textarea>
+        <div class="cq-actions">
+          ${{features.voiceInput ? '<button id="cq-mic" title="Voice input">🎤</button>' : ''}}
+          ${{features.fileAttachments ? '<button id="cq-attach" title="Attach file">📎</button>' : ''}}
+          <button id="cq-send">➤</button>
+        </div>
+        ${{features.fileAttachments ? '<input type="file" id="cq-file-input" style="display:none" multiple accept=".pdf,.txt,.md,.docx">' : ''}}
+      </div>
+      <div id="cq-settings-panel" style="display:none">
+        <h4>Settings</h4>
+        ${{features.darkMode ? '<label><input type="checkbox" id="cq-dark-mode"> Dark mode</label>' : ''}}
+        ${{features.responseSpeech ? '<label><input type="checkbox" id="cq-speech"> Read responses aloud</label>' : ''}}
+        <h4>Sources</h4>
+        <div id="cq-sources"></div>
+      </div>
+    </div>
+  `;
+  
+  // Set up event handlers
+  $('cq-send').addEventListener('click', sendMessage);
+  $('cq-input').addEventListener('keypress', e => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), sendMessage()));
+  $('cq-settings').addEventListener('click', toggleSettings);
+  $('cq-close').addEventListener('click', minimizeWidget);
+  
+  // Conditional event handlers based on features
+  if (features.voiceInput && $('cq-mic')) {{
+    $('cq-mic').addEventListener('click', startVoiceInput);
+  }}
+  
+  if (features.fileAttachments && $('cq-attach')) {{
+    $('cq-attach').addEventListener('click', () => $('cq-file-input').click());
+    $('cq-file-input').addEventListener('change', handleFileAttachment);
+  }}
+  
+  if (features.darkMode && $('cq-dark-mode')) {{
+    $('cq-dark-mode').addEventListener('change', e => setDarkMode(e.target.checked));
+  }}
+  
+  if (features.darkMode && $('cq-dark-toggle')) {{
+    $('cq-dark-toggle').addEventListener('click', toggleDarkMode);
+  }}
+  
+  if (features.responseSpeech && $('cq-speech')) {{
+    $('cq-speech').addEventListener('change', e => features.responseSpeech = e.target.checked);
+  }}
+  
+  // Apply positioning
+  container.style.position = 'fixed';
+  container.style.zIndex = '10000';
+  
+  if (hPos === 'right') container.style.right = '20px';
+  else container.style.left = '20px';
+  
+  if (vPos === 'bottom') container.style.bottom = '20px';
+  else container.style.top = '20px';
+  
+  // Auto-open if configured
+  if (config.auto_open) {{
+    showWidget();
+  }}
+}}
+
+function sendMessage() {{
+  const input = $('cq-input');
+  const text = input.value.trim();
+  if (!text) return;
+  
+  addMessage('user', text);
+  input.value = '';
+  
+  // Show typing indicator
+  if (features.typing) $('cq-typing').style.display = 'flex';
+  
+  // Send to backend
+  fetch(`/chat?tenant=${{tenant}}&agent=${{agent}}`, {{
+    method: 'POST',
+    headers: headers,
+    body: JSON.stringify({{messages: msgs}})
+  }})
+  .then(r => r.json())
+  .then(data => {{
+    if (features.typing) $('cq-typing').style.display = 'none';
+    addMessage('assistant', data.reply);
+    updateSources(data.sources);
+    
+    // Text-to-speech if enabled
+    if (features.responseSpeech) {{
+      const speech = new SpeechSynthesisUtterance(data.reply);
+      window.speechSynthesis.speak(speech);
+    }}
+  }})
+  .catch(error => {{
+    if (features.typing) $('cq-typing').style.display = 'none';
+    addMessage('assistant', 'Sorry, I encountered an error. Please try again.');
+    console.error('Chat error:', error);
+  }});
+}}
+
+function addMessage(role, content) {{
+  msgs.push({{role, content}});
+  
+  const msgDiv = document.createElement('div');
+  msgDiv.className = `cq-message cq-${{role}}`;
+  msgDiv.innerHTML = `
+    <div class="cq-avatar">${{role === 'user' ? '👤' : '🤖'}}</div>
+    <div class="cq-bubble">${{formatMessage(content)}}</div>
+  `;
+  
+  $('cq-messages').appendChild(msgDiv);
+  $('cq-messages').scrollTop = $('cq-messages').scrollHeight;
+}}
+
+function formatMessage(text) {{
+  return text
+    .replace(/\\*\\*(.*?)\\*\\*/g, '<strong>$1</strong>')
+    .replace(/\\*(.*?)\\*/g, '<em>$1</em>')
+    .replace(/```(.*?)```/gs, '<pre><code>$1</code></pre>')
+    .replace(/`(.*?)`/g, '<code>$1</code>')
+    .replace(/\\n/g, '<br>');
+}}
+
+function startVoiceInput() {{
+  if (!('webkitSpeechRecognition' in window)) {{
+    alert('Voice input not supported in your browser');
+    return;
+  }}
+  
+  const recognition = new webkitSpeechRecognition();
+  recognition.continuous = false;
+  recognition.interimResults = false;
+  
+  recognition.onstart = () => {{
+    $('cq-mic').style.background = '#f44336';
+  }};
+  
+  recognition.onend = () => {{
+    $('cq-mic').style.background = '';
+  }};
+  
+  recognition.onresult = function(event) {{
+    const transcript = event.results[0][0].transcript;
+    $('cq-input').value = transcript;
+  }};
+  
+  recognition.start();
+}}
+
+function handleFileAttachment(event) {{
+  const files = Array.from(event.target.files);
+  if (files.length === 0) return;
+  
+  const attachmentsDiv = $('cq-attachments');
+  attachmentsDiv.innerHTML = '';
+  
+  files.forEach(file => {{
+    const fileDiv = document.createElement('div');
+    fileDiv.className = 'cq-attachment';
+    fileDiv.innerHTML = `
+      <span>📎 ${{file.name}}</span>
+      <button onclick="this.parentElement.remove()">×</button>
+    `;
+    attachmentsDiv.appendChild(fileDiv);
+  }});
+  
+  // You would implement file upload to your backend here
+  console.log('Files selected:', files);
+}}
+
+function updateSources(sources) {{
+  const sourcesDiv = $('cq-sources');
+  sourcesDiv.innerHTML = '';
+  
+  if (sources && sources.length > 0) {{
+    const sourceList = document.createElement('ul');
+    sources.forEach(src => {{
+      const li = document.createElement('li');
+      li.innerHTML = `<a href="${{src.source}}" target="_blank">${{src.source}}</a>`;
+      sourceList.appendChild(li);
+    }});
+    sourcesDiv.appendChild(sourceList);
+  }}
+}}
+
+function toggleSettings() {{
+  const panel = $('cq-settings-panel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}}
+
+function minimizeWidget() {{
+  const widget = $('cq-chat-widget');
+  widget.style.display = 'none';
+  $('cq-launcher').style.display = 'block';
+}}
+
+function showWidget() {{
+  const widget = $('cq-chat-widget');
+  widget.style.display = 'flex';
+  if ($('cq-launcher')) $('cq-launcher').style.display = 'none';
+}}
+
+function toggleWidget() {{
+  const widget = $('cq-chat-widget');
+  if (widget.style.display === 'none' || !widget.style.display) {{
+    showWidget();
+  }} else {{
+    minimizeWidget();
+  }}
+}}
+
+function setDarkMode(enabled) {{
+  features.darkMode = enabled;
+  const widget = $('cq-chat-widget');
+  if (enabled) {{
+    widget.classList.add('cq-dark');
+  }} else {{
+    widget.classList.remove('cq-dark');
+  }}
+  localStorage.setItem('cq_dark_mode', enabled);
+}}
+
+function toggleDarkMode() {{
+  const current = localStorage.getItem('cq_dark_mode') === 'true';
+  setDarkMode(!current);
+  if ($('cq-dark-mode')) {{
+    $('cq-dark-mode').checked = !current;
+  }}
+}}
+
+// Enhanced CSS with more customization
+const style = document.createElement('style');
+style.textContent = `
+  #cq-widget-container {{
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  }}
+  
+  #cq-launcher {{
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: var(--primary, {cfg.get('primary_color', '#1E88E5')});
+    color: white;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transition: all 0.3s ease;
+  }}
+  
+  #cq-launcher:hover {{
+    transform: scale(1.1);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.2);
+  }}
+  
+  #cq-chat-widget {{
+    border-radius: 12px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+    background: white;
+    transition: all 0.3s ease;
+    border: 1px solid #e0e0e0;
+  }}
+  
+  #cq-chat-widget.cq-dark {{
+    background: #2d2d2d;
+    border-color: #404040;
+    color: white;
+  }}
+  
+  #cq-header {{
+    background: var(--primary, {cfg.get('primary_color', '#1E88E5')});
+    color: white;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }}
+  
+  #cq-header img {{
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    object-fit: cover;
+  }}
+  
+  #cq-header h3 {{
+    margin: 0;
+    flex: 1;
+    font-size: 16px;
+    font-weight: 600;
+  }}
+  
+  .cq-controls {{
+    display: flex;
+    gap: 8px;
+  }}
+  
+  .cq-controls button {{
+    background: rgba(255,255,255,0.2);
+    border: none;
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }}
+  
+  .cq-controls button:hover {{
+    background: rgba(255,255,255,0.3);
+  }}
+  
+  #cq-messages {{
+    flex: 1;
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }}
+  
+  .cq-welcome-message {{
+    text-align: center;
+    padding: 12px;
+    background: #f0f7ff;
+    border-radius: 8px;
+    color: #1976d2;
+    font-style: italic;
+    margin-bottom: 12px;
+  }}
+  
+  .cq-dark .cq-welcome-message {{
+    background: #1a237e;
+    color: #90caf9;
+  }}
+  
+  .cq-message {{
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+  }}
+  
+  .cq-message.cq-user {{
+    flex-direction: row-reverse;
+  }}
+  
+  .cq-avatar {{
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+  }}
+  
+  .cq-bubble {{
+    max-width: 80%;
+    padding: 12px 16px;
+    border-radius: 18px;
+    line-height: 1.4;
+    word-wrap: break-word;
+  }}
+  
+  .cq-user .cq-bubble {{
+    background: var(--primary, {cfg.get('primary_color', '#1E88E5')});
+    color: white;
+  }}
+  
+  .cq-assistant .cq-bubble {{
+    background: #f5f5f5;
+    color: #333;
+  }}
+  
+  .cq-dark .cq-assistant .cq-bubble {{
+    background: #404040;
+    color: white;
+  }}
+  
+  #cq-typing {{
+    padding: 16px;
+    display: flex;
+    justify-content: center;
+    gap: 4px;
+  }}
+  
+  .cq-dot {{
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #ccc;
+    animation: cq-bounce 1.4s infinite ease-in-out both;
+  }}
+  
+  .cq-dot:nth-child(1) {{ animation-delay: -0.32s; }}
+  .cq-dot:nth-child(2) {{ animation-delay: -0.16s; }}
+  
+  @keyframes cq-bounce {{
+    0%, 80%, 100% {{ transform: scale(0); }}
+    40% {{ transform: scale(1); }}
+  }}
+  
+  #cq-footer {{
+    padding: 16px;
+    border-top: 1px solid #e0e0e0;
+  }}
+  
+  .cq-dark #cq-footer {{
+    border-top-color: #404040;
+  }}
+  
+  #cq-attachments {{
+    margin-bottom: 8px;
+  }}
+  
+  .cq-attachment {{
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    background: #f0f0f0;
+    padding: 4px 8px;
+    border-radius: 16px;
+    font-size: 12px;
+    margin-right: 8px;
+    margin-bottom: 4px;
+  }}
+  
+  .cq-dark .cq-attachment {{
+    background: #555;
+    color: white;
+  }}
+  
+  .cq-attachment button {{
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }}
+  
+  #cq-input {{
+    width: 100%;
+    min-height: 20px;
+    max-height: 100px;
+    padding: 12px;
+    border: 1px solid #e0e0e0;
+    border-radius: 24px;
+    resize: none;
+    outline: none;
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.4;
+  }}
+  
+  .cq-dark #cq-input {{
+    background: #404040;
+    border-color: #555;
+    color: white;
+  }}
+  
+  .cq-actions {{
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 8px;
+  }}
+  
+  .cq-actions button {{
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    transition: background 0.2s;
+  }}
+  
+  .cq-actions button:hover {{
+    background: rgba(0,0,0,0.1);
+  }}
+  
+  .cq-dark .cq-actions button:hover {{
+    background: rgba(255,255,255,0.1);
+  }}
+  
+  #cq-send {{
+    background: var(--primary, {cfg.get('primary_color', '#1E88E5')}) !important;
+    color: white !important;
+  }}
+  
+  #cq-settings-panel {{
+    position: absolute;
+    top: 60px;
+    right: 0;
+    background: white;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    min-width: 200px;
+    max-height: 300px;
+    overflow-y: auto;
+  }}
+  
+  .cq-dark #cq-settings-panel {{
+    background: #2d2d2d;
+    border-color: #404040;
+    color: white;
+  }}
+  
+  #cq-settings-panel h4 {{
+    margin: 0 0 12px 0;
+    font-size: 14px;
+    font-weight: 600;
+  }}
+  
+  #cq-settings-panel label {{
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    font-size: 14px;
+  }}
+  
+  #cq-sources ul {{
+    list-style: none;
+    padding: 0;
+    margin: 8px 0 0 0;
+  }}
+  
+  #cq-sources li {{
+    margin-bottom: 4px;
+  }}
+  
+  #cq-sources a {{
+    color: var(--primary, {cfg.get('primary_color', '#1E88E5')});
+    text-decoration: none;
+    font-size: 12px;
+  }}
+  
+  #cq-sources a:hover {{
+    text-decoration: underline;
+  }}
+  
+  .cq-dark #cq-sources a {{
+    color: #4fc3f7;
+  }}
+  
+  /* Mobile responsive */
+  @media (max-width: 480px) {{
+    #cq-chat-widget {{
+      width: calc(100vw - 40px) !important;
+      height: calc(100vh - 40px) !important;
+      max-height: 600px;
+    }}
+  }}
+`;
+document.head.appendChild(style);
+
+// Initialize
+if (document.readyState === 'loading') {{
+  document.addEventListener('DOMContentLoaded', init);
+}} else {{
+  init();
+}}
+
+function init() {{
+  // Create launcher button
+  const launcher = document.createElement('button');
+  launcher.id = 'cq-launcher';
+  launcher.innerHTML = '💬';
+  launcher.onclick = toggleWidget;
+  launcher.style.display = 'block';
+  container.appendChild(launcher);
+  
+  // Load saved preferences
+  const savedDarkMode = localStorage.getItem('cq_dark_mode') === 'true';
+  if (savedDarkMode && features.darkMode) {{
+    setTimeout(() => setDarkMode(true), 100);
+  }}
+  
+  // Initialize widget
+  initWidget();
+}}
+
+}})();"""
+
+# Enhanced widget endpoint with configuration
+@app.get("/widget.js", response_class=PlainTextResponse)
+async def get_enhanced_widget(
+    tenant: str = Query(DEFAULT_TENANT),
+    agent: str = Query(DEFAULT_AGENT)
+):
+    return generate_enhanced_widget_js(tenant, agent)
+
+# Serve static admin interface
+@app.get("/admin.html", response_class=HTMLResponse)
+async def serve_admin_html():
+    """Serve the admin interface HTML file"""
+    # In production, you would serve this from a static file
+    # For development, you can return the HTML directly or serve from file
+    try:
+        admin_html_path = Path("admin.html")
+        if admin_html_path.exists():
+            return HTMLResponse(admin_html_path.read_text())
+        else:
+            return HTMLResponse("""
+            <!DOCTYPE html>
+            <html>
+            <head><title>Admin Interface Not Found</title></head>
+            <body>
+                <h1>Admin Interface</h1>
+                <p>Please save the admin HTML interface as 'admin.html' in your project directory.</p>
+                <p>You can access the API documentation at <a href="/docs">/docs</a></p>
+            </body>
+            </html>
+            """)
+    except Exception as e:
+        return HTMLResponse(f"<h1>Error loading admin interface</h1><p>{str(e)}</p>")
+
+# Enhanced analytics with widget-specific metrics
+@app.get("/analytics/widget")
+async def get_widget_analytics(
+    tenant: str = Query(DEFAULT_TENANT),
+    agent: str = Query(None),
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+    current_user: User = Depends(get_admin_user)
+):
+    """Get widget-specific analytics including feature usage"""
+    
+    if current_user.tenant != "*" and current_user.tenant != tenant:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this tenant's analytics"
+        )
+    
+    # Set default date range
+    if not end_date:
+        end_date = datetime.now(timezone.utc).isoformat()
+    if not start_date:
+        start_date = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+    
+    # Base query
+    query = "SELECT * FROM chat_logs WHERE tenant = ? AND ts BETWEEN ? AND ?"
+    params = [tenant, start_date, end_date]
+    
+    if agent:
+        query += " AND agent = ?"
+        params.append(agent)
+    
+    with sqlite3.connect(DB_PATH) as con:
+        df = pd.read_sql_query(query, con, params=params)
+    
+    if df.empty:
+        return {"message": "No data available for selected period"}
+    
+    # Widget-specific analytics
+    analytics = {
+        "total_interactions": len(df),
+        "unique_sessions": df['session_id'].nunique(),
+        "avg_session_length": df.groupby('session_id').size().mean(),
+        "peak_hours": df.groupby(pd.to_datetime(df['ts']).dt.hour).size().to_dict(),
+        "response_times": {
+            "avg": df['latency'].mean(),
+            "p95": df['latency'].quantile(0.95),
+            "p99": df['latency'].quantile(0.99)
+        },
+        "user_satisfaction": {
+            "avg_rating": df['user_feedback'].mean() if 'user_feedback' in df else None,
+            "total_ratings": df['user_feedback'].count() if 'user_feedback' in df else 0
+        }
+    }
+    
+    return analytics
