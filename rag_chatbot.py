@@ -156,7 +156,7 @@ def authenticate_user(username: str, password: str):
 
 def create_access_token(data: dict):
     to_encode = data.copy()
-    expire = datetime.utcnow() + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
+    expire = datetime.now(timezone.utc) + timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES)
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
@@ -696,7 +696,7 @@ async def chat(
                 latency, tokens_in, tokens_out, user_ip)
                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
-                datetime.utcnow().isoformat(),
+                datetime.now(timezone.utc).isoformat(),
                 tenant,
                 agent,
                 request.headers.get("X-Session-Id", "anon"),
@@ -819,9 +819,9 @@ async def get_analytics(
     
     # Set default date range if not provided (last 7 days)
     if not end_date:
-        end_date = datetime.utcnow().isoformat()
+        end_date = datetime.now(timezone.utc).isoformat()
     if not start_date:
-        start_date = (datetime.utcnow() - timedelta(days=7)).isoformat()
+        start_date = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
     
     # Query the database
     with sqlite3.connect(DB_PATH) as con:
@@ -2090,7 +2090,7 @@ async def get_agent_status(
         total_chats, unique_sessions = cursor.fetchone()
         
         # Get recent activity (last 7 days)
-        week_ago = (datetime.utcnow() - timedelta(days=7)).isoformat()
+        week_ago = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
         cursor = con.execute(
             "SELECT COUNT(*) FROM chat_logs WHERE tenant = ? AND agent = ? AND ts > ?",
             (tenant, agent, week_ago)
@@ -2107,4 +2107,16 @@ async def get_agent_status(
             "unique_sessions": unique_sessions,
             "recent_chats_7d": recent_chats
         }
+    }
+
+# Add this health endpoint
+
+from datetime import datetime, timezone
+
+@app.get("/health")
+async def health_check():
+    return {
+        "status": "healthy",
+        "version": "7.0",
+        "timestamp": datetime.now(datetime.UTC).isoformat()
     }
