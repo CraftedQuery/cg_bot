@@ -1,0 +1,11 @@
+"bot_name": "Support Bot",
+"system_prompt": "You are a helpful customer service assistant"
+"primary_color": "#1E88E5",
+"secondary_color": "#FFFFFF",
+"avatar_url": "",
+"mode": "inline",
+"auto_open": false,
+"llm_provider": "openai",
+"llm_model": "gpt-4o-mini",
+"temperature": 0.3,
+"allowed_domain": ["*"]
