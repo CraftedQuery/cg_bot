@@ -1623,7 +1623,9 @@ def dashboard():
         console.print(table)
         typer.prompt("\nPress Enter to continue")
     
-    def show_users():
+   
+def show_users():
+    while True:
         console.clear()
         console.print(Panel.fit("User Management", border_style="red"))
         
@@ -1645,8 +1647,182 @@ def dashboard():
             )
         
         console.print(table)
-        typer.prompt("\nPress Enter to continue")
-    
+        
+        console.print("\n[bold]User Management Options:[/bold]")
+        console.print("1. ➕ Create New User")
+        console.print("2. ✏️  Edit User")
+        console.print("3. ❌ Delete User")
+        console.print("4. 🔄 Enable/Disable User")
+        console.print("5. 🔙 Back to Main Menu")
+        
+        choice = typer.prompt("\nSelect an option")
+        
+        if choice == "1":
+            # Create new user
+            console.print("\n[bold green]Create New User[/bold green]")
+            username = typer.prompt("Enter username")
+            
+            # Check if username already exists
+            if username in users_db:
+                console.print(f"[red]❌ User '{username}' already exists[/red]")
+                typer.prompt("Press Enter to continue")
+                continue
+            
+            password = typer.prompt("Enter password", hide_input=True)
+            confirm_password = typer.prompt("Confirm password", hide_input=True)
+            
+            if password != confirm_password:
+                console.print("[red]❌ Passwords don't match[/red]")
+                typer.prompt("Press Enter to continue")
+                continue
+            
+            # Show available tenants
+            available_tenants = ["*"]  # Admin access to all
+            for tenant_dir in BASE_CONFIG_DIR.iterdir():
+                if tenant_dir.is_dir():
+                    available_tenants.append(tenant_dir.name)
+            
+            console.print(f"\nAvailable tenants: {', '.join(available_tenants)}")
+            tenant = typer.prompt("Enter tenant (* for all tenants)")
+            
+            console.print("\nAvailable roles: admin, user")
+            role = typer.prompt("Enter role", default="user")
+            
+            if role not in ["admin", "user"]:
+                console.print("[red]❌ Invalid role. Must be 'admin' or 'user'[/red]")
+                typer.prompt("Press Enter to continue")
+                continue
+            
+            # Create user
+            user_data = UserCreate(
+                username=username,
+                password=password,
+                tenant=tenant,
+                role=role,
+                disabled=False
+            )
+            
+            if create_user(user_data):
+                console.print(f"[green]✅ User '{username}' created successfully[/green]")
+            else:
+                console.print(f"[red]❌ Failed to create user '{username}'[/red]")
+            
+            typer.prompt("Press Enter to continue")
+        
+        elif choice == "2":
+            # Edit user
+            console.print("\n[bold yellow]Edit User[/bold yellow]")
+            if not users_db:
+                console.print("[yellow]No users found[/yellow]")
+                typer.prompt("Press Enter to continue")
+                continue
+            
+            username = typer.prompt(f"Enter username to edit ({', '.join(users_db.keys())})")
+            
+            if username not in users_db:
+                console.print(f"[red]❌ User '{username}' not found[/red]")
+                typer.prompt("Press Enter to continue")
+                continue
+            
+            user_info = users_db[username]
+            console.print(f"\nCurrent user info for '{username}':")
+            console.print(f"Tenant: {user_info.get('tenant', 'N/A')}")
+            console.print(f"Role: {user_info.get('role', 'user')}")
+            console.print(f"Status: {'Disabled' if user_info.get('disabled', False) else 'Active'}")
+            
+            # Update options
+            new_tenant = typer.prompt(f"New tenant (current: {user_info.get('tenant', 'N/A')}, press Enter to keep)", default="")
+            new_role = typer.prompt(f"New role (current: {user_info.get('role', 'user')}, press Enter to keep)", default="")
+            change_password = typer.confirm("Change password?")
+            
+            update_data = {}
+            if new_tenant:
+                update_data["tenant"] = new_tenant
+            if new_role:
+                update_data["role"] = new_role
+            if change_password:
+                new_password = typer.prompt("Enter new password", hide_input=True)
+                update_data["password"] = new_password
+            
+            if update_data:
+                if update_user(username, update_data):
+                    console.print(f"[green]✅ User '{username}' updated successfully[/green]")
+                else:
+                    console.print(f"[red]❌ Failed to update user '{username}'[/red]")
+            else:
+                console.print("[yellow]No changes made[/yellow]")
+            
+            typer.prompt("Press Enter to continue")
+        
+        elif choice == "3":
+            # Delete user
+            console.print("\n[bold red]Delete User[/bold red]")
+            if not users_db:
+                console.print("[yellow]No users found[/yellow]")
+                typer.prompt("Press Enter to continue")
+                continue
+            
+            username = typer.prompt(f"Enter username to delete ({', '.join(users_db.keys())})")
+            
+            if username not in users_db:
+                console.print(f"[red]❌ User '{username}' not found[/red]")
+                typer.prompt("Press Enter to continue")
+                continue
+            
+            if username == "admin":
+                console.print("[red]❌ Cannot delete admin user[/red]")
+                typer.prompt("Press Enter to continue")
+                continue
+            
+            confirm = typer.confirm(f"Are you sure you want to delete user '{username}'?")
+            if confirm:
+                if delete_user(username):
+                    console.print(f"[green]✅ User '{username}' deleted successfully[/green]")
+                else:
+                    console.print(f"[red]❌ Failed to delete user '{username}'[/red]")
+            else:
+                console.print("[yellow]Deletion cancelled[/yellow]")
+            
+            typer.prompt("Press Enter to continue")
+        
+        elif choice == "4":
+            # Enable/Disable user
+            console.print("\n[bold blue]Enable/Disable User[/bold blue]")
+            if not users_db:
+                console.print("[yellow]No users found[/yellow]")
+                typer.prompt("Press Enter to continue")
+                continue
+            
+            username = typer.prompt(f"Enter username ({', '.join(users_db.keys())})")
+            
+            if username not in users_db:
+                console.print(f"[red]❌ User '{username}' not found[/red]")
+                typer.prompt("Press Enter to continue")
+                continue
+            
+            current_status = users_db[username].get("disabled", False)
+            new_status = not current_status
+            action = "disable" if new_status else "enable"
+            
+            confirm = typer.confirm(f"Are you sure you want to {action} user '{username}'?")
+            if confirm:
+                if update_user(username, {"disabled": new_status}):
+                    console.print(f"[green]✅ User '{username}' {action}d successfully[/green]")
+                else:
+                    console.print(f"[red]❌ Failed to {action} user '{username}'[/red]")
+            else:
+                console.print(f"[yellow]{action.capitalize()} cancelled[/yellow]")
+            
+            typer.prompt("Press Enter to continue")
+        
+        elif choice == "5":
+            # Back to main menu
+            break
+        
+        else:
+            console.print("[red]Invalid choice. Please try again.[/red]")
+            typer.prompt("Press Enter to continue")
+
     def show_ingest():
         console.clear()
         console.print(Panel.fit("Content Ingestion", border_style="cyan"))
@@ -1820,3 +1996,115 @@ def create_user_cli(
 
 if __name__ == "__main__":
     cli_app()
+
+#added API endpoint for company specific agent listing 5/31/2025
+
+@app.get("/my-agents")
+async def get_my_agents(current_user: User = Depends(get_current_active_user)):
+    """Get all agents available to the current user's tenant"""
+    
+    user_tenant = current_user.tenant
+    
+    # If user has access to all tenants, return all
+    if user_tenant == "*":
+        tenants = []
+        for tenant_dir in BASE_CONFIG_DIR.iterdir():
+            if tenant_dir.is_dir():
+                agents = []
+                for config_file in tenant_dir.iterdir():
+                    if config_file.is_file() and config_file.suffix == ".json":
+                        agent_name = config_file.stem
+                        config = load_config(tenant_dir.name, agent_name)
+                        agents.append({
+                            "agent": agent_name,
+                            "bot_name": config.get("bot_name", f"{tenant_dir.name}-{agent_name}"),
+                            "primary_color": config.get("primary_color", "#1E88E5"),
+                            "avatar_url": config.get("avatar_url", "")
+                        })
+                tenants.append({"tenant": tenant_dir.name, "agents": agents})
+        return tenants
+    
+    # Return only agents for the user's specific tenant
+    tenant_dir = BASE_CONFIG_DIR / user_tenant
+    if not tenant_dir.exists():
+        return {"tenant": user_tenant, "agents": []}
+    
+    agents = []
+    for config_file in tenant_dir.iterdir():
+        if config_file.is_file() and config_file.suffix == ".json":
+            agent_name = config_file.stem
+            config = load_config(user_tenant, agent_name)
+            
+            # Check if vector store exists for this agent
+            vector_store_exists = store_path(user_tenant, agent_name).exists()
+            
+            agents.append({
+                "agent": agent_name,
+                "bot_name": config.get("bot_name", f"{user_tenant}-{agent_name}"),
+                "primary_color": config.get("primary_color", "#1E88E5"),
+                "secondary_color": config.get("secondary_color", "#FFFFFF"),
+                "avatar_url": config.get("avatar_url", ""),
+                "mode": config.get("mode", "inline"),
+                "auto_open": config.get("auto_open", False),
+                "vector_store_ready": vector_store_exists
+            })
+    
+    return {
+        "tenant": user_tenant,
+        "agents": agents,
+        "total_agents": len(agents)
+    }
+
+@app.get("/agent-status/{tenant}/{agent}")
+async def get_agent_status(
+    tenant: str,
+    agent: str,
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get detailed status of a specific agent"""
+    
+    # Check if user has access to this tenant
+    if current_user.tenant != "*" and current_user.tenant != tenant:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this tenant"
+        )
+    
+    # Check if agent exists
+    config_file = cfg_path(tenant, agent)
+    if not config_file.exists():
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Agent not found"
+        )
+    
+    config = load_config(tenant, agent)
+    vector_store_exists = store_path(tenant, agent).exists()
+    
+    # Get usage statistics from database
+    with sqlite3.connect(DB_PATH) as con:
+        cursor = con.execute(
+            "SELECT COUNT(*) as total_chats, COUNT(DISTINCT session_id) as unique_sessions FROM chat_logs WHERE tenant = ? AND agent = ?",
+            (tenant, agent)
+        )
+        total_chats, unique_sessions = cursor.fetchone()
+        
+        # Get recent activity (last 7 days)
+        week_ago = (datetime.utcnow() - timedelta(days=7)).isoformat()
+        cursor = con.execute(
+            "SELECT COUNT(*) FROM chat_logs WHERE tenant = ? AND agent = ? AND ts > ?",
+            (tenant, agent, week_ago)
+        )
+        recent_chats = cursor.fetchone()[0]
+    
+    return {
+        "tenant": tenant,
+        "agent": agent,
+        "config": config,
+        "vector_store_ready": vector_store_exists,
+        "statistics": {
+            "total_chats": total_chats,
+            "unique_sessions": unique_sessions,
+            "recent_chats_7d": recent_chats
+        }
+    }
