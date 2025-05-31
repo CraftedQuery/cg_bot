@@ -2118,7 +2118,7 @@ async def health_check():
     return {
         "status": "healthy",
         "version": "7.0",
-        "timestamp": datetime.now(datetime.UTC).isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat()
     }
 
 # Add these enhanced endpoints to your rag_chatbot.py file
