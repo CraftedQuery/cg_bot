@@ -243,6 +243,8 @@ def cfg_path(t: str, a: str) -> Path:
 def store_path(t: str, a: str) -> Path: 
     return BASE_STORE_DIR / t / a
 
+
+#New enhanced Load config
 def load_config(t: str, a: str) -> Dict[str, object]:
     p = cfg_path(t, a)
     if p.exists():
@@ -259,7 +261,16 @@ def load_config(t: str, a: str) -> Dict[str, object]:
         "llm_provider": "openai",
         "llm_model": "gpt-4o-mini",
         "temperature": 0.3,
-        "allowed_domains": ["*"]
+        "allowed_domains": ["*"],
+        # Enhanced widget parameters
+        "enable_voice": True,
+        "enable_files": True,
+        "enable_tts": False,
+        "enable_dark_mode": True,
+        "widget_position": "bottom-right",
+        "widget_size": "medium",
+        "welcome_message": "Hello! How can I help you today?",
+        "placeholder_text": "Type your message..."
     }
     p.write_text(json.dumps(cfg, indent=2))
     return cfg
@@ -567,6 +578,29 @@ class ConfigUpdateRequest(BaseModel):
     llm_model: Optional[str] = None
     temperature: Optional[float] = None
     allowed_domains: Optional[List[str]] = None
+
+    # Enhanced configuration model with widget parameters
+class EnhancedConfigUpdateRequest(BaseModel):
+    bot_name: Optional[str] = None
+    system_prompt: Optional[str] = None
+    primary_color: Optional[str] = None
+    secondary_color: Optional[str] = None
+    avatar_url: Optional[str] = None
+    mode: Optional[str] = None
+    auto_open: Optional[bool] = None
+    llm_provider: Optional[str] = None
+    llm_model: Optional[str] = None
+    temperature: Optional[float] = None
+    allowed_domains: Optional[List[str]] = None
+    # New widget feature parameters
+    enable_voice: Optional[bool] = None
+    enable_files: Optional[bool] = None
+    enable_tts: Optional[bool] = None
+    enable_dark_mode: Optional[bool] = None
+    widget_position: Optional[str] = None
+    widget_size: Optional[str] = None
+    welcome_message: Optional[str] = None
+    placeholder_text: Optional[str] = None
     
 # Vector store cache
 _vec: Dict[str, FAISS] = {}
@@ -772,9 +806,10 @@ async def get_config(
     
     return public_cfg
 
+#enchanced CONFIG function
 @app.put("/config")
-async def update_config(
-    config: ConfigUpdateRequest,
+async def update_config_enhanced(
+    config: EnhancedConfigUpdateRequest,
     tenant: str = Query(DEFAULT_TENANT),
     agent: str = Query(DEFAULT_AGENT),
     current_user: User = Depends(get_admin_user)
@@ -787,7 +822,7 @@ async def update_config(
             cfg[field] = value
     
     save_config(tenant, agent, cfg)
-    return {"message": "Configuration updated successfully"}
+    return {"message": "Configuration updated successfully", "config": cfg}
 
 @app.get("/tenants")
 async def list_tenants(current_user: User = Depends(get_admin_user)):
@@ -801,6 +836,48 @@ async def list_tenants(current_user: User = Depends(get_admin_user)):
                     agents.append(agent_name)
             tenants.append({"tenant": tenant_dir.name, "agents": agents})
     return tenants
+
+# Get full config including widget parameters newly added for HTML 
+@app.get("/config/full")
+async def get_full_config(
+    tenant: str = Query(DEFAULT_TENANT),
+    agent: str = Query(DEFAULT_AGENT),
+    current_user: User = Depends(get_current_active_user)
+):
+    """Get full configuration including all widget parameters for admin interface"""
+    
+    # Check if user has access to this tenant
+    if current_user.tenant != "*" and current_user.tenant != tenant:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="You don't have access to this tenant"
+        )
+    
+    cfg = load_config(tenant, agent)
+    return cfg
+
+# Serve static admin interface
+@app.get("/admin.html", response_class=HTMLResponse)
+async def serve_admin_html():
+    """Serve the admin interface HTML file"""
+    try:
+        admin_html_path = Path("admin.html")
+        if admin_html_path.exists():
+            return HTMLResponse(admin_html_path.read_text())
+        else:
+            return HTMLResponse("""
+            <!DOCTYPE html>
+            <html>
+            <head><title>Admin Interface Not Found</title></head>
+            <body>
+                <h1>Admin Interface</h1>
+                <p>Please save the admin HTML interface as 'admin.html' in your project directory.</p>
+                <p>You can access the API documentation at <a href="/docs">/docs</a></p>
+            </body>
+            </html>
+            """)
+    except Exception as e:
+        return HTMLResponse(f"<h1>Error loading admin interface</h1><p>{str(e)}</p>")
 
 # ─────────────────── Analytics Endpoints ───────────────────
 @app.get("/analytics")
