@@ -513,7 +513,7 @@
                 </div>
                 <button type="submit" class="btn btn-full">
                     <span id="loginSpinner" class="spinner hidden"></span>
-                    <span id="loginText">Login</span>
+                    Login
                 </button>
                 <div id="loginError" class="error hidden"></div>
             </form>
@@ -834,8 +834,6 @@
 
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
-            console.log('DOM loaded, checking auth token:', authToken ? 'exists' : 'none');
-            
             if (authToken) {
                 validateToken();
             }
@@ -882,47 +880,746 @@
             
             const spinner = document.getElementById('loginSpinner');
             const errorDiv = document.getElementById('loginError');
-            const loginText = document.getElementById('loginText');
             
             spinner.classList.remove('hidden');
-            loginText.textContent = 'Logging in...';
             errorDiv.classList.add('hidden');
             
-            const username = document.getElementById('username').value;
-            const password = document.getElementById('password').value;
+            const formData = new FormData(e.target);
             
             try {
-                console.log('Attempting login for:', username);
-                
                 const response = await fetch(`${API_BASE}/token`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+                    body: `username=${encodeURIComponent(formData.get('username'))}&password=${encodeURIComponent(formData.get('password'))}`
                 });
 
-                console.log('Login response status:', response.status);
-                const data = await response.json();
-                console.log('Login response data:', data);
-
                 if (response.ok) {
+                    const data = await response.json();
                     authToken = data.access_token;
                     localStorage.setItem('rag_auth_token', authToken);
-                    console.log('Token saved, loading user...');
                     await loadUser();
                     showMainInterface();
                 } else {
-                    console.error('Login failed:', data);
-                    showError('loginError', data.detail || 'Invalid username or password');
+                    showError('loginError', 'Invalid username or password');
                 }
             } catch (error) {
-                console.error('Login error:', error);
                 showError('loginError', 'Login failed. Please try again.');
             } finally {
                 spinner.classList.add('hidden');
-                loginText.textContent = 'Login';
             }
         }
 
-        async function
+        async function validateToken() {
+            try {
+                const response = await fetch(`${API_BASE}/users/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    await loadUser();
+                    showMainInterface();
+                } else {
+                    logout();
+                }
+            } catch (error) {
+                logout();
+            }
+        }
+
+        async function loadUser() {
+            try {
+                const response = await fetch(`${API_BASE}/users/me`, {
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`
+                    }
+                });
+
+                if (response.ok) {
+                    currentUser = await response.json();
+                    document.getElementById('userWelcome').textContent = `Welcome, ${currentUser.username}!`;
+                }
+            } catch (error) {
+                console.error('Failed to load user:', error);
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('rag_auth_token');
+            authToken = null;
+            currentUser = null;
+            showLoginPage();
+        }
+
+        function showLoginPage() {
+            document.getElementById('loginPage').classList.remove('hidden');
+            document.getElementById('mainInterface').classList.add('hidden');
+        }
+
+        function showMainInterface() {
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('mainInterface').classList.remove('hidden');
+            loadDashboard();
+        }
+
+        function switchTab(tabName) {
+            // Update active tab
+            document.querySelectorAll('.nav-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+
+            // Hide all panels
+            document.querySelectorAll('.content-panel').forEach(panel => {
+                panel.classList.add('hidden');
+            });
+
+            // Show selected panel
+            document.getElementById(`${tabName}Panel`).classList.remove('hidden');
+
+            // Load content based on tab
+            switch (tabName) {
+                case 'dashboard':
+                    loadDashboard();
+                    break;
+                case 'tenants':
+                    loadTenants();
+                    break;
+                case 'users':
+                    loadUsers();
+                    break;
+                case 'analytics':
+                    loadAnalyticsOptions();
+                    break;
+                case 'settings':
+                    loadSettings();
+                    break;
+            }
+        }
+
+        async function loadDashboard() {
+            try {
+                // Load tenants for count
+                const tenantsResponse = await fetch(`${API_BASE}/tenants`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (tenantsResponse.ok) {
+                    const tenants = await tenantsResponse.json();
+                    document.getElementById('totalTenants').textContent = tenants.length;
+                    
+                    let totalAgents = 0;
+                    tenants.forEach(tenant => totalAgents += tenant.agents.length);
+                    document.getElementById('totalAgents').textContent = totalAgents;
+                }
+
+                // Load users count
+                const usersResponse = await fetch(`${API_BASE}/users`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (usersResponse.ok) {
+                    const users = await usersResponse.json();
+                    document.getElementById('totalUsers').textContent = users.length;
+                }
+
+                // Load analytics for total chats
+                const analyticsResponse = await fetch(`${API_BASE}/analytics`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                
+                if (analyticsResponse.ok) {
+                    const analytics = await analyticsResponse.json();
+                    document.getElementById('totalChats').textContent = analytics.total_queries || 0;
+                }
+            } catch (error) {
+                console.error('Failed to load dashboard:', error);
+            }
+        }
+
+        async function loadTenants() {
+            try {
+                const response = await fetch(`${API_BASE}/tenants`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const tenants = await response.json();
+                    displayTenants(tenants);
+                }
+            } catch (error) {
+                console.error('Failed to load tenants:', error);
+            }
+        }
+
+        function displayTenants(tenants) {
+            const container = document.getElementById('tenantsContainer');
+            container.innerHTML = '';
+
+            tenants.forEach(tenant => {
+                const tenantCard = document.createElement('div');
+                tenantCard.className = 'tenant-card';
+                tenantCard.innerHTML = `
+                    <div class="tenant-header">
+                        <h3>${tenant.tenant}</h3>
+                        <button class="btn btn-outline" onclick="createAgent('${tenant.tenant}')">+ Add Agent</button>
+                    </div>
+                    <div class="tenant-body">
+                        <div class="agents-grid">
+                            ${tenant.agents.map(agent => `
+                                <div class="agent-card">
+                                    <div class="agent-name">${agent}</div>
+                                    <div class="agent-status status-ready">Ready</div>
+                                    <div class="agent-actions">
+                                        <button class="btn btn-small" onclick="configureAgent('${tenant.tenant}', '${agent}')">Configure</button>
+                                        <button class="btn btn-small btn-secondary" onclick="testAgent('${tenant.tenant}', '${agent}')">Test</button>
+                                        <button class="btn btn-small btn-warning" onclick="uploadFiles('${tenant.tenant}', '${agent}')">Upload</button>
+                                        <button class="btn btn-small btn-outline" onclick="getEmbedCode('${tenant.tenant}', '${agent}')">Embed</button>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(tenantCard);
+            });
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await fetch(`${API_BASE}/users`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const users = await response.json();
+                    displayUsers(users);
+                }
+            } catch (error) {
+                console.error('Failed to load users:', error);
+            }
+        }
+
+        function displayUsers(users) {
+            const tbody = document.querySelector('#usersTable tbody');
+            tbody.innerHTML = '';
+
+            users.forEach(user => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${user.username}</td>
+                    <td>${user.tenant}</td>
+                    <td>${user.role}</td>
+                    <td>${user.disabled ? '❌ Disabled' : '✅ Active'}</td>
+                    <td>
+                        <button class="btn btn-small" onclick="editUser('${user.username}')">Edit</button>
+                        ${user.username !== 'admin' ? `<button class="btn btn-small btn-danger" onclick="deleteUser('${user.username}')">Delete</button>` : ''}
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        async function loadAnalyticsOptions() {
+            try {
+                const response = await fetch(`${API_BASE}/tenants`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const tenants = await response.json();
+                    const select = document.getElementById('analyticsTenant');
+                    select.innerHTML = '<option value="">Select Tenant</option>';
+                    
+                    tenants.forEach(tenant => {
+                        const option = document.createElement('option');
+                        option.value = tenant.tenant;
+                        option.textContent = tenant.tenant;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load analytics options:', error);
+            }
+        }
+
+        async function loadAnalytics() {
+            const tenant = document.getElementById('analyticsTenant').value;
+            const resultsDiv = document.getElementById('analyticsResults');
+            
+            if (!tenant) {
+                resultsDiv.classList.add('hidden');
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/analytics?tenant=${tenant}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    displayAnalytics(data);
+                    resultsDiv.classList.remove('hidden');
+                }
+            } catch (error) {
+                console.error('Failed to load analytics:', error);
+            }
+        }
+
+        function displayAnalytics(data) {
+            const container = document.getElementById('analyticsResults');
+            container.innerHTML = `
+                <div class="dashboard-grid">
+                    <div class="stat-card">
+                        <div class="stat-number">${data.total_queries || 0}</div>
+                        <div class="stat-label">Total Queries</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.unique_sessions || 0}</div>
+                        <div class="stat-label">Unique Sessions</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.feedback?.average?.toFixed(1) || 'N/A'}</div>
+                        <div class="stat-label">Avg Feedback</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number">${data.performance?.mean?.toFixed(2) || 'N/A'}s</div>
+                        <div class="stat-label">Avg Response Time</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadSettings() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                if (response.ok) {
+                    const health = await response.json();
+                    document.getElementById('systemStatus').innerHTML = `
+                        <p><strong>Status:</strong> ${health.status}</p>
+                        <p><strong>Version:</strong> ${health.version}</p>
+                        <p><strong>Last Updated:</strong> ${new Date(health.timestamp).toLocaleString()}</p>
+                    `;
+                }
+            } catch (error) {
+                console.error('Failed to load settings:', error);
+            }
+        }
+
+        // Modal functions
+        function showModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        // Tenant management
+        async function handleCreateTenant(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const tenantName = formData.get('tenantName');
+            const agentName = formData.get('agentName');
+
+            try {
+                // Create tenant directory and agent config via API
+                const configData = {
+                    bot_name: `${tenantName} ${agentName} Bot`,
+                    system_prompt: `You are a helpful assistant for ${tenantName}.`,
+                    primary_color: '#1E88E5',
+                    secondary_color: '#FFFFFF'
+                };
+
+                const response = await fetch(`${API_BASE}/config?tenant=${tenantName}&agent=${agentName}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(configData)
+                });
+
+                if (response.ok) {
+                    closeModal('createTenantModal');
+                    loadTenants();
+                    showSuccess('Tenant created successfully!');
+                } else {
+                    showError('createTenantError', 'Failed to create tenant');
+                }
+            } catch (error) {
+                showError('createTenantError', 'Failed to create tenant');
+            }
+        }
+
+        async function createAgent(tenant) {
+            const agentName = prompt('Enter agent name:');
+            if (!agentName) return;
+
+            try {
+                const configData = {
+                    bot_name: `${tenant} ${agentName} Bot`,
+                    system_prompt: `You are a helpful assistant for ${tenant}.`,
+                    primary_color: '#1E88E5',
+                    secondary_color: '#FFFFFF'
+                };
+
+                const response = await fetch(`${API_BASE}/config?tenant=${tenant}&agent=${agentName}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(configData)
+                });
+
+                if (response.ok) {
+                    loadTenants();
+                    showSuccess('Agent created successfully!');
+                }
+            } catch (error) {
+                console.error('Failed to create agent:', error);
+            }
+        }
+
+        // Agent configuration
+        async function configureAgent(tenant, agent) {
+            try {
+                // Load current configuration
+                const response = await fetch(`${API_BASE}/config?tenant=${tenant}&agent=${agent}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const config = await response.json();
+                    populateAgentConfig(tenant, agent, config);
+                    showModal('agentConfigModal');
+                }
+            } catch (error) {
+                console.error('Failed to load agent config:', error);
+            }
+        }
+
+        function populateAgentConfig(tenant, agent, config) {
+            document.getElementById('configTenant').value = tenant;
+            document.getElementById('configAgent').value = agent;
+            document.getElementById('botName').value = config.bot_name || '';
+            document.getElementById('systemPrompt').value = config.system_prompt || '';
+            document.getElementById('avatarUrl').value = config.avatar_url || '';
+            document.getElementById('primaryColor').value = config.primary_color || '#1E88E5';
+            document.getElementById('secondaryColor').value = config.secondary_color || '#FFFFFF';
+            document.getElementById('widgetMode').value = config.mode || 'inline';
+            document.getElementById('autoOpen').checked = config.auto_open || false;
+            document.getElementById('llmProvider').value = config.llm_provider || 'openai';
+            document.getElementById('llmModel').value = config.llm_model || 'gpt-4o-mini';
+            document.getElementById('temperature').value = config.temperature || 0.3;
+            document.getElementById('tempValue').textContent = config.temperature || 0.3;
+            document.getElementById('enableVoice').checked = config.enable_voice !== false;
+            document.getElementById('enableFiles').checked = config.enable_files !== false;
+            document.getElementById('enableTTS').checked = config.enable_tts || false;
+            document.getElementById('enableDarkMode').checked = config.enable_dark_mode !== false;
+            
+            const domains = Array.isArray(config.allowed_domains) ? config.allowed_domains.join('\n') : '*';
+            document.getElementById('allowedDomains').value = domains;
+        }
+
+        async function handleSaveAgentConfig(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const tenant = formData.get('tenant');
+            const agent = formData.get('agent');
+            
+            const configData = {
+                bot_name: formData.get('bot_name'),
+                system_prompt: formData.get('system_prompt'),
+                avatar_url: formData.get('avatar_url'),
+                primary_color: formData.get('primary_color'),
+                secondary_color: formData.get('secondary_color'),
+                mode: formData.get('mode'),
+                auto_open: formData.has('auto_open'),
+                llm_provider: formData.get('llm_provider'),
+                llm_model: formData.get('llm_model'),
+                temperature: parseFloat(formData.get('temperature')),
+                enable_voice: formData.has('enable_voice'),
+                enable_files: formData.has('enable_files'),
+                enable_tts: formData.has('enable_tts'),
+                enable_dark_mode: formData.has('enable_dark_mode'),
+                allowed_domains: formData.get('allowed_domains').split('\n').map(d => d.trim()).filter(d => d)
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/config?tenant=${tenant}&agent=${agent}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(configData)
+                });
+
+                if (response.ok) {
+                    closeModal('agentConfigModal');
+                    showSuccess('Agent configuration saved successfully!');
+                } else {
+                    showError('agentConfigError', 'Failed to save configuration');
+                }
+            } catch (error) {
+                showError('agentConfigError', 'Failed to save configuration');
+            }
+        }
+
+        // User management
+        async function loadTenantsForUser() {
+            try {
+                const response = await fetch(`${API_BASE}/tenants`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const tenants = await response.json();
+                    const select = document.getElementById('newUserTenant');
+                    
+                    // Clear existing options except "All Tenants"
+                    while (select.children.length > 1) {
+                        select.removeChild(select.lastChild);
+                    }
+                    
+                    tenants.forEach(tenant => {
+                        const option = document.createElement('option');
+                        option.value = tenant.tenant;
+                        option.textContent = tenant.tenant;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load tenants for user:', error);
+            }
+        }
+
+        async function handleCreateUser(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const userData = {
+                username: formData.get('username'),
+                password: formData.get('password'),
+                tenant: formData.get('tenant'),
+                role: formData.get('role'),
+                disabled: false
+            };
+
+            try {
+                const response = await fetch(`${API_BASE}/users`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(userData)
+                });
+
+                if (response.ok) {
+                    closeModal('createUserModal');
+                    loadUsers();
+                    showSuccess('User created successfully!');
+                    e.target.reset();
+                } else {
+                    const error = await response.json();
+                    showError('createUserError', error.detail || 'Failed to create user');
+                }
+            } catch (error) {
+                showError('createUserError', 'Failed to create user');
+            }
+        }
+
+        async function editUser(username) {
+            // For simplicity, using prompt - in production, you'd want a proper modal
+            const newTenant = prompt(`Enter new tenant for ${username} (current tenant will be preserved if empty):`);
+            if (newTenant === null) return;
+            
+            const newRole = prompt(`Enter new role for ${username} (admin/user):`);
+            if (!['admin', 'user'].includes(newRole)) {
+                alert('Invalid role. Must be admin or user.');
+                return;
+            }
+
+            try {
+                const updateData = { role: newRole };
+                if (newTenant.trim()) {
+                    updateData.tenant = newTenant.trim();
+                }
+
+                const response = await fetch(`${API_BASE}/users/${username}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(updateData)
+                });
+
+                if (response.ok) {
+                    loadUsers();
+                    showSuccess('User updated successfully!');
+                }
+            } catch (error) {
+                console.error('Failed to update user:', error);
+            }
+        }
+
+        async function deleteUser(username) {
+            if (!confirm(`Are you sure you want to delete user "${username}"?`)) return;
+
+            try {
+                const response = await fetch(`${API_BASE}/users/${username}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    loadUsers();
+                    showSuccess('User deleted successfully!');
+                }
+            } catch (error) {
+                console.error('Failed to delete user:', error);
+            }
+        }
+
+        // Agent actions
+        function testAgent(tenant, agent) {
+            document.getElementById('testingAgent').textContent = `${tenant}/${agent}`;
+            
+            // Clear previous widget
+            const container = document.getElementById('testWidgetContainer');
+            container.innerHTML = `
+                <div style="padding: 20px; text-align: center;">
+                    <p>Testing ${agent} agent...</p>
+                    <p><small>The widget will appear here</small></p>
+                </div>
+            `;
+            
+            // Inject widget script
+            const script = document.createElement('script');
+            script.src = `${API_BASE}/widget.js?tenant=${tenant}&agent=${agent}`;
+            script.onload = () => {
+                // Widget should now be initialized
+                console.log('Widget loaded for testing');
+            };
+            container.appendChild(script);
+            
+            showModal('testWidgetModal');
+        }
+
+        function uploadFiles(tenant, agent) {
+            document.getElementById('uploadTenant').value = tenant;
+            document.getElementById('uploadAgent').value = agent;
+            showModal('uploadModal');
+        }
+
+        async function handleFileUpload(e) {
+            e.preventDefault();
+            
+            const formData = new FormData(e.target);
+            const spinner = document.getElementById('uploadSpinner');
+            const resultDiv = document.getElementById('uploadResult');
+            
+            spinner.classList.remove('hidden');
+            resultDiv.classList.add('hidden');
+
+            try {
+                const response = await fetch(`${API_BASE}/upload?tenant=${formData.get('tenant')}&agent=${formData.get('agent')}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${authToken}` },
+                    body: formData
+                });
+
+                const result = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<div class="success">${result.message}</div>`;
+                    resultDiv.classList.remove('hidden');
+                    e.target.reset();
+                } else {
+                    resultDiv.innerHTML = `<div class="error">${result.detail || 'Upload failed'}</div>`;
+                    resultDiv.classList.remove('hidden');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<div class="error">Upload failed</div>`;
+                resultDiv.classList.remove('hidden');
+            } finally {
+                spinner.classList.add('hidden');
+            }
+        }
+
+        function getEmbedCode(tenant, agent) {
+            const embedCode = `<script src="${API_BASE}/widget.js?tenant=${tenant}&agent=${agent}"></script>`;
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h3 class="modal-title">Embed Code</h3>
+                        <button class="close-btn" onclick="this.closest('.modal').remove()">&times;</button>
+                    </div>
+                    <div class="form-group">
+                        <label>Copy this code to your website:</label>
+                        <textarea readonly style="width: 100%; height: 100px; margin: 10px 0;">${embedCode}</textarea>
+                        <button class="btn" onclick="navigator.clipboard.writeText('${embedCode}'); alert('Copied to clipboard!')">Copy to Clipboard</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Auto-remove modal when clicking outside
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.remove();
+                }
+            });
+        }
+
+        // Utility functions
+        function showError(elementId, message) {
+            const element = document.getElementById(elementId);
+            if (element) {
+                element.textContent = message;
+                element.classList.remove('hidden');
+            } else {
+                alert(message);
+            }
+        }
+
+        function showSuccess(message) {
+            // Simple toast notification
+            const toast = document.createElement('div');
+            toast.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: var(--secondary);
+                color: white;
+                padding: 15px 20px;
+                border-radius: 8px;
+                box-shadow: var(--shadow-lg);
+                z-index: 10000;
+                font-weight: 600;
+            `;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.remove();
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
+                    

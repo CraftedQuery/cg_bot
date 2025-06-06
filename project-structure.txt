@@ -1,0 +1,35 @@
+rag_chatbot/
+├── __init__.py
+├── main.py                 # FastAPI app initialization and main entry point
+├── auth.py                 # Authentication and user management
+├── models.py               # Pydantic models and schemas
+├── config.py               # Configuration management
+├── database.py             # Database operations and connections
+├── vectorstore.py          # Vector store operations and RAG functionality
+├── llm.py                  # LLM provider integrations
+├── ingestion.py            # Document ingestion and processing
+├── analytics.py            # Analytics and reporting
+├── widget.py               # Widget generation and serving
+├── cli.py                  # CLI interface with Rich
+├── routers/
+│   ├── __init__.py
+│   ├── auth_routes.py      # Authentication endpoints
+│   ├── chat_routes.py      # Chat and RAG endpoints
+│   ├── config_routes.py    # Configuration management endpoints
+│   ├── admin_routes.py     # Admin interface endpoints
+│   ├── analytics_routes.py # Analytics endpoints
+│   └── ingest_routes.py    # Document ingestion endpoints
+├── utils/
+│   ├── __init__.py
+│   ├── google_drive.py     # Google Drive utilities
+│   ├── web_scraper.py      # Web scraping and sitemap utilities
+│   └── file_processors.py  # File processing utilities
+├── static/
+│   └── admin.html          # Admin interface HTML
+├── templates/
+│   └── test.html           # Test HTML file
+├── configs/                # Tenant/agent configurations (created at runtime)
+├── vector_store/           # Vector stores (created at runtime)
+├── users.json              # User database (created at runtime)
+├── chat_logs.db            # SQLite database (created at runtime)
+└── requirements.txt        # Python dependencies
