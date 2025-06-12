@@ -13,7 +13,7 @@ from rich import box
 import pandas as pd
 
 ## Allow running as 'python cli.py' by fixing the package content
-if __name__ == "__main__" and not __package__:
+if not __package__:
     import sys
     package_path = Path(__file__).resolve().parent
     sys.path.insert(0, str(package_path.parent))
@@ -309,7 +309,6 @@ def serve(
     
     module = f"{__package__}.main:app" if __package__ else "main:app"
     uvicorn.run(
-        #"rag_chatbot.main:app",
         module,
         host=host,
         port=port,
