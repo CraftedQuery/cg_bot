@@ -12,6 +12,13 @@ from rich.progress import Progress
 from rich import box
 import pandas as pd
 
+## Allow running as 'python cli.py' by fixing the package content
+if __name__ == "__main__" and not __package__:
+    import sys
+    package_path = Path(__file__).resolve().parent
+    sys.path.insert(0, str(package_path.parent))
+    __package__= package_path.name
+
 from .config import BASE_CONFIG_DIR, DB_PATH
 from .database import get_db
 from .auth import get_users_db, create_user, update_user, delete_user
@@ -300,8 +307,10 @@ def serve(
     console.print(f"🤖 Widget: http://{host}:{port}/widget.js")
     console.print(f"🔧 Admin: http://{host}:{port}/admin.html")
     
+    module = f"{__package__}.main:app" if __package__ else "main:app"
     uvicorn.run(
-        "rag_chatbot.main:app",
+        #"rag_chatbot.main:app",
+        module,
         host=host,
         port=port,
         reload=reload
