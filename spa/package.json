@@ -1,0 +1,17 @@
+{
+  "name": "chatbot-spa",
+  "private": true,
+  "scripts": {
+    "dev": "vite"
+  },
+  "dependencies": {
+    "@azure/msal-browser": "^3",
+    "@azure/msal-react": "^2",
+    "react": "^18",
+    "react-dom": "^18"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4",
+    "vite": "^4"
+  }
+}

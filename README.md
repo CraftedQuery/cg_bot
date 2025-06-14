@@ -312,3 +312,25 @@ For production, consider migrating from SQLite to PostgreSQL:
 For issues and questions:
 - GitHub Issues: [repository-url]/issues
 - Documentation: [documentation-url]
+## Entra ID MFA Integration
+
+### Azure registration
+1. Register a **SPA** app in Entra and note the **Application (client) ID**.
+   - Enable the *Authorization code* and *Implicit* grants for ID and access tokens.
+   - Set the redirect URI to `http://localhost:5173`.
+2. Register an **API** app and expose an API scope. Note the **Application ID URI**.
+3. In the SPA's **API permissions**, add access to the API scope.
+
+### Conditional Access
+1. Open **Entra ID > Protection > Conditional Access**.
+2. Create a **New policy** > **Cloud apps** > select your SPA's application ID.
+3. Under **Grant**, select **Require multi-factor authentication** and enable the policy.
+   <!-- MFA enforcement happens here, not in code -->
+
+### Local development
+```bash
+cd spa && npm i && npm run dev      # start React + Vite SPA
+cd ../api && npm i && node index.js # start Express API
+```
+
+The default admin credentials remain `admin/admin` for backwards compatibility.
