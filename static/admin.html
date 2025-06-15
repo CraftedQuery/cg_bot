@@ -1558,7 +1558,7 @@
         }
 
         function getEmbedCode(tenant, agent) {
-            const embedCode = `<script src="${API_BASE}/widget.js?tenant=${tenant}&agent=${agent}"></script>`;
+            const embedCode = `<script src="${API_BASE}/widget.js?tenant=${tenant}&agent=${agent}"><\/script>`;
             
             const modal = document.createElement('div');
             modal.className = 'modal';
