@@ -6,7 +6,9 @@ python-multipart>=0.0.6
 
 # Authentication
 python-jose[cryptography]>=3.3.0
+# Pin bcrypt below 4.x due to incompatibility with passlib 1.7
 passlib[bcrypt]>=1.7.4
+bcrypt<4
 
 # RAG and LLM
 langchain>=0.1.0
