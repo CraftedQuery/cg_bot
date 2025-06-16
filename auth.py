@@ -32,7 +32,8 @@ def get_users_db():
             "admin": {
                 "username": "admin",
                 "tenant": "*",  # Wildcard for all tenants
-                "role": "admin",
+                "role": "system_admin",
+                "agents": [],
                 "hashed_password": pwd_context.hash("admin"),
                 "disabled": False
             }
@@ -124,7 +125,17 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
 
 async def get_admin_user(current_user: User = Depends(get_current_active_user)):
     """Get the current user if they are an admin"""
-    if current_user.role != "admin":
+    if current_user.role not in ["admin", "system_admin"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions"
+        )
+    return current_user
+
+
+async def get_system_admin_user(current_user: User = Depends(get_current_active_user)):
+    """Ensure the user is a system administrator"""
+    if current_user.role != "system_admin":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
@@ -143,6 +154,7 @@ def create_user(user_data: UserCreate):
         "username": user_data.username,
         "tenant": user_data.tenant,
         "role": user_data.role,
+        "agents": user_data.agents or [],
         "disabled": user_data.disabled,
         "hashed_password": hashed_password
     }
@@ -157,7 +169,7 @@ def update_user(username: str, user_data: dict):
         return False
     
     for key, value in user_data.items():
-        if key != "username" and key != "hashed_password":
+        if key not in ["username", "hashed_password", "password"]:
             users_db[username][key] = value
     
     if "password" in user_data:

@@ -341,7 +341,8 @@ def create_user_cli(
     username: str = typer.Argument(help="Username"),
     password: str = typer.Argument(help="Password"),
     tenant: str = typer.Option("*", help="Tenant (use '*' for all tenants)"),
-    role: str = typer.Option("user", help="User role (user/admin)")
+    role: str = typer.Option("user", help="User role (user/admin/system_admin)"),
+    agents: Optional[List[str]] = typer.Option(None, help="Agent names (comma separated)")
 ):
     """Create a new user"""
     
@@ -349,7 +350,8 @@ def create_user_cli(
         username=username,
         password=password,
         tenant=tenant,
-        role=role
+        role=role,
+        agents=agents or []
     )
     
     if create_user(user_data):

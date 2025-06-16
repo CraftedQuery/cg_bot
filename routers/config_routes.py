@@ -5,7 +5,7 @@ from urllib.parse import urlparse
 from fastapi import APIRouter, Request, Query, Depends, HTTPException
 
 from ..models import EnhancedConfigUpdateRequest, User
-from ..auth import get_current_active_user, get_admin_user
+from ..auth import get_current_active_user, get_admin_user, get_system_admin_user
 from ..config import (
     DEFAULT_TENANT,
     DEFAULT_AGENT,
@@ -16,6 +16,32 @@ from ..config import (
 )
 
 router = APIRouter(tags=["configuration"])
+
+
+@router.post("/tenants/{tenant}")
+async def create_tenant(
+    tenant: str,
+    current_user: User = Depends(get_system_admin_user)
+):
+    """Create a new tenant (system admin only)"""
+    tenant_dir = BASE_CONFIG_DIR / tenant
+    if tenant_dir.exists():
+        raise HTTPException(status_code=400, detail="Tenant already exists")
+    tenant_dir.mkdir(parents=True, exist_ok=True)
+    return {"message": "Tenant created", "tenant": tenant}
+
+
+@router.post("/agents/{tenant}/{agent}")
+async def create_agent(
+    tenant: str,
+    agent: str,
+    current_user: User = Depends(get_admin_user)
+):
+    """Create a new agent for a tenant"""
+    if current_user.role != "system_admin" and current_user.tenant != tenant:
+        raise HTTPException(status_code=403, detail="You don't have access to this tenant")
+    load_config(tenant, agent)
+    return {"message": "Agent created", "tenant": tenant, "agent": agent}
 
 
 @router.get("/config")
@@ -132,14 +158,17 @@ async def get_my_agents(current_user: User = Depends(get_current_active_user)):
         return {"tenant": user_tenant, "agents": []}
     
     agents = []
+    allowed = set(current_user.agents or [])
     for config_file in tenant_dir.iterdir():
         if config_file.is_file() and config_file.suffix == ".json":
             agent_name = config_file.stem
+            if allowed and agent_name not in allowed:
+                continue
             config = load_config(user_tenant, agent_name)
-            
+
             # Check if vector store exists for this agent
             vector_store_exists = store_path(user_tenant, agent_name).exists()
-            
+
             agents.append({
                 "agent": agent_name,
                 "bot_name": config.get("bot_name", f"{user_tenant}-{agent_name}"),

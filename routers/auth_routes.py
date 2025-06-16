@@ -13,7 +13,8 @@ from ..auth import (
     get_users_db,
     create_user,
     update_user,
-    delete_user
+    delete_user,
+    get_user
 )
 
 router = APIRouter(tags=["authentication"])
@@ -44,6 +45,8 @@ async def read_users_me(current_user: User = Depends(get_current_active_user)):
 @router.post("/users", status_code=status.HTTP_201_CREATED)
 async def create_new_user(user: UserCreate, admin: User = Depends(get_admin_user)):
     """Create a new user (admin only)"""
+    if admin.role != "system_admin":
+        user.tenant = admin.tenant
     if create_user(user):
         return {"message": "User created successfully"}
     raise HTTPException(
@@ -59,6 +62,13 @@ async def update_existing_user(
     admin: User = Depends(get_admin_user)
 ):
     """Update an existing user (admin only)"""
+    existing = get_user(username)
+    if not existing:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if admin.role != "system_admin" and existing.tenant != admin.tenant:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions")
+    if "tenant" in user_data and admin.role != "system_admin" and user_data["tenant"] != admin.tenant:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cannot change tenant")
     if update_user(username, user_data):
         return {"message": "User updated successfully"}
     raise HTTPException(
