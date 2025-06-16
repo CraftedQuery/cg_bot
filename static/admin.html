@@ -856,6 +856,7 @@
             // Create buttons
             document.getElementById('createTenantBtn').addEventListener('click', () => showModal('createTenantModal'));
             document.getElementById('createUserBtn').addEventListener('click', () => {
+                document.getElementById('createUserForm').reset();
                 loadTenantsForUser();
                 showModal('createUserModal');
             });
@@ -955,6 +956,9 @@
         }
 
         function showLoginPage() {
+            document.getElementById('loginForm').reset();
+            const error = document.getElementById('loginError');
+            if (error) error.classList.add('hidden');
             document.getElementById('loginPage').classList.remove('hidden');
             document.getElementById('mainInterface').classList.add('hidden');
         }
@@ -1384,12 +1388,17 @@
                 if (response.ok) {
                     const tenants = await response.json();
                     const select = document.getElementById('newUserTenant');
-                    
-                    // Clear existing options except "All Tenants"
-                    while (select.children.length > 1) {
-                        select.removeChild(select.lastChild);
+
+                    // Clear existing options
+                    select.innerHTML = '';
+
+                    if (currentUser.role === 'system_admin') {
+                        const optAll = document.createElement('option');
+                        optAll.value = '*';
+                        optAll.textContent = 'All Tenants (Admin)';
+                        select.appendChild(optAll);
                     }
-                    
+
                     tenants.forEach(tenant => {
                         const option = document.createElement('option');
                         option.value = tenant.tenant;
