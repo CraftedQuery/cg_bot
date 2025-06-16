@@ -116,6 +116,13 @@ async def update_config_enhanced(
 async def list_tenants(current_user: User = Depends(get_admin_user)):
     """List all tenants and their agents"""
     tenants = []
+    if current_user.role != "system_admin":
+        tenant_dir = BASE_CONFIG_DIR / current_user.tenant
+        if tenant_dir.is_dir():
+            agents = [f.stem for f in tenant_dir.iterdir() if f.is_file() and f.suffix == ".json"]
+            tenants.append({"tenant": current_user.tenant, "agents": agents})
+        return tenants
+
     for tenant_dir in BASE_CONFIG_DIR.iterdir():
         if tenant_dir.is_dir():
             agents = []

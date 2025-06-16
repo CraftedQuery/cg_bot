@@ -45,7 +45,12 @@ async def read_users_me(current_user: User = Depends(get_current_active_user)):
 @router.post("/users", status_code=status.HTTP_201_CREATED)
 async def create_new_user(user: UserCreate, admin: User = Depends(get_admin_user)):
     """Create a new user (admin only)"""
-    if admin.role != "system_admin":
+    if admin.role == "system_admin":
+        if user.role == "system_admin":
+            raise HTTPException(status_code=400, detail="Cannot create another system admin")
+    else:
+        if user.role != "user":
+            raise HTTPException(status_code=403, detail="Admins can only create regular users")
         user.tenant = admin.tenant
     if create_user(user):
         return {"message": "User created successfully"}
@@ -95,6 +100,8 @@ async def list_users(admin: User = Depends(get_admin_user)):
     # Remove sensitive information
     users = []
     for username, user_data in users_db.items():
+        if admin.role != "system_admin" and user_data.get("tenant") != admin.tenant:
+            continue
         user_info = user_data.copy()
         if "hashed_password" in user_info:
             user_info.pop("hashed_password")
