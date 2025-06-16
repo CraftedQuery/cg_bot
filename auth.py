@@ -13,7 +13,12 @@ from jose import JWTError, jwt
 from passlib.context import CryptContext
 
 from .models import User, UserCreate, TokenData
-from .config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from .config import (
+    SECRET_KEY,
+    ALGORITHM,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    BASE_DIR,
+)
 
 # Override with environment variable if available
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", SECRET_KEY)
@@ -25,7 +30,7 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
 def get_users_db():
     """Get the users database"""
-    users_file = Path("users.json")
+    users_file = BASE_DIR / "users.json"
     if not users_file.exists():
         # Create default admin user if no users file exists
         default_admin = {
@@ -45,7 +50,7 @@ def get_users_db():
 
 def save_users_db(users_data):
     """Save the users database"""
-    users_file = Path("users.json")
+    users_file = BASE_DIR / "users.json"
     users_file.write_text(json.dumps(users_data, indent=2))
 
 

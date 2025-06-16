@@ -2,18 +2,22 @@
 config.py - Configuration management for the RAG chatbot
 """
 import json
+import os
 from pathlib import Path
 from typing import Dict, Any
 
+# Determine base data directory
+BASE_DIR = Path(os.getenv("RAG_CHATBOT_HOME", Path.cwd()))
+
 # Base configuration
-BASE_CONFIG_DIR = Path("configs")
-BASE_CONFIG_DIR.mkdir(exist_ok=True)
-BASE_STORE_DIR = Path("vector_store")
+BASE_CONFIG_DIR = BASE_DIR / "configs"
+BASE_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+BASE_STORE_DIR = BASE_DIR / "vector_store"
 DEFAULT_TENANT = "public"
 DEFAULT_AGENT = "default"
 
 # Database path
-DB_PATH = Path("chat_logs.db")
+DB_PATH = BASE_DIR / "chat_logs.db"
 
 # JWT Configuration
 SECRET_KEY = "dev_secret_key_change_in_production"  # Override with env var
