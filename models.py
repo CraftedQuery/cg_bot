@@ -10,6 +10,7 @@ class User(BaseModel):
     tenant: str
     role: str = "user"
     disabled: bool = False
+    agents: Optional[List[str]] = []
 
 
 class UserCreate(User):

@@ -6,6 +6,7 @@ A production-ready, multi-tenant Retrieval-Augmented Generation (RAG) chatbot sy
 
 - 🏢 **Multi-tenant Architecture**: Support for multiple organizations and agents
 - 🔐 **Authentication & Authorization**: JWT-based authentication with role-based access
+- 👑 **Role Hierarchy**: `system_admin` can manage all tenants and agents, `admin` manages a single tenant, and regular `user` accounts access assigned agents
 - 🤖 **Multiple LLM Providers**: OpenAI, Anthropic, and Google Vertex AI support
 - 📊 **Analytics Dashboard**: Comprehensive usage analytics and reporting
 - 🎨 **Customizable Widget**: Embeddable chat widget with dark mode, voice input, and file attachments
@@ -105,7 +106,7 @@ python -m rag_chatbot.cli dashboard
 
 ### Create User
 ```bash
-python -m rag_chatbot.cli create-user <username> <password> --tenant <tenant> --role <role>
+python -m rag_chatbot.cli create-user <username> <password> --tenant <tenant> --role <role> --agents agent1 agent2
 ```
 
 ### Ingest Content
