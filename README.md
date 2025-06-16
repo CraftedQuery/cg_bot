@@ -94,6 +94,7 @@ python -m rag_chatbot.cli serve --reload
 
 - **Username**: admin
 - **Password**: admin
+- Role: `system_admin` (full access)
 
 ⚠️ **Important**: Change the default password immediately after first login!
 
