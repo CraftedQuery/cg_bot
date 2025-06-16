@@ -5,21 +5,42 @@ from typing import Dict, List, Tuple
 from pathlib import Path
 
 from fastapi import HTTPException
-from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import FAISS
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+
+try:
+    from langchain_openai import OpenAIEmbeddings
+    from langchain_community.vectorstores import FAISS
+    from langchain.text_splitter import RecursiveCharacterTextSplitter
+    _IMPORT_ERROR = None
+except ModuleNotFoundError as e:  # pragma: no cover - optional deps missing
+    OpenAIEmbeddings = None  # type: ignore
+    FAISS = None  # type: ignore
+    RecursiveCharacterTextSplitter = None  # type: ignore
+    _IMPORT_ERROR = e
 
 from .config import store_path
 
 # Text splitter for document chunking
-TEXT_SPLITTER = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=80)
+if RecursiveCharacterTextSplitter:
+    TEXT_SPLITTER = RecursiveCharacterTextSplitter(chunk_size=800, chunk_overlap=80)
+else:  # pragma: no cover - missing optional deps
+    TEXT_SPLITTER = None
 
 # Vector store cache
-_vec_cache: Dict[str, FAISS] = {}
+_vec_cache: Dict[str, "FAISS"] = {}
+
+
+def _require_deps():
+    """Ensure optional vector store dependencies are installed."""
+    if _IMPORT_ERROR is not None:
+        raise HTTPException(
+            500,
+            f"Missing optional dependency '{_IMPORT_ERROR.name}'. Install requirements to enable vector store.",
+        )
 
 
 def get_vector_store(tenant: str, agent: str) -> FAISS:
     """Get or load vector store for a tenant/agent"""
+    _require_deps()
     cache_key = f"{tenant}/{agent}"
     path = store_path(tenant, agent)
     
@@ -38,6 +59,7 @@ def get_vector_store(tenant: str, agent: str) -> FAISS:
 
 def clear_cache(tenant: str, agent: str):
     """Clear vector store cache for a tenant/agent"""
+    _require_deps()
     cache_key = f"{tenant}/{agent}"
     if cache_key in _vec_cache:
         del _vec_cache[cache_key]
@@ -50,6 +72,7 @@ def search_documents(
     k: int = 4
 ) -> List[Tuple[str, Dict, float]]:
     """Search for relevant documents"""
+    _require_deps()
     db = get_vector_store(tenant, agent)
     docs = db.similarity_search_with_score(query, k=k)
     
@@ -72,6 +95,7 @@ def create_vector_store(
     metadatas: List[Dict]
 ) -> bool:
     """Create a new vector store from texts and metadata"""
+    _require_deps()
     try:
         path = store_path(tenant, agent)
         path.mkdir(parents=True, exist_ok=True)
@@ -93,4 +117,5 @@ def create_vector_store(
 
 def chunk_text(text: str) -> List[str]:
     """Chunk text into smaller pieces for vectorization"""
+    _require_deps()
     return TEXT_SPLITTER.split_text(text)
