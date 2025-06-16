@@ -13,6 +13,7 @@ from .routers import (
     chat_routes,
     config_routes,
     admin_routes,
+    user_routes,
     analytics_routes,
     ingest_routes
 )
@@ -49,6 +50,7 @@ if static_dir.exists():
 app.include_router(auth_routes.router)
 app.include_router(chat_routes.router)
 app.include_router(config_routes.router)
+app.include_router(user_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(analytics_routes.router)
 app.include_router(ingest_routes.router)

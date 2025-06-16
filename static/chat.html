@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Chatbot</title>
+    <style>
+        body, html { height: 100%; margin: 0; }
+    </style>
+</head>
+<body>
+    <script>
+        const p = new URLSearchParams(window.location.search);
+        const tenant = p.get('tenant') || '';
+        const agent = p.get('agent') || '';
+        const s = document.createElement('script');
+        s.src = `/widget.js?tenant=${tenant}&agent=${agent}`;
+        document.body.appendChild(s);
+    </script>
+</body>
+</html>
