@@ -14,6 +14,7 @@ from ..config import (
     save_config,
     store_path
 )
+from ..vectorstore import get_vector_store_size
 
 router = APIRouter(tags=["configuration"])
 
@@ -220,6 +221,8 @@ async def get_agent_status(
     
     config = load_config(tenant, agent)
     vector_store_exists = store_path(tenant, agent).exists()
+    size_bytes = get_vector_store_size(tenant, agent)
+    storage_gb = size_bytes / (1024 ** 3)
     
     # Get usage statistics from database
     from ..database import get_chat_stats
@@ -242,6 +245,7 @@ async def get_agent_status(
         "agent": agent,
         "config": config,
         "vector_store_ready": vector_store_exists,
+        "storage_gb": storage_gb,
         "statistics": {
             "total_chats": total_chats,
             "unique_sessions": unique_sessions,
