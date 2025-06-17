@@ -1,6 +1,7 @@
 """
 models.py - Pydantic models and schemas for the RAG chatbot
 """
+
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel
 
@@ -28,6 +29,12 @@ class TokenData(BaseModel):
     role: Optional[str] = None
 
 
+class AADTokenRequest(BaseModel):
+    """Request model for Azure AD login"""
+
+    access_token: str
+
+
 class ChatRequest(BaseModel):
     messages: List[dict]
 
@@ -53,6 +60,7 @@ class ConfigUpdateRequest(BaseModel):
 
 class EnhancedConfigUpdateRequest(ConfigUpdateRequest):
     """Enhanced configuration model with widget parameters"""
+
     enable_voice: Optional[bool] = None
     enable_files: Optional[bool] = None
     enable_tts: Optional[bool] = None
