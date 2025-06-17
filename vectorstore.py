@@ -3,6 +3,7 @@ vectorstore.py - Vector store operations and RAG functionality
 """
 from typing import Dict, List, Tuple
 from pathlib import Path
+import os
 
 from fastapi import HTTPException
 
@@ -119,3 +120,19 @@ def chunk_text(text: str) -> List[str]:
     """Chunk text into smaller pieces for vectorization"""
     _require_deps()
     return TEXT_SPLITTER.split_text(text)
+
+
+def get_vector_store_size(tenant: str, agent: str) -> int:
+    """Return the size in bytes of the vector store for a tenant/agent."""
+    path = store_path(tenant, agent)
+    if not path.exists():
+        return 0
+
+    if path.is_file():
+        return os.path.getsize(path)
+
+    size = 0
+    for p in path.rglob("*"):
+        if p.is_file():
+            size += os.path.getsize(p)
+    return size

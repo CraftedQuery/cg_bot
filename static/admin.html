@@ -1190,11 +1190,15 @@
                         <div class="stat-number">${data.feedback?.average?.toFixed(1) || 'N/A'}</div>
                         <div class="stat-label">Avg Feedback</div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-number">${data.performance?.mean?.toFixed(2) || 'N/A'}s</div>
-                        <div class="stat-label">Avg Response Time</div>
-                    </div>
+                <div class="stat-card">
+                    <div class="stat-number">${data.performance?.mean?.toFixed(2) || 'N/A'}s</div>
+                    <div class="stat-label">Avg Response Time</div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-number">${data.storage_gb?.toFixed(2) || '0'}</div>
+                    <div class="stat-label">Vector Store (GB)</div>
+                </div>
+            </div>
             `;
         }
 
