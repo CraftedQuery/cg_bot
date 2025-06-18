@@ -1,6 +1,7 @@
 """
 config.py - Configuration management for the RAG chatbot
 """
+
 import json
 import os
 from pathlib import Path
@@ -24,6 +25,11 @@ SECRET_KEY = "dev_secret_key_change_in_production"  # Override with env var
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
+# Microsoft Entra ID (Azure AD) Configuration
+AAD_TENANT_ID = os.getenv("AAD_TENANT_ID", "")
+AAD_CLIENT_ID = os.getenv("AAD_CLIENT_ID", "")
+AAD_JWKS_PATH = os.getenv("AAD_JWKS_PATH", "")
+
 
 def cfg_path(tenant: str, agent: str) -> Path:
     """Get configuration file path for a tenant/agent"""
@@ -40,7 +46,7 @@ def load_config(tenant: str, agent: str) -> Dict[str, Any]:
     p = cfg_path(tenant, agent)
     if p.exists():
         return json.loads(p.read_text())
-    
+
     # Create default configuration
     p.parent.mkdir(parents=True, exist_ok=True)
     cfg = {
@@ -63,7 +69,7 @@ def load_config(tenant: str, agent: str) -> Dict[str, Any]:
         "widget_position": "bottom-right",
         "widget_size": "medium",
         "welcome_message": "Hello! How can I help you today?",
-        "placeholder_text": "Type your message..."
+        "placeholder_text": "Type your message...",
     }
     p.write_text(json.dumps(cfg, indent=2))
     return cfg

@@ -1,6 +1,7 @@
 """
 auth.py - Authentication and user management for the RAG chatbot
 """
+
 import json
 import os
 from pathlib import Path
@@ -18,6 +19,9 @@ from .config import (
     ALGORITHM,
     ACCESS_TOKEN_EXPIRE_MINUTES,
     BASE_DIR,
+    AAD_TENANT_ID,
+    AAD_CLIENT_ID,
+    AAD_JWKS_PATH,
 )
 
 # Override with environment variable if available
@@ -26,6 +30,14 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", SECRET_KEY)
 # Password hashing
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
+
+# Load Azure AD JWKs if configured
+AAD_JWKS = []
+if AAD_JWKS_PATH and Path(AAD_JWKS_PATH).exists():
+    try:
+        AAD_JWKS = json.loads(Path(AAD_JWKS_PATH).read_text()).get("keys", [])
+    except Exception:
+        AAD_JWKS = []
 
 
 def get_users_db():
@@ -40,7 +52,7 @@ def get_users_db():
                 "role": "system_admin",
                 "agents": [],
                 "hashed_password": pwd_context.hash("admin"),
-                "disabled": False
+                "disabled": False,
             }
         }
         users_file.write_text(json.dumps(default_admin, indent=2))
@@ -97,6 +109,41 @@ def create_access_token(data: dict):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
+def authenticate_aad_token(token: str):
+    """Authenticate a user using an Azure AD token"""
+    if not (AAD_TENANT_ID and AAD_CLIENT_ID and AAD_JWKS):
+        return None
+    try:
+        unverified_header = jwt.get_unverified_header(token)
+    except JWTError:
+        return None
+    key = next(
+        (k for k in AAD_JWKS if k.get("kid") == unverified_header.get("kid")), None
+    )
+    if not key:
+        return None
+    issuer = f"https://login.microsoftonline.com/{AAD_TENANT_ID}/v2.0"
+    try:
+        payload = jwt.decode(
+            token,
+            key,
+            algorithms=[key.get("alg", "RS256")],
+            audience=AAD_CLIENT_ID,
+            issuer=issuer,
+        )
+    except JWTError:
+        return None
+    username = (
+        payload.get("preferred_username") or payload.get("upn") or payload.get("email")
+    )
+    if not username:
+        return None
+    user = get_user(username)
+    if user:
+        return user
+    return User(username=username, tenant="*", role="user", agents=[])
+
+
 async def get_current_user(token: str = Depends(oauth2_scheme)):
     """Get the current user from JWT token"""
     credentials_exception = HTTPException(
@@ -132,8 +179,7 @@ async def get_admin_user(current_user: User = Depends(get_current_active_user)):
     """Get the current user if they are an admin"""
     if current_user.role not in ["admin", "system_admin"]:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
         )
     return current_user
 
@@ -142,8 +188,7 @@ async def get_system_admin_user(current_user: User = Depends(get_current_active_
     """Ensure the user is a system administrator"""
     if current_user.role != "system_admin":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions"
+            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
         )
     return current_user
 
@@ -153,7 +198,7 @@ def create_user(user_data: UserCreate):
     users_db = get_users_db()
     if user_data.username in users_db:
         return False
-    
+
     hashed_password = get_password_hash(user_data.password)
     users_db[user_data.username] = {
         "username": user_data.username,
@@ -161,7 +206,7 @@ def create_user(user_data: UserCreate):
         "role": user_data.role,
         "agents": user_data.agents or [],
         "disabled": user_data.disabled,
-        "hashed_password": hashed_password
+        "hashed_password": hashed_password,
     }
     save_users_db(users_db)
     return True
@@ -172,14 +217,14 @@ def update_user(username: str, user_data: dict):
     users_db = get_users_db()
     if username not in users_db:
         return False
-    
+
     for key, value in user_data.items():
         if key not in ["username", "hashed_password", "password"]:
             users_db[username][key] = value
-    
+
     if "password" in user_data:
         users_db[username]["hashed_password"] = get_password_hash(user_data["password"])
-    
+
     save_users_db(users_db)
     return True
 
@@ -189,7 +234,7 @@ def delete_user(username: str):
     users_db = get_users_db()
     if username not in users_db:
         return False
-    
+
     del users_db[username]
     save_users_db(users_db)
     return True
