@@ -1,6 +1,7 @@
 """
 routers/admin_routes.py - Admin interface endpoints
 """
+
 from pathlib import Path
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
@@ -11,7 +12,8 @@ router = APIRouter(tags=["admin"])
 @router.get("/admin", response_class=HTMLResponse)
 async def get_admin_interface():
     """Redirect to admin interface"""
-    return HTMLResponse("""
+    return HTMLResponse(
+        """
     <!DOCTYPE html>
     <html>
     <head>
@@ -24,7 +26,8 @@ async def get_admin_interface():
         <p>Redirecting to admin interface...</p>
     </body>
     </html>
-    """)
+    """
+    )
 
 
 @router.get("/admin.html", response_class=HTMLResponse)
@@ -35,7 +38,8 @@ async def serve_admin_html():
         if admin_html_path.exists():
             return HTMLResponse(admin_html_path.read_text())
         else:
-            return HTMLResponse("""
+            return HTMLResponse(
+                """
             <!DOCTYPE html>
             <html>
             <head><title>Admin Interface Not Found</title></head>
@@ -45,7 +49,8 @@ async def serve_admin_html():
                 <p>You can access the API documentation at <a href="/docs">/docs</a></p>
             </body>
             </html>
-            """)
+            """
+            )
     except Exception as e:
         return HTMLResponse(f"<h1>Error loading admin interface</h1><p>{str(e)}</p>")
 
@@ -54,9 +59,30 @@ async def serve_admin_html():
 async def health_check():
     """Health check endpoint"""
     from datetime import datetime, timezone
-    
+
+    openai_status = "failed"
+    anthropic_status = "failed"
+
+    try:
+        from llm import _get_openai_response
+
+        _get_openai_response([{"role": "user", "content": "ping"}])
+        openai_status = "ready"
+    except Exception:
+        pass
+
+    try:
+        from llm import _get_anthropic_response
+
+        _get_anthropic_response([{"role": "user", "content": "ping"}])
+        anthropic_status = "ready"
+    except Exception:
+        pass
+
     return {
         "status": "healthy",
         "version": "7.0",
-        "timestamp": datetime.now(timezone.utc).isoformat()
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "openai": openai_status,
+        "anthropic": anthropic_status,
     }
