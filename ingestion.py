@@ -20,7 +20,9 @@ def ingest(
     sitemap: Optional[str] = None,
     drive: Optional[str] = None,
     files: Optional[List[Path]] = None,
-    console: Optional[Console] = None
+    console: Optional[Console] = None,
+    embedding_provider: str = "openai",
+    embedding_model: str | None = None,
 ):
     """
     Ingest content from various sources into the vector store.
@@ -70,7 +72,14 @@ def ingest(
     if console:
         console.print(f"Processing [bold]{len(texts)}[/bold] text chunks into vector store...")
     
-    create_vector_store(tenant, agent, texts, metadatas)
+    create_vector_store(
+        tenant,
+        agent,
+        texts,
+        metadatas,
+        provider=embedding_provider,
+        model=embedding_model,
+    )
     
     msg = f"Vector store created/updated successfully"
     if console:

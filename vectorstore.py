@@ -6,6 +6,7 @@ from pathlib import Path
 import os
 
 from fastapi import HTTPException
+import json
 
 try:
     from langchain_openai import OpenAIEmbeddings
@@ -19,6 +20,7 @@ except ModuleNotFoundError as e:  # pragma: no cover - optional deps missing
     _IMPORT_ERROR = e
 
 from .config import store_path
+from .embedding import get_embedding_model
 
 # Text splitter for document chunking
 if RecursiveCharacterTextSplitter:
@@ -53,8 +55,19 @@ def get_vector_store(tenant: str, agent: str) -> FAISS:
     if not path.exists():
         raise HTTPException(404, "Vector store missing; run ingest")
     
+    # Determine embedding provider
+    meta = {"provider": "openai", "model": None}
+    meta_file = path / "meta.json"
+    if meta_file.exists():
+        try:
+            meta.update(json.loads(meta_file.read_text()))
+        except Exception:
+            pass
+
+    emb = get_embedding_model(meta["provider"], meta.get("model"))
+
     # Load and cache
-    _vec_cache[cache_key] = FAISS.load_local(str(path), OpenAIEmbeddings())
+    _vec_cache[cache_key] = FAISS.load_local(str(path), emb)
     return _vec_cache[cache_key]
 
 
@@ -93,7 +106,9 @@ def create_vector_store(
     tenant: str,
     agent: str,
     texts: List[str],
-    metadatas: List[Dict]
+    metadatas: List[Dict],
+    provider: str = "openai",
+    model: str | None = None,
 ) -> bool:
     """Create a new vector store from texts and metadata"""
     _require_deps()
@@ -102,11 +117,12 @@ def create_vector_store(
         path.mkdir(parents=True, exist_ok=True)
         
         # Create embeddings
-        emb = OpenAIEmbeddings()
+        emb = get_embedding_model(provider, model)
         
         # Create and save vector store
         vec_store = FAISS.from_texts(texts, emb, metadatas=metadatas)
         vec_store.save_local(str(path))
+        (path / "meta.json").write_text(json.dumps({"provider": provider, "model": model}))
         
         # Clear cache to force reload
         clear_cache(tenant, agent)
