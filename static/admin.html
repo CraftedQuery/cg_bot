@@ -615,8 +615,12 @@
                     <div id="systemStatus"></div>
                 </div>
                 <div class="form-group">
-                    <button id="llmTestBtn" class="btn">Run LLM Test</button>
+                    <button id="llmTestBtn" class="btn">Test LLM Connections</button>
                     <div id="llmTestResult" style="margin-top:8px;"></div>
+                </div>
+                <div class="form-group">
+                    <button id="llmLogsBtn" class="btn">Show LLM Logs</button>
+                    <div id="llmLogs" class="hidden"></div>
                 </div>
             </div>
         </div>
@@ -865,6 +869,7 @@
                 showModal('createUserModal');
             });
             document.getElementById('llmTestBtn').addEventListener('click', runLlmTest);
+            document.getElementById('llmLogsBtn').addEventListener('click', loadLlmLogs);
             
             // Forms
             document.getElementById('createTenantForm').addEventListener('submit', handleCreateTenant);
@@ -1243,6 +1248,53 @@
                 resultDiv.textContent = 'Test failed';
                 console.error('LLM test error:', err);
             }
+        }
+
+        async function loadLlmLogs() {
+            const container = document.getElementById('llmLogs');
+            container.classList.remove('hidden');
+            container.innerHTML = 'Loading...';
+            try {
+                const response = await fetch(`${API_BASE}/llm_logs?limit=25`);
+                if (response.ok) {
+                    const data = await response.json();
+                    container.innerHTML = formatLlmLogs(data.logs);
+                } else {
+                    container.innerHTML = 'Failed to load logs';
+                }
+            } catch (error) {
+                console.error('Failed to load logs:', error);
+                container.innerHTML = 'Failed to load logs';
+            }
+        }
+
+        function formatLlmLogs(logs) {
+            if (!logs.length) {
+                return '<p>No logs found.</p>';
+            }
+            const rows = logs.map(log => `
+                <tr>
+                    <td>${new Date(log.ts).toLocaleString()}</td>
+                    <td>${log.provider}</td>
+                    <td>${log.status}</td>
+                    <td>${log.error || ''}</td>
+                </tr>
+            `).join('');
+            return `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Provider</th>
+                                <th>Status</th>
+                                <th>Error</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            `;
         }
 
         // Modal functions
