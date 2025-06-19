@@ -28,6 +28,15 @@ def init_database():
                 user_ip TEXT
             )
         """)
+        con.execute("""
+            CREATE TABLE IF NOT EXISTS llm_logs(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT,
+                provider TEXT,
+                status TEXT,
+                error_message TEXT
+            )
+        """)
         con.commit()
 
 
@@ -74,6 +83,25 @@ def log_chat(
                 tokens_in,
                 tokens_out,
                 user_ip
+            )
+        )
+        con.commit()
+
+
+def log_llm_event(provider: str, status: str, error_message: str | None = None):
+    """Log an LLM request or error"""
+    from datetime import datetime, timezone
+
+    with get_db() as con:
+        con.execute(
+            """INSERT INTO llm_logs
+               (ts, provider, status, error_message)
+               VALUES (?, ?, ?, ?)""",
+            (
+                datetime.now(timezone.utc).isoformat(),
+                provider,
+                status,
+                error_message,
             )
         )
         con.commit()

@@ -3,6 +3,7 @@ routers/admin_routes.py - Admin interface endpoints
 """
 
 from pathlib import Path
+import os
 from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
@@ -62,27 +63,89 @@ async def health_check():
 
     openai_status = "failed"
     anthropic_status = "failed"
+    openai_error = ""
+    anthropic_error = ""
 
-    try:
-        from llm import _get_openai_response
+    if not os.getenv("OPENAI_API_KEY"):
+        openai_error = "API key is missing"
+    else:
+        try:
+            from llm import _get_openai_response
 
-        _get_openai_response([{"role": "user", "content": "ping"}])
-        openai_status = "ready"
-    except Exception:
-        pass
+            _get_openai_response([{"role": "user", "content": "ping"}])
+            openai_status = "ready"
+        except Exception as e:
+            openai_error = str(e)
 
-    try:
-        from llm import _get_anthropic_response
+    if not os.getenv("ANTHROPIC_API_KEY"):
+        anthropic_error = "API key is missing"
+    else:
+        try:
+            from llm import _get_anthropic_response
 
-        _get_anthropic_response([{"role": "user", "content": "ping"}])
-        anthropic_status = "ready"
-    except Exception:
-        pass
+            _get_anthropic_response([{"role": "user", "content": "ping"}])
+            anthropic_status = "ready"
+        except Exception as e:
+            anthropic_error = str(e)
 
     return {
         "status": "healthy",
         "version": "7.0",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "openai": openai_status,
+        "openai_error": openai_error,
         "anthropic": anthropic_status,
+        "anthropic_error": anthropic_error,
+    }
+
+
+@router.post("/llm_test")
+async def llm_test():
+    """Manually test LLM connectivity"""
+    from datetime import datetime, timezone
+    from llm import _get_openai_response, _get_anthropic_response
+
+    openai_error = None
+    anthropic_error = None
+
+    try:
+        _get_openai_response([{"role": "user", "content": "ping"}])
+    except Exception as e:
+        openai_error = str(e)
+
+    try:
+        _get_anthropic_response([{"role": "user", "content": "ping"}])
+    except Exception as e:
+        anthropic_error = str(e)
+
+    return {
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "message": "LLM test completed",
+        "openai_error": openai_error,
+        "anthropic_error": anthropic_error,
+    }
+
+
+@router.get("/llm_logs")
+async def get_llm_logs(limit: int = 100):
+    """Retrieve recent LLM logs"""
+    from ..database import get_db
+
+    with get_db() as con:
+        cur = con.execute(
+            "SELECT ts, provider, status, error_message FROM llm_logs ORDER BY id DESC LIMIT ?",
+            (limit,),
+        )
+        rows = cur.fetchall()
+
+    return {
+        "logs": [
+            {
+                "ts": r[0],
+                "provider": r[1],
+                "status": r[2],
+                "error": r[3],
+            }
+            for r in rows
+        ]
     }

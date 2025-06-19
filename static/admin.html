@@ -614,6 +614,10 @@
                     <label>System Status</label>
                     <div id="systemStatus"></div>
                 </div>
+                <div class="form-group">
+                    <button id="llmTestBtn" class="btn">Run LLM Test</button>
+                    <div id="llmTestResult" style="margin-top:8px;"></div>
+                </div>
             </div>
         </div>
     </div>
@@ -860,6 +864,7 @@
                 loadTenantsForUser();
                 showModal('createUserModal');
             });
+            document.getElementById('llmTestBtn').addEventListener('click', runLlmTest);
             
             // Forms
             document.getElementById('createTenantForm').addEventListener('submit', handleCreateTenant);
@@ -1211,12 +1216,32 @@
                         <p><strong>Status:</strong> ${health.status}</p>
                         <p><strong>Version:</strong> ${health.version}</p>
                         <p><strong>Last Updated:</strong> ${new Date(health.timestamp).toLocaleString()}</p>
-                        <p><strong>OpenAI:</strong> ${health.openai}</p>
-                        <p><strong>Anthropic:</strong> ${health.anthropic}</p>
+                        <p><strong>OpenAI:</strong> ${health.openai}${health.openai_error ? ' - ' + health.openai_error : ''}</p>
+                        <p><strong>Anthropic:</strong> ${health.anthropic}${health.anthropic_error ? ' - ' + health.anthropic_error : ''}</p>
                     `;
                 }
             } catch (error) {
                 console.error('Failed to load settings:', error);
+            }
+        }
+
+        async function runLlmTest() {
+            const resultDiv = document.getElementById('llmTestResult');
+            resultDiv.textContent = 'Running test...';
+            try {
+                const response = await fetch(`${API_BASE}/llm_test`, { method: 'POST' });
+                if (response.ok) {
+                    const data = await response.json();
+                    resultDiv.textContent = `${new Date(data.timestamp).toLocaleString()} - ${data.message}`;
+                    if (data.openai_error) resultDiv.textContent += ` | OpenAI error: ${data.openai_error}`;
+                    if (data.anthropic_error) resultDiv.textContent += ` | Anthropic error: ${data.anthropic_error}`;
+                    loadSettings();
+                } else {
+                    resultDiv.textContent = 'Test failed';
+                }
+            } catch (err) {
+                resultDiv.textContent = 'Test failed';
+                console.error('LLM test error:', err);
             }
         }
 

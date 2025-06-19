@@ -46,3 +46,25 @@ The `chat_logs` table serves multiple roles:
 
 The `database.py` module also provides helper functions to insert new chat records (`log_chat`), update user feedback (`update_feedback`), and obtain basic statistics (`get_chat_stats`).
 
+## Table: `llm_logs`
+
+The `llm_logs` table captures each request to an LLM provider along with any error message.
+
+```sql
+CREATE TABLE IF NOT EXISTS llm_logs(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts TEXT,
+    provider TEXT,
+    status TEXT,
+    error_message TEXT
+);
+```
+
+Fields:
+
+- **id** – Incrementing identifier for each log entry.
+- **ts** – Timestamp when the request was made.
+- **provider** – The LLM provider name.
+- **status** – Either `success` or `error`.
+- **error_message** – Error text if the request failed.
+
