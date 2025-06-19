@@ -5,7 +5,13 @@ import os
 import time
 from typing import List, Dict, Any
 
-from .database import log_llm_event
+# Import the logging function without assuming the module is part of a package.
+try:
+    # When llm.py is imported as part of the package (e.g. rag_chatbot.llm)
+    from .database import log_llm_event
+except Exception:  # pragma: no cover - fallback for direct script execution
+    # When executed as a stand-alone module (e.g. `python llm.py`)
+    from database import log_llm_event
 
 import openai
 

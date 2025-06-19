@@ -101,27 +101,37 @@ async def health_check():
 
 @router.post("/llm_test")
 async def llm_test():
-    """Manually test LLM connectivity"""
+    """Manually test connectivity to the configured LLM providers"""
     from datetime import datetime, timezone
     from llm import _get_openai_response, _get_anthropic_response
 
     openai_error = None
     anthropic_error = None
+    openai_status = "skipped"
+    anthropic_status = "skipped"
 
-    try:
-        _get_openai_response([{"role": "user", "content": "ping"}])
-    except Exception as e:
-        openai_error = str(e)
+    if os.getenv("OPENAI_API_KEY"):
+        try:
+            _get_openai_response([{"role": "user", "content": "ping"}])
+            openai_status = "ready"
+        except Exception as e:
+            openai_status = "failed"
+            openai_error = str(e)
 
-    try:
-        _get_anthropic_response([{"role": "user", "content": "ping"}])
-    except Exception as e:
-        anthropic_error = str(e)
+    if os.getenv("ANTHROPIC_API_KEY"):
+        try:
+            _get_anthropic_response([{"role": "user", "content": "ping"}])
+            anthropic_status = "ready"
+        except Exception as e:
+            anthropic_status = "failed"
+            anthropic_error = str(e)
 
     return {
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "message": "LLM test completed",
+        "openai": openai_status,
         "openai_error": openai_error,
+        "anthropic": anthropic_status,
         "anthropic_error": anthropic_error,
     }
 
