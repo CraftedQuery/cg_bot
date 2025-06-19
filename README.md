@@ -69,6 +69,8 @@ pip install -r requirements.txt
 export OPENAI_API_KEY="your-openai-api-key"
 export JWT_SECRET_KEY="your-secret-key"
 export GOOGLE_APPLICATION_CREDENTIALS="path/to/google-credentials.json"  # Optional
+export RAG_CHATBOT_HOME="/opt/rag-data"              # Base configs/vector store
+export RAG_UPLOAD_DIR="/opt/rag-uploads"            # Default upload directory
 ```
 
 ## Quick Start
@@ -120,6 +122,22 @@ python -m rag_chatbot.cli ingest <tenant> <agent> --drive <folder-id>
 
 # From local files
 python -m rag_chatbot.cli ingest <tenant> <agent> --file <path1> --file <path2>
+# From default upload folder
+python -m rag_chatbot.cli ingest <tenant> <agent>
+```
+
+Local files placed under `$RAG_UPLOAD_DIR/<tenant>/<agent>` will be ingested when
+no `--file`, `--drive`, or `--sitemap` options are provided.
+
+### Upload Documents via API
+
+Send a `POST` request to `/upload` with `tenant` and `agent` query parameters
+and the files in a `multipart/form-data` body:
+
+```bash
+curl -X POST "http://localhost:8000/upload?tenant=<tenant>&agent=<agent>" \
+  -H "Authorization: Bearer <token>" \
+  -F "files=@example.pdf" -F "files=@notes.txt"
 ```
 
 ## Widget Integration
