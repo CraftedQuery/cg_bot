@@ -1238,8 +1238,10 @@
                 if (response.ok) {
                     const data = await response.json();
                     resultDiv.textContent = `${new Date(data.timestamp).toLocaleString()} - ${data.message}`;
-                    if (data.openai_error) resultDiv.textContent += ` | OpenAI error: ${data.openai_error}`;
-                    if (data.anthropic_error) resultDiv.textContent += ` | Anthropic error: ${data.anthropic_error}`;
+                    resultDiv.textContent += ` | OpenAI: ${data.openai}`;
+                    if (data.openai_error) resultDiv.textContent += ` (${data.openai_error})`;
+                    resultDiv.textContent += ` | Anthropic: ${data.anthropic}`;
+                    if (data.anthropic_error) resultDiv.textContent += ` (${data.anthropic_error})`;
                     loadSettings();
                 } else {
                     resultDiv.textContent = 'Test failed';
