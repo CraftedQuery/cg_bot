@@ -1211,6 +1211,8 @@
                         <p><strong>Status:</strong> ${health.status}</p>
                         <p><strong>Version:</strong> ${health.version}</p>
                         <p><strong>Last Updated:</strong> ${new Date(health.timestamp).toLocaleString()}</p>
+                        <p><strong>OpenAI:</strong> ${health.openai}</p>
+                        <p><strong>Anthropic:</strong> ${health.anthropic}</p>
                     `;
                 }
             } catch (error) {
