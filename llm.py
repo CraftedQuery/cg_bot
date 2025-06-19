@@ -5,6 +5,8 @@ import os
 import time
 from typing import List, Dict, Any
 
+from .database import log_llm_event
+
 import openai
 
 
@@ -46,15 +48,25 @@ def get_llm_response(
 
 def _get_openai_response(messages: List[Dict], model: str = None, temperature: float = 0.3) -> Dict:
     """Get response from OpenAI"""
-    openai.api_key = os.getenv("OPENAI_API_KEY", "")
+    api_key = os.getenv("OPENAI_API_KEY", "")
+    if not api_key:
+        log_llm_event("openai", "error", "API key is missing")
+        raise ValueError("API key is missing")
+
+    openai.api_key = api_key
     model = model or "gpt-4o-mini"
-    
-    rsp = openai.ChatCompletion.create(
-        model=model,
-        temperature=temperature,
-        messages=messages
-    )
-    
+
+    try:
+        rsp = openai.ChatCompletion.create(
+            model=model,
+            temperature=temperature,
+            messages=messages
+        )
+        log_llm_event("openai", "success", None)
+    except Exception as e:
+        log_llm_event("openai", "error", str(e))
+        raise
+
     return {
         "content": rsp.choices[0].message["content"],
         "tokens_out": rsp.usage.completion_tokens
@@ -67,19 +79,29 @@ def _get_anthropic_response(messages: List[Dict], model: str = None, temperature
         import anthropic
     except ImportError:
         raise ImportError("anthropic package not installed")
-    
-    client = anthropic.Anthropic(api_key=os.getenv("ANTHROPIC_API_KEY", ""))
+
+    api_key = os.getenv("ANTHROPIC_API_KEY", "")
+    if not api_key:
+        log_llm_event("anthropic", "error", "API key is missing")
+        raise ValueError("API key is missing")
+
+    client = anthropic.Anthropic(api_key=api_key)
     model = model or "claude-3-opus-20240229"
-    
-    rsp = client.messages.create(
-        model=model,
-        max_tokens=1000,
-        temperature=temperature,
-        messages=[
-            {"role": m["role"], "content": m["content"]} for m in messages
-        ]
-    )
-    
+
+    try:
+        rsp = client.messages.create(
+            model=model,
+            max_tokens=1000,
+            temperature=temperature,
+            messages=[
+                {"role": m["role"], "content": m["content"]} for m in messages
+            ]
+        )
+        log_llm_event("anthropic", "success", None)
+    except Exception as e:
+        log_llm_event("anthropic", "error", str(e))
+        raise
+
     return {
         "content": rsp.content[0].text,
         "tokens_out": None  # Will be estimated
@@ -111,3 +133,4 @@ def _estimate_tokens(messages: List[Dict]) -> int:
     """Roughly estimate token count based on character count"""
     total_chars = sum(len(m.get("content", "")) for m in messages)
     return total_chars // 4  # rough estimate: 4 chars per token
+
