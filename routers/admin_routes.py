@@ -70,7 +70,7 @@ async def health_check():
         openai_error = "API key is missing"
     else:
         try:
-            from llm import _get_openai_response
+            from ..llm import _get_openai_response
 
             _get_openai_response([{"role": "user", "content": "ping"}])
             openai_status = "ready"
@@ -81,7 +81,7 @@ async def health_check():
         anthropic_error = "API key is missing"
     else:
         try:
-            from llm import _get_anthropic_response
+            from ..llm import _get_anthropic_response
 
             _get_anthropic_response([{"role": "user", "content": "ping"}])
             anthropic_status = "ready"
@@ -103,7 +103,7 @@ async def health_check():
 async def llm_test():
     """Manually test connectivity to the configured LLM providers"""
     from datetime import datetime, timezone
-    from llm import _get_openai_response, _get_anthropic_response
+    from ..llm import _get_openai_response, _get_anthropic_response
 
     openai_error = None
     anthropic_error = None
