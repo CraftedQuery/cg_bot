@@ -13,7 +13,7 @@ except Exception:  # pragma: no cover - fallback for direct script execution
     # When executed as a stand-alone module (e.g. `python llm.py`)
     from database import log_llm_event
 
-import openai
+from openai import OpenAI
 
 
 def get_llm_response(
@@ -59,11 +59,11 @@ def _get_openai_response(messages: List[Dict], model: str = None, temperature: f
         log_llm_event("openai", "error", "API key is missing")
         raise ValueError("API key is missing")
 
-    openai.api_key = api_key
+    client = OpenAI(api_key=api_key)
     model = model or "gpt-4o-mini"
 
     try:
-        rsp = openai.ChatCompletion.create(
+        rsp = client.chat.completions.create(
             model=model,
             temperature=temperature,
             messages=messages
