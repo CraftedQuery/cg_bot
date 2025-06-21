@@ -59,3 +59,27 @@ async def serve_chat_html():
             )
     except Exception as e:
         return HTMLResponse(f"<h1>Error loading chat page</h1><p>{str(e)}</p>")
+
+
+@router.get("/user_upload.html", response_class=HTMLResponse)
+async def serve_user_upload_html():
+    """Serve the file upload page"""
+    try:
+        p = Path("static/user_upload.html")
+        if p.exists():
+            return HTMLResponse(p.read_text())
+        return HTMLResponse("<h1>Upload page not found</h1>")
+    except Exception as e:
+        return HTMLResponse(f"<h1>Error loading upload page</h1><p>{str(e)}</p>")
+
+
+@router.get("/user_files.html", response_class=HTMLResponse)
+async def serve_user_files_html():
+    """Serve the file list page"""
+    try:
+        p = Path("static/user_files.html")
+        if p.exists():
+            return HTMLResponse(p.read_text())
+        return HTMLResponse("<h1>Files page not found</h1>")
+    except Exception as e:
+        return HTMLResponse(f"<h1>Error loading files page</h1><p>{str(e)}</p>")

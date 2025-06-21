@@ -37,6 +37,19 @@ def init_database():
                 error_message TEXT
             )
         """)
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS uploaded_files(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tenant TEXT,
+                agent TEXT,
+                filename TEXT,
+                size INTEGER,
+                uploaded_at TEXT,
+                status TEXT
+            )
+        """
+        )
         con.commit()
 
 
@@ -105,6 +118,65 @@ def log_llm_event(provider: str, status: str, error_message: str | None = None):
             )
         )
         con.commit()
+
+
+def record_file_upload(tenant: str, agent: str, filename: str, size: int) -> int:
+    """Insert a new uploaded file record and return its ID"""
+    from datetime import datetime, timezone
+
+    with get_db() as con:
+        cur = con.execute(
+            """INSERT INTO uploaded_files
+               (tenant, agent, filename, size, uploaded_at, status)
+               VALUES (?, ?, ?, ?, ?, ?)""",
+            (
+                tenant,
+                agent,
+                filename,
+                size,
+                datetime.now(timezone.utc).isoformat(),
+                "in progress",
+            ),
+        )
+        con.commit()
+        return cur.lastrowid
+
+
+def update_file_status(file_id: int, status: str) -> None:
+    """Update status for an uploaded file"""
+    with get_db() as con:
+        con.execute(
+            "UPDATE uploaded_files SET status = ?, uploaded_at = uploaded_at WHERE id = ?",
+            (status, file_id),
+        )
+        con.commit()
+
+
+def list_uploaded_files(tenant: str, agent: str):
+    """List files for a tenant/agent ordered by upload time desc"""
+    with get_db() as con:
+        cur = con.execute(
+            "SELECT id, filename, size, uploaded_at, status FROM uploaded_files WHERE tenant = ? AND agent = ? ORDER BY uploaded_at DESC",
+            (tenant, agent),
+        )
+        return cur.fetchall()
+
+
+def delete_uploaded_file(file_id: int):
+    """Remove file record"""
+    with get_db() as con:
+        con.execute("DELETE FROM uploaded_files WHERE id = ?", (file_id,))
+        con.commit()
+
+
+def get_uploaded_file(file_id: int):
+    """Get metadata for a single uploaded file"""
+    with get_db() as con:
+        cur = con.execute(
+            "SELECT tenant, agent, filename FROM uploaded_files WHERE id = ?",
+            (file_id,),
+        )
+        return cur.fetchone()
 
 
 def update_feedback(chat_id: int, feedback: int):

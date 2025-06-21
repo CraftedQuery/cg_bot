@@ -14,6 +14,7 @@ BASE_DIR = Path(os.getenv("RAG_CHATBOT_HOME", Path.cwd()))
 BASE_CONFIG_DIR = BASE_DIR / "configs"
 BASE_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
 BASE_STORE_DIR = BASE_DIR / "vector_store"
+BASE_UPLOAD_DIR = BASE_DIR / "uploads"
 DEFAULT_TENANT = "public"
 DEFAULT_AGENT = "default"
 
@@ -39,6 +40,11 @@ def cfg_path(tenant: str, agent: str) -> Path:
 def store_path(tenant: str, agent: str) -> Path:
     """Get vector store path for a tenant/agent"""
     return BASE_STORE_DIR / tenant / agent
+
+
+def uploads_path(tenant: str, agent: str) -> Path:
+    """Get uploads path for a tenant/agent"""
+    return BASE_UPLOAD_DIR / tenant / agent
 
 
 def load_config(tenant: str, agent: str) -> Dict[str, Any]:

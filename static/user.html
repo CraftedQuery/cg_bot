@@ -199,12 +199,12 @@ function openAgent(tenant, agent){
 }
 
 function addFiles(tenant, agent){
-    const url = `/admin.html?tenant=${encodeURIComponent(tenant)}&agent=${encodeURIComponent(agent)}#ingest`;
+    const url = `/user_upload.html?tenant=${encodeURIComponent(tenant)}&agent=${encodeURIComponent(agent)}`;
     window.open(url, '_blank');
 }
 
 function viewFiles(tenant, agent){
-    const url = `/admin.html?tenant=${encodeURIComponent(tenant)}&agent=${encodeURIComponent(agent)}#files`;
+    const url = `/user_files.html?tenant=${encodeURIComponent(tenant)}&agent=${encodeURIComponent(agent)}`;
     window.open(url, '_blank');
 }
 
