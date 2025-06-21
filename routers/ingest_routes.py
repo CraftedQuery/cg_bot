@@ -198,9 +198,34 @@ async def remove_file(
 
 
 @router.get("/uploaded/{tenant}/{agent}/{filename}")
-async def serve_uploaded_file(tenant: str, agent: str, filename: str, current_user: User = Depends(get_files_user)):
-    """Serve an uploaded file"""
-    if current_user.tenant != "*" and current_user.tenant != tenant:
+async def serve_uploaded_file(
+    tenant: str,
+    agent: str,
+    filename: str,
+    token: str | None = Query(None),
+    authorization: str | None = Header(None),
+):
+    """Serve an uploaded file."""
+    from ..auth import user_from_token
+
+    token_value = None
+    if authorization and authorization.lower().startswith("bearer "):
+        token_value = authorization.split(" ", 1)[1]
+    elif token:
+        token_value = token
+
+    if not token_value:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    user = user_from_token(token_value)
+    if not user:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+
+    # Enforce file permissions similar to get_files_user
+    if user.role not in ["admin", "system_admin"] and not getattr(user, "allow_files", False):
+        raise HTTPException(status_code=403, detail="Not enough permissions")
+
+    if user.tenant != "*" and user.tenant != tenant:
         raise HTTPException(status_code=403, detail="You don't have access to this tenant")
 
     path = uploads_path(tenant, agent) / filename

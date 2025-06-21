@@ -31,6 +31,9 @@ SECRET_KEY = os.getenv("JWT_SECRET_KEY", SECRET_KEY)
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="token")
 
+# Optional OAuth2 scheme used when token might be provided via query
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="token", auto_error=False)
+
 # Load Azure AD JWKs if configured
 AAD_JWKS = []
 if AAD_JWKS_PATH and Path(AAD_JWKS_PATH).exists():
@@ -252,3 +255,15 @@ def delete_user(username: str):
     del users_db[username]
     save_users_db(users_db)
     return True
+
+
+def user_from_token(token: str) -> User | None:
+    """Decode a JWT token and return the associated user if valid."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        username: str | None = payload.get("sub")
+        if not username:
+            return None
+    except JWTError:
+        return None
+    return get_user(username)

@@ -7,7 +7,23 @@ from typing import Optional, Dict, Any
 
 import pandas as pd
 
-from .database import get_db
+from pathlib import Path
+
+from .database import get_db, count_uploaded_files
+from .vectorstore import get_vector_store_size
+from .config import BASE_STORE_DIR
+
+
+def _total_vector_store_size(tenant: str) -> int:
+    """Return total vector store size in bytes for a tenant across all agents."""
+    base = BASE_STORE_DIR / tenant
+    if not base.exists():
+        return 0
+    size = 0
+    for p in base.rglob("*"):
+        if p.is_file():
+            size += p.stat().st_size
+    return size
 
 
 def get_analytics(
@@ -35,6 +51,10 @@ def get_analytics(
     # Query the database
     with get_db() as con:
         df = pd.read_sql_query(query, con, params=params)
+        file_count = count_uploaded_files(tenant, agent) if agent else count_uploaded_files(tenant)
+
+    size_bytes = get_vector_store_size(tenant, agent) if agent else _total_vector_store_size(tenant)
+    storage_gb = size_bytes / (1024 ** 3)
     
     # Generate analytics
     if df.empty:
@@ -49,7 +69,9 @@ def get_analytics(
         "session_stats": _get_session_stats(df),
         "performance": _get_performance_stats(df),
         "token_stats": _get_token_stats(df),
-        "feedback": _get_feedback_stats(df)
+        "feedback": _get_feedback_stats(df),
+        "storage_gb": storage_gb,
+        "file_count": file_count
     }
 
 
