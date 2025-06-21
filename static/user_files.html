@@ -29,8 +29,21 @@ const agent = params.get('agent');
 const API_BASE = '';
 const authToken = localStorage.getItem('rag_auth_token');
 const tbody = document.querySelector('#filesTable tbody');
+let currentUser = null;
 
-load();
+init();
+
+async function init(){
+    const res = await fetch(`${API_BASE}/users/me`,{headers:{Authorization:`Bearer ${authToken}`}});
+    if(res.ok){
+        currentUser = await res.json();
+        if(!currentUser.allow_files){
+            document.body.innerHTML = '<p>File access is disabled for your account.</p>';
+            return;
+        }
+    }
+    load();
+}
 async function load(){
     const res = await fetch(`${API_BASE}/files?tenant=${tenant}&agent=${agent}`,{headers:{Authorization:`Bearer ${authToken}`}});
     if(res.ok){
@@ -49,6 +62,7 @@ async function load(){
 }
 
 async function del(id){
+    if(currentUser && !currentUser.allow_files) return;
     if(!confirm('Delete file?')) return;
     const res = await fetch(`${API_BASE}/files/${id}`,{method:'DELETE', headers:{Authorization:`Bearer ${authToken}`}});
     if(res.ok) load();

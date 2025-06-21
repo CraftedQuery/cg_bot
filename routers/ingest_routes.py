@@ -8,7 +8,7 @@ from fastapi import APIRouter, Query, Depends, HTTPException, File, UploadFile
 from fastapi.responses import FileResponse
 
 from ..models import User
-from ..auth import get_admin_user
+from ..auth import get_admin_user, get_files_user
 from ..config import DEFAULT_TENANT, DEFAULT_AGENT, uploads_path
 from ..ingestion import ingest
 from ..vectorstore import clear_cache
@@ -28,7 +28,7 @@ async def upload_files(
     files: List[UploadFile] = File(...),
     tenant: str = Query(DEFAULT_TENANT),
     agent: str = Query(DEFAULT_AGENT),
-    current_user: User = Depends(get_admin_user)
+    current_user: User = Depends(get_files_user)
 ):
     """Upload and ingest files into the vector store"""
     
@@ -141,7 +141,7 @@ async def ingest_drive(
 async def get_files(
     tenant: str = Query(DEFAULT_TENANT),
     agent: str = Query(DEFAULT_AGENT),
-    current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_files_user),
 ):
     """List uploaded files for a tenant/agent"""
 
@@ -164,7 +164,7 @@ async def get_files(
 @router.delete("/files/{file_id}")
 async def remove_file(
     file_id: int,
-    current_user: User = Depends(get_admin_user),
+    current_user: User = Depends(get_files_user),
 ):
     """Delete an uploaded file"""
 
@@ -186,7 +186,7 @@ async def remove_file(
 
 
 @router.get("/uploaded/{tenant}/{agent}/{filename}")
-async def serve_uploaded_file(tenant: str, agent: str, filename: str, current_user: User = Depends(get_admin_user)):
+async def serve_uploaded_file(tenant: str, agent: str, filename: str, current_user: User = Depends(get_files_user)):
     """Serve an uploaded file"""
     if current_user.tenant != "*" and current_user.tenant != tenant:
         raise HTTPException(status_code=403, detail="You don't have access to this tenant")

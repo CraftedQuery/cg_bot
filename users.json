@@ -4,6 +4,7 @@
     "tenant": "*",
     "role": "system_admin",
     "agents": [],
+    "allow_files": true,
     "hashed_password": "$2b$12$QJJmC4jT9RriTGXB2J73S./R0DHYlFrjGt2fTObeuhFDGKwaPlOuy",
     "disabled": false
   }

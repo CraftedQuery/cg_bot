@@ -76,8 +76,8 @@
                     <div class="col-num">#</div>
                     <div class="col-desc">Case Description</div>
                     <div class="col-action">Open</div>
-                    <div class="col-action">Add Files</div>
-                    <div class="col-action">View Files</div>
+                    <div class="col-action file-col" id="addFilesHeader">Add Files</div>
+                    <div class="col-action file-col" id="viewFilesHeader">View Files</div>
                 </div>
                 <div id="agentsContainer"></div>
             </div>
@@ -128,6 +128,10 @@ async function loadUser(){
         currentUser = await res.json();
         document.getElementById('userWelcome').textContent = `Welcome, ${currentUser.username}!`;
         document.getElementById('tenantTitle').textContent = `Digital Navigator for: ${currentUser.tenant}`;
+        if(!currentUser.allow_files){
+            document.getElementById('addFilesHeader').classList.add('hidden');
+            document.getElementById('viewFilesHeader').classList.add('hidden');
+        }
         loadAgents();
     }
 }
@@ -169,23 +173,25 @@ function displayAgents(data){
             openCol.appendChild(openBtn);
             row.appendChild(openCol);
 
-            const addCol = document.createElement('div');
-            addCol.className = 'col-action';
-            const addBtn = document.createElement('button');
-            addBtn.className = 'btn btn-small';
-            addBtn.textContent = 'Add Files';
-            addBtn.onclick = () => addFiles(t.tenant, a.agent);
-            addCol.appendChild(addBtn);
-            row.appendChild(addCol);
+            if(currentUser.allow_files){
+                const addCol = document.createElement('div');
+                addCol.className = 'col-action';
+                const addBtn = document.createElement('button');
+                addBtn.className = 'btn btn-small';
+                addBtn.textContent = 'Add Files';
+                addBtn.onclick = () => addFiles(t.tenant, a.agent);
+                addCol.appendChild(addBtn);
+                row.appendChild(addCol);
 
-            const viewCol = document.createElement('div');
-            viewCol.className = 'col-action';
-            const viewBtn = document.createElement('button');
-            viewBtn.className = 'btn btn-small';
-            viewBtn.textContent = 'View Files';
-            viewBtn.onclick = () => viewFiles(t.tenant, a.agent);
-            viewCol.appendChild(viewBtn);
-            row.appendChild(viewCol);
+                const viewCol = document.createElement('div');
+                viewCol.className = 'col-action';
+                const viewBtn = document.createElement('button');
+                viewBtn.className = 'btn btn-small';
+                viewBtn.textContent = 'View Files';
+                viewBtn.onclick = () => viewFiles(t.tenant, a.agent);
+                viewCol.appendChild(viewBtn);
+                row.appendChild(viewCol);
+            }
 
             container.appendChild(row);
             idx++;
@@ -199,11 +205,19 @@ function openAgent(tenant, agent){
 }
 
 function addFiles(tenant, agent){
+    if(!currentUser.allow_files){
+        alert('File access is disabled for your account');
+        return;
+    }
     const url = `/user_upload.html?tenant=${encodeURIComponent(tenant)}&agent=${encodeURIComponent(agent)}`;
     window.open(url, '_blank');
 }
 
 function viewFiles(tenant, agent){
+    if(!currentUser.allow_files){
+        alert('File access is disabled for your account');
+        return;
+    }
     const url = `/user_files.html?tenant=${encodeURIComponent(tenant)}&agent=${encodeURIComponent(agent)}`;
     window.open(url, '_blank');
 }
