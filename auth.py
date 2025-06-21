@@ -51,6 +51,7 @@ def get_users_db():
                 "tenant": "*",  # Wildcard for all tenants
                 "role": "system_admin",
                 "agents": [],
+                "allow_files": True,
                 "hashed_password": pwd_context.hash("admin"),
                 "disabled": False,
             }
@@ -193,6 +194,18 @@ async def get_system_admin_user(current_user: User = Depends(get_current_active_
     return current_user
 
 
+async def get_files_user(current_user: User = Depends(get_current_active_user)):
+    """Allow file access for admins or users with allow_files enabled"""
+    if current_user.role in ["admin", "system_admin"]:
+        return current_user
+    if not getattr(current_user, "allow_files", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Not enough permissions",
+        )
+    return current_user
+
+
 def create_user(user_data: UserCreate):
     """Create a new user"""
     users_db = get_users_db()
@@ -205,6 +218,7 @@ def create_user(user_data: UserCreate):
         "tenant": user_data.tenant,
         "role": user_data.role,
         "agents": user_data.agents or [],
+        "allow_files": user_data.allow_files,
         "disabled": user_data.disabled,
         "hashed_password": hashed_password,
     }

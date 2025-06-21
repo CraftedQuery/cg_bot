@@ -12,6 +12,7 @@ class User(BaseModel):
     role: str = "user"
     disabled: bool = False
     agents: Optional[List[str]] = []
+    allow_files: bool = False
 
 
 class UserCreate(User):

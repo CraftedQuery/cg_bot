@@ -26,6 +26,20 @@ const tenant = params.get('tenant');
 const agent = params.get('agent');
 const API_BASE = '';
 const authToken = localStorage.getItem('rag_auth_token');
+let currentUser = null;
+
+init();
+
+async function init(){
+    const res = await fetch(`${API_BASE}/users/me`,{headers:{Authorization:`Bearer ${authToken}`}});
+    if(res.ok){
+        currentUser = await res.json();
+        if(!currentUser.allow_files){
+            document.body.innerHTML = '<p>File access is disabled for your account.</p>';
+            return;
+        }
+    }
+}
 
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
@@ -38,7 +52,7 @@ dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.
 document.getElementById('fileSelect').addEventListener('click', () => fileInput.click());
 
 async function uploadFiles(files){
-    if(!files.length) return;
+    if(!files.length || (currentUser && !currentUser.allow_files)) return;
     const fd = new FormData();
     for(const f of files){ fd.append('files', f); }
     const res = await fetch(`${API_BASE}/upload?tenant=${tenant}&agent=${agent}`,{ method:'POST', headers:{ 'Authorization':`Bearer ${authToken}` }, body:fd });

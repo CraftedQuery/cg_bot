@@ -586,6 +586,7 @@
                                 <th>Username</th>
                                 <th>Tenant</th>
                                 <th>Role</th>
+                                <th>Files</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -677,6 +678,10 @@
                         <option value="user">User</option>
                         <option value="admin">Admin</option>
                     </select>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="newUserFiles" name="allow_files">
+                    <label for="newUserFiles">Allow File Uploads</label>
                 </div>
                 <button type="submit" class="btn">Create User</button>
             </form>
@@ -1127,6 +1132,7 @@
                     <td>${user.username}</td>
                     <td>${user.tenant}</td>
                     <td>${user.role}</td>
+                    <td>${user.allow_files ? 'Yes' : 'No'}</td>
                     <td>${user.disabled ? '❌ Disabled' : '✅ Active'}</td>
                     <td>
                         <button class="btn btn-small" onclick="editUser('${user.username}')">Edit</button>
@@ -1505,7 +1511,8 @@
                 password: formData.get('password'),
                 tenant: formData.get('tenant'),
                 role: formData.get('role'),
-                disabled: false
+                disabled: false,
+                allow_files: formData.get('allow_files') === 'on'
             };
 
             try {
@@ -1536,18 +1543,21 @@
             // For simplicity, using prompt - in production, you'd want a proper modal
             const newTenant = prompt(`Enter new tenant for ${username} (current tenant will be preserved if empty):`);
             if (newTenant === null) return;
-            
+
             const newRole = prompt(`Enter new role for ${username} (admin/user):`);
             if (!['admin', 'user'].includes(newRole)) {
                 alert('Invalid role. Must be admin or user.');
                 return;
             }
 
+            const allowFiles = confirm('Allow file uploads for this user?');
+
             try {
                 const updateData = { role: newRole };
                 if (newTenant.trim()) {
                     updateData.tenant = newTenant.trim();
                 }
+                updateData.allow_files = allowFiles;
 
                 const response = await fetch(`${API_BASE}/users/${username}`, {
                     method: 'PUT',
