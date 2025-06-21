@@ -1,17 +1,24 @@
 """
 routers/ingest_routes.py - Document ingestion endpoints
 """
-import tempfile
-from pathlib import Path
+
 from typing import List
 
 from fastapi import APIRouter, Query, Depends, HTTPException, File, UploadFile
+from fastapi.responses import FileResponse
 
 from ..models import User
 from ..auth import get_admin_user
-from ..config import DEFAULT_TENANT, DEFAULT_AGENT
+from ..config import DEFAULT_TENANT, DEFAULT_AGENT, uploads_path
 from ..ingestion import ingest
 from ..vectorstore import clear_cache
+from ..database import (
+    record_file_upload,
+    update_file_status,
+    list_uploaded_files,
+    delete_uploaded_file,
+    get_uploaded_file,
+)
 
 router = APIRouter(tags=["ingestion"])
 
@@ -33,24 +40,29 @@ async def upload_files(
         )
     
     temp_files = []
+    file_ids = []
+    upload_dir = uploads_path(tenant, agent)
+    upload_dir.mkdir(parents=True, exist_ok=True)
     try:
-        # Save uploaded files temporarily
+        # Save uploaded files and record in DB
         for file in files:
-            temp_path = Path(tempfile.mkdtemp()) / file.filename
-            temp_path.parent.mkdir(exist_ok=True)
-            
-            with temp_path.open("wb") as buffer:
+            dest_path = upload_dir / file.filename
+            with dest_path.open("wb") as buffer:
                 content = await file.read()
                 buffer.write(content)
-            
-            temp_files.append(temp_path)
+
+            temp_files.append(dest_path)
+            file_ids.append(record_file_upload(tenant, agent, file.filename, dest_path.stat().st_size))
         
         # Ingest the files
         ingest(tenant, agent, files=temp_files)
-        
+
+        for fid in file_ids:
+            update_file_status(fid, "ready")
+
         # Clear vector store cache to force reload
         clear_cache(tenant, agent)
-        
+
         return {
             "message": f"Successfully uploaded and processed {len(files)} files",
             "files": [f.filename for f in files]
@@ -62,13 +74,7 @@ async def upload_files(
             detail=f"Error processing files: {str(e)}"
         )
     finally:
-        # Clean up temporary files
-        for temp_file in temp_files:
-            try:
-                temp_file.unlink()
-                temp_file.parent.rmdir()
-            except:
-                pass
+        pass
 
 
 @router.post("/ingest/sitemap")
@@ -129,3 +135,64 @@ async def ingest_drive(
             status_code=500,
             detail=f"Error ingesting Google Drive content: {str(e)}"
         )
+
+
+@router.get("/files")
+async def get_files(
+    tenant: str = Query(DEFAULT_TENANT),
+    agent: str = Query(DEFAULT_AGENT),
+    current_user: User = Depends(get_admin_user),
+):
+    """List uploaded files for a tenant/agent"""
+
+    if current_user.tenant != "*" and current_user.tenant != tenant:
+        raise HTTPException(status_code=403, detail="You don't have access to this tenant")
+
+    rows = list_uploaded_files(tenant, agent)
+    return [
+        {
+            "id": r[0],
+            "filename": r[1],
+            "size": r[2],
+            "uploaded_at": r[3],
+            "status": r[4],
+        }
+        for r in rows
+    ]
+
+
+@router.delete("/files/{file_id}")
+async def remove_file(
+    file_id: int,
+    current_user: User = Depends(get_admin_user),
+):
+    """Delete an uploaded file"""
+
+    info = get_uploaded_file(file_id)
+    if not info:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    tenant, agent, filename = info
+
+    if current_user.tenant != "*" and current_user.tenant != tenant:
+        raise HTTPException(status_code=403, detail="You don't have access to this tenant")
+
+    path = uploads_path(tenant, agent) / filename
+    if path.exists():
+        path.unlink()
+
+    delete_uploaded_file(file_id)
+    return {"message": "File deleted"}
+
+
+@router.get("/uploaded/{tenant}/{agent}/{filename}")
+async def serve_uploaded_file(tenant: str, agent: str, filename: str, current_user: User = Depends(get_admin_user)):
+    """Serve an uploaded file"""
+    if current_user.tenant != "*" and current_user.tenant != tenant:
+        raise HTTPException(status_code=403, detail="You don't have access to this tenant")
+
+    path = uploads_path(tenant, agent) / filename
+    if not path.exists():
+        raise HTTPException(status_code=404, detail="File not found")
+
+    return FileResponse(path)
