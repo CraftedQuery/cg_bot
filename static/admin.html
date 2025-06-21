@@ -1220,6 +1220,10 @@
                     <div class="stat-number">${data.storage_gb?.toFixed(2) || '0'}</div>
                     <div class="stat-label">Vector Store (GB)</div>
                 </div>
+                <div class="stat-card">
+                    <div class="stat-number">${data.file_count || 0}</div>
+                    <div class="stat-label">Files in Vector DB</div>
+                </div>
             </div>
             `;
         }

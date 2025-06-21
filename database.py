@@ -189,6 +189,22 @@ def get_uploaded_file(file_id: int):
         return cur.fetchone()
 
 
+def count_uploaded_files(tenant: str, agent: str | None = None) -> int:
+    """Return number of uploaded files for a tenant or specific agent."""
+    with get_db() as con:
+        if agent is not None:
+            cur = con.execute(
+                "SELECT COUNT(*) FROM uploaded_files WHERE tenant = ? AND agent = ?",
+                (tenant, agent),
+            )
+        else:
+            cur = con.execute(
+                "SELECT COUNT(*) FROM uploaded_files WHERE tenant = ?",
+                (tenant,),
+            )
+        return cur.fetchone()[0]
+
+
 def update_feedback(chat_id: int, feedback: int):
     """Update feedback for a chat interaction"""
     with get_db() as con:

@@ -51,7 +51,8 @@ async function load(){
         tbody.innerHTML = '';
         data.forEach(f => {
             const tr = document.createElement('tr');
-            tr.innerHTML = `<td><a href="/uploaded/${tenant}/${agent}/${encodeURIComponent(f.filename)}" target="_blank">${f.filename} \u2197</a></td>`+
+            const fileUrl = `/uploaded/${tenant}/${agent}/${encodeURIComponent(f.filename)}?token=${encodeURIComponent(authToken)}`;
+            tr.innerHTML = `<td><a href="${fileUrl}" target="_blank">${f.filename} \u2197</a></td>`+
                              `<td>${(f.size/1024).toFixed(1)} KB</td>`+
                              `<td>${new Date(f.uploaded_at).toLocaleString()}</td>`+
                              `<td>${f.status}</td>`+
