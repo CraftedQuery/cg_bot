@@ -1634,8 +1634,11 @@
                 });
 
                 const result = await response.json();
-                
-                if (response.ok) {
+
+                if (response.status === 401) {
+                    logout();
+                    showError('uploadResult', 'Session expired. Please log in again.');
+                } else if (response.ok) {
                     resultDiv.innerHTML = `<div class="success">${result.message}</div>`;
                     resultDiv.classList.remove('hidden');
                     e.target.reset();
