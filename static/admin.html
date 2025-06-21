@@ -586,7 +586,7 @@
                                 <th>Username</th>
                                 <th>Tenant</th>
                                 <th>Role</th>
-                                <th>Files</th>
+                                <th>File Permissions</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
@@ -681,7 +681,7 @@
                 </div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="newUserFiles" name="allow_files">
-                    <label for="newUserFiles">Allow File Uploads</label>
+                    <label for="newUserFiles">File Permissions</label>
                 </div>
                 <button type="submit" class="btn">Create User</button>
             </form>
@@ -1132,7 +1132,7 @@
                     <td>${user.username}</td>
                     <td>${user.tenant}</td>
                     <td>${user.role}</td>
-                    <td>${user.allow_files ? 'Yes' : 'No'}</td>
+                    <td><input type="checkbox" class="filePermToggle" data-user="${user.username}" ${user.allow_files ? 'checked' : ''} ${(currentUser.role === 'admin' || currentUser.role === 'system_admin') ? '' : 'disabled'}></td>
                     <td>${user.disabled ? '❌ Disabled' : '✅ Active'}</td>
                     <td>
                         <button class="btn btn-small" onclick="editUser('${user.username}')">Edit</button>
@@ -1140,6 +1140,12 @@
                     </td>
                 `;
                 tbody.appendChild(row);
+                const checkbox = row.querySelector('.filePermToggle');
+                if (checkbox) {
+                    checkbox.addEventListener('change', () => {
+                        updateFilePermission(user.username, checkbox.checked);
+                    });
+                }
             });
         }
 
@@ -1574,6 +1580,29 @@
                 }
             } catch (error) {
                 console.error('Failed to update user:', error);
+            }
+        }
+
+        async function updateFilePermission(username, allowFiles) {
+            try {
+                const response = await fetch(`${API_BASE}/users/${username}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `Bearer ${authToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ allow_files: allowFiles })
+                });
+
+                if (response.ok) {
+                    showSuccess('Permissions updated');
+                } else {
+                    showError('usersError', 'Failed to update permissions');
+                    loadUsers();
+                }
+            } catch (error) {
+                console.error('Failed to update permissions:', error);
+                loadUsers();
             }
         }
 
