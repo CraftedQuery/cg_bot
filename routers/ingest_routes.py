@@ -4,7 +4,15 @@ routers/ingest_routes.py - Document ingestion endpoints
 
 from typing import List
 
-from fastapi import APIRouter, Query, Depends, HTTPException, File, UploadFile
+from fastapi import (
+    APIRouter,
+    Query,
+    Depends,
+    HTTPException,
+    File,
+    UploadFile,
+    Header,
+)
 from fastapi.responses import FileResponse
 
 from ..models import User
