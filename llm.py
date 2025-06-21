@@ -74,8 +74,8 @@ def _get_openai_response(messages: List[Dict], model: str = None, temperature: f
         raise
 
     return {
-        "content": rsp.choices[0].message["content"],
-        "tokens_out": rsp.usage.completion_tokens
+        "content": rsp.choices[0].message.content,
+        "tokens_out": rsp.usage.completion_tokens,
     }
 
 
