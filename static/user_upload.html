@@ -51,14 +51,22 @@ dropZone.addEventListener('dragleave', () => dropZone.classList.remove('hover'))
 dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('hover'); uploadFiles(e.dataTransfer.files); });
 document.getElementById('fileSelect').addEventListener('click', () => fileInput.click());
 
-async function uploadFiles(files){
+async function uploadFiles(files, replace=false){
     if(!files.length || (currentUser && !currentUser.allow_files)) return;
     const fd = new FormData();
     for(const f of files){ fd.append('files', f); }
-    const res = await fetch(`${API_BASE}/upload?tenant=${tenant}&agent=${agent}`,{ method:'POST', headers:{ 'Authorization':`Bearer ${authToken}` }, body:fd });
+    const url = `${API_BASE}/upload?tenant=${tenant}&agent=${agent}${replace ? '&replace=true' : ''}`;
+    const res = await fetch(url,{ method:'POST', headers:{ 'Authorization':`Bearer ${authToken}` }, body:fd });
     if(res.ok){
         result.textContent = 'Upload successful';
         fileInput.value = '';
+    }else if(res.status === 409 && !replace){
+        const data = await res.json().catch(()=>({detail:'File exists'}));
+        if(confirm(`${data.detail} Replace?`)){
+            await uploadFiles(files, true);
+        } else {
+            result.textContent = 'Upload canceled';
+        }
     }else{
         const data = await res.json().catch(()=>({detail:'Upload failed'}));
         result.textContent = data.detail || 'Upload failed';

@@ -169,6 +169,16 @@ def delete_uploaded_file(file_id: int):
         con.commit()
 
 
+def delete_uploaded_file_by_name(tenant: str, agent: str, filename: str) -> None:
+    """Remove file record matching tenant, agent and filename"""
+    with get_db() as con:
+        con.execute(
+            "DELETE FROM uploaded_files WHERE tenant = ? AND agent = ? AND filename = ?",
+            (tenant, agent, filename),
+        )
+        con.commit()
+
+
 def get_uploaded_file(file_id: int):
     """Get metadata for a single uploaded file"""
     with get_db() as con:
