@@ -28,6 +28,7 @@ async def upload_files(
     files: List[UploadFile] = File(...),
     tenant: str = Query(DEFAULT_TENANT),
     agent: str = Query(DEFAULT_AGENT),
+    replace: bool = Query(False, description="Replace existing files if true"),
     current_user: User = Depends(get_files_user)
 ):
     """Upload and ingest files into the vector store"""
@@ -47,6 +48,17 @@ async def upload_files(
         # Save uploaded files and record in DB
         for file in files:
             dest_path = upload_dir / file.filename
+            if dest_path.exists() and not replace:
+                raise HTTPException(
+                    status_code=409,
+                    detail=f"File '{file.filename}' already exists. Choose replace to overwrite or abort."
+                )
+
+            if dest_path.exists() and replace:
+                dest_path.unlink()
+                from ..database import delete_uploaded_file_by_name
+                delete_uploaded_file_by_name(tenant, agent, file.filename)
+
             with dest_path.open("wb") as buffer:
                 content = await file.read()
                 buffer.write(content)
