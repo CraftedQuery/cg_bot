@@ -21,6 +21,7 @@ except ModuleNotFoundError as e:  # pragma: no cover - optional deps missing
 
 from .config import store_path
 from .embedding import get_embedding_model
+from .database import log_llm_event
 
 # Text splitter for document chunking
 if RecursiveCharacterTextSplitter:
@@ -126,6 +127,19 @@ def create_vector_store(
         # Create and save vector store
         vec_store = FAISS.from_texts(texts, emb, metadatas=metadatas)
         vec_store.save_local(str(path))
+
+        # Log embedding events for each unique file
+        unique_sources = {
+            m.get("source") for m in metadatas if m.get("source") is not None
+        }
+        for src in unique_sources:
+            log_llm_event(
+                f"{provider}-embed",
+                "success",
+                tenant=tenant,
+                agent=agent,
+                description=src,
+            )
         (path / "meta.json").write_text(json.dumps({"provider": provider, "model": model}))
         
         # Clear cache to force reload
