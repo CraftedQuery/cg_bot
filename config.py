@@ -80,7 +80,8 @@ def load_config(tenant: str, agent: str) -> Dict[str, Any]:
         "widget_position": "bottom-right",
         "widget_size": "medium",
         "welcome_message": "Hello! How can I help you today?",
-        "placeholder_text": "Type your message...",
+        # Placeholder shown in the widget's input box
+        "placeholder_text": "Please ask your question...",
     }
     p.write_text(json.dumps(cfg, indent=2))
     return cfg

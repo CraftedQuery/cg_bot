@@ -714,6 +714,10 @@
                             <label for="avatarUrl">Avatar URL</label>
                             <input type="url" id="avatarUrl" name="avatar_url">
                         </div>
+                        <div class="form-group">
+                            <label for="placeholderText">Input Placeholder</label>
+                            <input type="text" id="placeholderText" name="placeholder_text" placeholder="Please ask your question...">
+                        </div>
                     </div>
                     
                     <div class="config-section">
@@ -1347,7 +1351,8 @@
                     bot_name: `${tenantName} ${agentName} Bot`,
                     system_prompt: `You are a helpful assistant for ${tenantName}.`,
                     primary_color: '#1E88E5',
-                    secondary_color: '#FFFFFF'
+                    secondary_color: '#FFFFFF',
+                    placeholder_text: 'Please ask your question...'
                 };
 
                 const response = await fetch(`${API_BASE}/config?tenant=${tenantName}&agent=${agentName}`, {
@@ -1380,7 +1385,8 @@
                     bot_name: `${tenant} ${agentName} Bot`,
                     system_prompt: `You are a helpful assistant for ${tenant}.`,
                     primary_color: '#1E88E5',
-                    secondary_color: '#FFFFFF'
+                    secondary_color: '#FFFFFF',
+                    placeholder_text: 'Please ask your question...'
                 };
 
                 const response = await fetch(`${API_BASE}/config?tenant=${tenant}&agent=${agentName}`, {
@@ -1425,6 +1431,7 @@
             document.getElementById('botName').value = config.bot_name || '';
             document.getElementById('systemPrompt').value = config.system_prompt || '';
             document.getElementById('avatarUrl').value = config.avatar_url || '';
+            document.getElementById('placeholderText').value = config.placeholder_text || 'Please ask your question...';
             document.getElementById('primaryColor').value = config.primary_color || '#1E88E5';
             document.getElementById('secondaryColor').value = config.secondary_color || '#FFFFFF';
             document.getElementById('widgetMode').value = config.mode || 'inline';
@@ -1466,7 +1473,8 @@
                 enable_files: formData.has('enable_files'),
                 enable_tts: formData.has('enable_tts'),
                 enable_dark_mode: formData.has('enable_dark_mode'),
-                allowed_domains: formData.get('allowed_domains').split('\n').map(d => d.trim()).filter(d => d)
+                allowed_domains: formData.get('allowed_domains').split('\n').map(d => d.trim()).filter(d => d),
+                placeholder_text: formData.get('placeholder_text') || 'Please ask your question...'
             };
 
             try {

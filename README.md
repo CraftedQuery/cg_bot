@@ -190,7 +190,7 @@ Each tenant/agent combination has its own configuration file stored in `configs/
     "widget_position": "bottom-right",
     "widget_size": "medium",
     "welcome_message": "Hello! How can I help you today?",
-    "placeholder_text": "Type your message..."
+    "placeholder_text": "Please ask your question..."
 }
 ```
 
