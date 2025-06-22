@@ -20,7 +20,12 @@ def get_llm_response(
     messages: List[Dict],
     provider: str = "openai",
     model: str = None,
-    temperature: float = 0.3
+    temperature: float = 0.3,
+    *,
+    tenant: str | None = None,
+    agent: str | None = None,
+    user: str | None = None,
+    question: str | None = None,
 ) -> Dict[str, Any]:
     """Get response from selected LLM provider"""
     start_time = time.time()
@@ -35,8 +40,24 @@ def get_llm_response(
             response = _get_vertexai_response(messages, model, temperature)
         else:
             raise ValueError(f"Unknown LLM provider: {provider}")
-            
+        log_llm_event(
+            provider,
+            "success",
+            None,
+            tenant=tenant,
+            agent=agent,
+            description=f"user:{user} q:{question}"
+        )
+
     except Exception as e:
+        log_llm_event(
+            provider,
+            "error",
+            str(e),
+            tenant=tenant,
+            agent=agent,
+            description=f"user:{user} q:{question}"
+        )
         response = {
             "content": f"Error generating response: {str(e)}",
             "tokens_out": 0
@@ -56,7 +77,6 @@ def _get_openai_response(messages: List[Dict], model: str = None, temperature: f
     """Get response from OpenAI"""
     api_key = os.getenv("OPENAI_API_KEY", "")
     if not api_key:
-        log_llm_event("openai", "error", "API key is missing")
         raise ValueError("API key is missing")
 
     client = OpenAI(api_key=api_key)
@@ -68,9 +88,7 @@ def _get_openai_response(messages: List[Dict], model: str = None, temperature: f
             temperature=temperature,
             messages=messages
         )
-        log_llm_event("openai", "success", None)
     except Exception as e:
-        log_llm_event("openai", "error", str(e))
         raise
 
     return {
@@ -88,7 +106,6 @@ def _get_anthropic_response(messages: List[Dict], model: str = None, temperature
 
     api_key = os.getenv("ANTHROPIC_API_KEY", "")
     if not api_key:
-        log_llm_event("anthropic", "error", "API key is missing")
         raise ValueError("API key is missing")
 
     client = anthropic.Anthropic(api_key=api_key)
@@ -103,9 +120,7 @@ def _get_anthropic_response(messages: List[Dict], model: str = None, temperature
                 {"role": m["role"], "content": m["content"]} for m in messages
             ]
         )
-        log_llm_event("anthropic", "success", None)
     except Exception as e:
-        log_llm_event("anthropic", "error", str(e))
         raise
 
     return {

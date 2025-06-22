@@ -201,7 +201,7 @@ function displayAgents(data){
 
 function openAgent(tenant, agent){
     const url = `/chat.html?tenant=${encodeURIComponent(tenant)}&agent=${encodeURIComponent(agent)}`;
-    window.open(url, '_blank', 'width=1000,height=800,resizable=yes');
+    window.location.href = url;
 }
 
 function addFiles(tenant, agent){

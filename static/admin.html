@@ -1166,6 +1166,7 @@
                         option.textContent = tenant.tenant;
                         select.appendChild(option);
                     });
+                    loadAnalytics();
                 }
             } catch (error) {
                 console.error('Failed to load analytics options:', error);
@@ -1295,7 +1296,9 @@
                     <td>${new Date(log.ts).toLocaleString()}</td>
                     <td>${log.provider}</td>
                     <td>${log.status}</td>
-                    <td>${log.error || ''}</td>
+                    <td>${log.tenant || ''}</td>
+                    <td>${log.agent || ''}</td>
+                    <td>${log.description ? log.description : (log.error ? 'error: ' + log.error : '')}</td>
                 </tr>
             `).join('');
             return `
@@ -1306,7 +1309,9 @@
                                 <th>Timestamp</th>
                                 <th>Provider</th>
                                 <th>Status</th>
-                                <th>Error</th>
+                                <th>Tenant</th>
+                                <th>Agent</th>
+                                <th>Description</th>
                             </tr>
                         </thead>
                         <tbody>${rows}</tbody>

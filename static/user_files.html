@@ -18,10 +18,17 @@
     <h2>Files</h2>
     <table id="filesTable">
         <thead>
-            <tr><th>Name</th><th>Size</th><th>Updated</th><th>Status</th><th>Actions</th></tr>
+            <tr>
+                <th id="sortName" style="cursor:pointer">Name</th>
+                <th>Size</th>
+                <th id="sortDate" style="cursor:pointer">Updated</th>
+                <th>Status</th>
+                <th>Actions</th>
+            </tr>
         </thead>
         <tbody></tbody>
     </table>
+    <div id="pager" style="margin-top:10px"></div>
 <script>
 const params = new URLSearchParams(window.location.search);
 const tenant = params.get('tenant');
@@ -30,6 +37,11 @@ const API_BASE = '';
 const authToken = localStorage.getItem('rag_auth_token');
 const tbody = document.querySelector('#filesTable tbody');
 let currentUser = null;
+let filesData = [];
+let currentPage = 1;
+const pageSize = 25;
+let sortField = 'date';
+let sortAsc = false;
 
 init();
 
@@ -47,18 +59,9 @@ async function init(){
 async function load(){
     const res = await fetch(`${API_BASE}/files?tenant=${tenant}&agent=${agent}`,{headers:{Authorization:`Bearer ${authToken}`}});
     if(res.ok){
-        const data = await res.json();
-        tbody.innerHTML = '';
-        data.forEach(f => {
-            const tr = document.createElement('tr');
-            const fileUrl = `/uploaded/${tenant}/${agent}/${encodeURIComponent(f.filename)}?token=${encodeURIComponent(authToken)}`;
-            tr.innerHTML = `<td><a href="${fileUrl}" target="_blank">${f.filename} \u2197</a></td>`+
-                             `<td>${(f.size/1024).toFixed(1)} KB</td>`+
-                             `<td>${new Date(f.uploaded_at).toLocaleString()}</td>`+
-                             `<td>${f.status}</td>`+
-                             `<td><button onclick="del(${f.id})">Delete</button></td>`;
-            tbody.appendChild(tr);
-        });
+        filesData = await res.json();
+        currentPage = 1;
+        render();
     }
 }
 
@@ -68,6 +71,42 @@ async function del(id){
     const res = await fetch(`${API_BASE}/files/${id}`,{method:'DELETE', headers:{Authorization:`Bearer ${authToken}`}});
     if(res.ok) load();
 }
+
+function render(){
+    let data = [...filesData];
+    data.sort((a,b)=>{
+        if(sortField==='name'){
+            return sortAsc ? a.filename.localeCompare(b.filename) : b.filename.localeCompare(a.filename);
+        }else{
+            return sortAsc ? new Date(a.uploaded_at)-new Date(b.uploaded_at) : new Date(b.uploaded_at)-new Date(a.uploaded_at);
+        }
+    });
+    const start = (currentPage-1)*pageSize;
+    const pageItems = data.slice(start,start+pageSize);
+    tbody.innerHTML='';
+    pageItems.forEach(f=>{
+        const tr=document.createElement('tr');
+        const fileUrl=`/uploaded/${tenant}/${agent}/${encodeURIComponent(f.filename)}?token=${encodeURIComponent(authToken)}`;
+        tr.innerHTML=`<td><a href="${fileUrl}" target="_blank">${f.filename} \u2197</a></td>`+
+                     `<td>${(f.size/1024).toFixed(1)} KB</td>`+
+                     `<td>${new Date(f.uploaded_at).toLocaleString()}</td>`+
+                     `<td>${f.status}</td>`+
+                     `<td><button onclick="del(${f.id})">Delete</button></td>`;
+        tbody.appendChild(tr);
+    });
+    const pages=Math.ceil(data.length/pageSize)||1;
+    const pager=document.getElementById('pager');
+    pager.innerHTML=`<button ${currentPage===1?'disabled':''} onclick="changePage(-1)">Prev</button> Page ${currentPage}/${pages} <button ${currentPage===pages?'disabled':''} onclick="changePage(1)">Next</button>`;
+}
+
+function changePage(delta){
+    const pages=Math.ceil(filesData.length/pageSize)||1;
+    currentPage=Math.min(pages,Math.max(1,currentPage+delta));
+    render();
+}
+
+document.getElementById('sortName').addEventListener('click',()=>{sortField='name';sortAsc=!sortAsc;render();});
+document.getElementById('sortDate').addEventListener('click',()=>{sortField='date';sortAsc=!sortAsc;render();});
 </script>
 </body>
 </html>

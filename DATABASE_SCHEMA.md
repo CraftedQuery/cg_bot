@@ -56,6 +56,9 @@ CREATE TABLE IF NOT EXISTS llm_logs(
     ts TEXT,
     provider TEXT,
     status TEXT,
+    tenant TEXT,
+    agent TEXT,
+    description TEXT,
     error_message TEXT
 );
 ```
@@ -66,5 +69,8 @@ Fields:
 - **ts** – Timestamp when the request was made.
 - **provider** – The LLM provider name.
 - **status** – Either `success` or `error`.
+- **tenant** – Tenant associated with the call.
+- **agent** – Agent name.
+- **description** – Additional context (file name, user question, etc.).
 - **error_message** – Error text if the request failed.
 
