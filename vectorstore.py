@@ -67,7 +67,11 @@ def get_vector_store(tenant: str, agent: str) -> FAISS:
     emb = get_embedding_model(meta["provider"], meta.get("model"))
 
     # Load and cache
-    _vec_cache[cache_key] = FAISS.load_local(str(path), emb)
+    _vec_cache[cache_key] = FAISS.load_local(
+        str(path),
+        emb,
+        allow_dangerous_deserialization=True,
+    )
     return _vec_cache[cache_key]
 
 
