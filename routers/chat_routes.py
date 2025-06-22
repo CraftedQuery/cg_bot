@@ -54,7 +54,11 @@ async def chat(
         messages=[system_msg, *req.messages],
         provider=cfg.get("llm_provider", "openai"),
         model=cfg.get("llm_model", "gpt-4o-mini"),
-        temperature=cfg.get("temperature", 0.3)
+        temperature=cfg.get("temperature", 0.3),
+        tenant=tenant,
+        agent=agent,
+        user=current_user.username,
+        question=q,
     )
     
     # Extract sources
@@ -106,5 +110,32 @@ async def submit_feedback(
             status_code=404,
             detail="Chat log not found"
         )
-    
+
     return {"message": "Feedback submitted successfully"}
+
+
+@router.get("/history")
+async def chat_history(
+    tenant: str = Query(DEFAULT_TENANT),
+    agent: str = Query(DEFAULT_AGENT),
+    limit: int = 20,
+    current_user: User = Depends(get_current_active_user),
+):
+    """Return recent chat history for a tenant/agent"""
+
+    if current_user.tenant != "*" and current_user.tenant != tenant:
+        raise HTTPException(403, "You don't have access to this tenant")
+
+    from ..database import get_db
+
+    with get_db() as con:
+        cur = con.execute(
+            "SELECT question, answer FROM chat_logs WHERE tenant = ? AND agent = ? ORDER BY id DESC LIMIT ?",
+            (tenant, agent, limit),
+        )
+        rows = cur.fetchall()
+
+    return [
+        {"question": q, "answer": a}
+        for q, a in reversed(rows)
+    ]

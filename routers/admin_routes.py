@@ -143,7 +143,7 @@ async def get_llm_logs(limit: int = 100):
 
     with get_db() as con:
         cur = con.execute(
-            "SELECT ts, provider, status, error_message FROM llm_logs ORDER BY id DESC LIMIT ?",
+            "SELECT ts, provider, status, tenant, agent, description, error_message FROM llm_logs ORDER BY id DESC LIMIT ?",
             (limit,),
         )
         rows = cur.fetchall()
@@ -154,7 +154,10 @@ async def get_llm_logs(limit: int = 100):
                 "ts": r[0],
                 "provider": r[1],
                 "status": r[2],
-                "error": r[3],
+                "tenant": r[3],
+                "agent": r[4],
+                "description": r[5],
+                "error": r[6],
             }
             for r in rows
         ]

@@ -34,6 +34,9 @@ def init_database():
                 ts TEXT,
                 provider TEXT,
                 status TEXT,
+                tenant TEXT,
+                agent TEXT,
+                description TEXT,
                 error_message TEXT
             )
         """)
@@ -101,19 +104,30 @@ def log_chat(
         con.commit()
 
 
-def log_llm_event(provider: str, status: str, error_message: str | None = None):
-    """Log an LLM request or error"""
+def log_llm_event(
+    provider: str,
+    status: str,
+    error_message: str | None = None,
+    *,
+    tenant: str | None = None,
+    agent: str | None = None,
+    description: str | None = None,
+):
+    """Log an LLM request or error with optional context"""
     from datetime import datetime, timezone
 
     with get_db() as con:
         con.execute(
             """INSERT INTO llm_logs
-               (ts, provider, status, error_message)
-               VALUES (?, ?, ?, ?)""",
+               (ts, provider, status, tenant, agent, description, error_message)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
                 datetime.now(timezone.utc).isoformat(),
                 provider,
                 status,
+                tenant,
+                agent,
+                description,
                 error_message,
             )
         )

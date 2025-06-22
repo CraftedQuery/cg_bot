@@ -12,6 +12,7 @@ from .vectorstore import create_vector_store, chunk_text
 from .utils.google_drive import list_drive_files, download_drive_file
 from .utils.web_scraper import parse_sitemap, download_page
 from .utils.file_processors import process_file
+from .database import log_llm_event
 
 
 def ingest(
@@ -50,7 +51,13 @@ def ingest(
     
     # Process local files
     if files:
-        texts_files, metas_files = _ingest_from_files(files, console)
+        texts_files, metas_files = _ingest_from_files(
+            files,
+            tenant,
+            agent,
+            embedding_provider,
+            console,
+        )
         texts.extend(texts_files)
         metadatas.extend(metas_files)
     
@@ -123,7 +130,13 @@ def _ingest_from_drive(folder_id: str, console: Optional[Console] = None) -> tup
     return texts, metadatas
 
 
-def _ingest_from_files(files: List[Path], console: Optional[Console] = None) -> tuple:
+def _ingest_from_files(
+    files: List[Path],
+    tenant: str,
+    agent: str,
+    provider: str,
+    console: Optional[Console] = None,
+) -> tuple:
     """Ingest local files"""
     texts, metadatas = [], []
     
@@ -138,11 +151,25 @@ def _ingest_from_files(files: List[Path], console: Optional[Console] = None) -> 
                 chunks, metas = process_file(file_path, file_path.name)
                 texts.extend(chunks)
                 metadatas.extend(metas)
+                log_llm_event(
+                    f"{provider}-embed",
+                    "success",
+                    tenant=tenant,
+                    agent=agent,
+                    description=file_path.name,
+                )
     else:
         for file_path in files:
             chunks, metas = process_file(file_path, file_path.name)
             texts.extend(chunks)
             metadatas.extend(metas)
+            log_llm_event(
+                f"{provider}-embed",
+                "success",
+                tenant=tenant,
+                agent=agent,
+                description=file_path.name,
+            )
     
     return texts, metadatas
 
