@@ -12,7 +12,6 @@ from .vectorstore import create_vector_store, chunk_text
 from .utils.google_drive import list_drive_files, download_drive_file
 from .utils.web_scraper import parse_sitemap, download_page
 from .utils.file_processors import process_file
-from .database import log_llm_event
 
 
 def ingest(
@@ -151,25 +150,11 @@ def _ingest_from_files(
                 chunks, metas = process_file(file_path, file_path.name)
                 texts.extend(chunks)
                 metadatas.extend(metas)
-                log_llm_event(
-                    f"{provider}-embed",
-                    "success",
-                    tenant=tenant,
-                    agent=agent,
-                    description=file_path.name,
-                )
     else:
         for file_path in files:
             chunks, metas = process_file(file_path, file_path.name)
             texts.extend(chunks)
             metadatas.extend(metas)
-            log_llm_event(
-                f"{provider}-embed",
-                "success",
-                tenant=tenant,
-                agent=agent,
-                description=file_path.name,
-            )
     
     return texts, metadatas
 
