@@ -764,6 +764,10 @@
                             <input type="range" id="temperature" name="temperature" min="0" max="1" step="0.1" value="0.3">
                             <span id="tempValue">0.3</span>
                         </div>
+                        <div class="checkbox-group">
+                            <input type="checkbox" id="localOnly" name="local_only" checked>
+                            <label for="localOnly">Local Data Only</label>
+                        </div>
                     </div>
                     
                     <div class="config-section">
@@ -1429,6 +1433,7 @@
             document.getElementById('llmModel').value = config.llm_model || 'gpt-4o-mini';
             document.getElementById('temperature').value = config.temperature || 0.3;
             document.getElementById('tempValue').textContent = config.temperature || 0.3;
+            document.getElementById('localOnly').checked = config.local_only !== false;
             document.getElementById('enableVoice').checked = config.enable_voice !== false;
             document.getElementById('enableFiles').checked = config.enable_files !== false;
             document.getElementById('enableTTS').checked = config.enable_tts || false;
@@ -1456,6 +1461,7 @@
                 llm_provider: formData.get('llm_provider'),
                 llm_model: formData.get('llm_model'),
                 temperature: parseFloat(formData.get('temperature')),
+                local_only: formData.has('local_only'),
                 enable_voice: formData.has('enable_voice'),
                 enable_files: formData.has('enable_files'),
                 enable_tts: formData.has('enable_tts'),

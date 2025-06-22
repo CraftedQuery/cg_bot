@@ -51,7 +51,11 @@ def load_config(tenant: str, agent: str) -> Dict[str, Any]:
     """Load configuration for a tenant/agent"""
     p = cfg_path(tenant, agent)
     if p.exists():
-        return json.loads(p.read_text())
+        cfg = json.loads(p.read_text())
+        if "local_only" not in cfg:
+            cfg["local_only"] = True
+            p.write_text(json.dumps(cfg, indent=2))
+        return cfg
 
     # Create default configuration
     p.parent.mkdir(parents=True, exist_ok=True)
@@ -67,6 +71,7 @@ def load_config(tenant: str, agent: str) -> Dict[str, Any]:
         "llm_model": "gpt-4o-mini",
         "temperature": 0.3,
         "allowed_domains": ["*"],
+        "local_only": True,
         # Enhanced widget parameters
         "enable_voice": True,
         "enable_files": True,
