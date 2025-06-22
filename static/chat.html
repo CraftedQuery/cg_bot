@@ -102,6 +102,11 @@ document.getElementById('newChat').onclick=()=>{
     selectedChat=null;
 };
 
+function formatSourceLink(src){
+    if(/^https?:\/\//i.test(src) || src.startsWith('/')) return src;
+    return `/uploaded/${tenant}/${agent}/${encodeURIComponent(src)}?token=${encodeURIComponent(token)}`;
+}
+
 searchInput.addEventListener('input',()=>{
     const q=searchInput.value.toLowerCase();
     filteredHistory=chatHistory.filter(c=>c.question.toLowerCase().includes(q));
@@ -131,7 +136,8 @@ function addMessage(text,cls,sources=[]){
     let html=text;
     if(cls==='bot' && sources && sources.length){
         sources.slice(0,6).forEach((s,i)=>{
-            html+=` <a href="${s.source}" target="_blank" class="cite-num" title="${s.source}">${circledNums[i]}</a>`;
+            const link=formatSourceLink(s.source);
+            html+=` <a href="${link}" target="_blank" class="cite-num" title="${s.source}">${circledNums[i]}</a>`;
         });
     }
     div.innerHTML=html;
@@ -139,10 +145,10 @@ function addMessage(text,cls,sources=[]){
         const cite=document.createElement('div');
         cite.className='cite-window';
         let idx=0;
-        cite.innerHTML=`Where did this answer come from? ${sources.length>1?'<span class="cite-prev">&#8592;</span>':''}<a class="cite-link" href="${sources[0].source}" target="_blank">${sources[0].source}</a>${sources.length>1?'<span class="cite-next">&#8594;</span>':''}`;
+        cite.innerHTML=`Where did this answer come from? ${sources.length>1?'<span class="cite-prev">&#8592;</span>':''}<a class="cite-link" href="${formatSourceLink(sources[0].source)}" target="_blank">${sources[0].source}</a>${sources.length>1?'<span class="cite-next">&#8594;</span>':''}`;
         const update=()=>{
             const src=sources[idx];
-            cite.querySelector('.cite-link').href=src.source;
+            cite.querySelector('.cite-link').href=formatSourceLink(src.source);
             cite.querySelector('.cite-link').textContent=src.source;
         };
         if(sources.length>1){
