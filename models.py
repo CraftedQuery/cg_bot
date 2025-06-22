@@ -57,6 +57,7 @@ class ConfigUpdateRequest(BaseModel):
     llm_model: Optional[str] = None
     temperature: Optional[float] = None
     allowed_domains: Optional[List[str]] = None
+    local_only: Optional[bool] = None
 
 
 class EnhancedConfigUpdateRequest(ConfigUpdateRequest):

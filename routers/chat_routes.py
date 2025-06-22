@@ -44,9 +44,13 @@ async def chat(
     ctx = "\n".join(content for content, _, _ in search_results)
     
     # Create system message with context
+    sys_content = cfg["system_prompt"]
+    if cfg.get("local_only", True):
+        sys_content += "\nUse only the provided Context to answer. Do not search the internet."
+    sys_content += "\nContext:\n" + ctx
     system_msg = {
         "role": "system",
-        "content": cfg["system_prompt"] + "\nContext:\n" + ctx
+        "content": sys_content
     }
     
     # Get response from LLM
