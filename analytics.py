@@ -2,6 +2,7 @@
 analytics.py - Analytics and reporting functionality
 """
 import json
+import math
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 
@@ -24,6 +25,19 @@ def _total_vector_store_size(tenant: str) -> int:
         if p.is_file():
             size += p.stat().st_size
     return size
+
+
+def _clean_values(obj: Any) -> Any:
+    """Recursively replace NaN/inf values with None for JSON serialization."""
+    if isinstance(obj, dict):
+        return {k: _clean_values(v) for k, v in obj.items()}
+    if isinstance(obj, list):
+        return [_clean_values(v) for v in obj]
+    if isinstance(obj, float):
+        if math.isnan(obj) or math.isinf(obj):
+            return None
+        return float(obj)
+    return obj
 
 
 def get_analytics(
@@ -60,7 +74,7 @@ def get_analytics(
     if df.empty:
         return {"message": "No data available for selected period"}
     
-    return {
+    return _clean_values({
         "total_queries": len(df),
         "unique_sessions": df['session_id'].nunique(),
         "daily_counts": _get_daily_counts(df),
@@ -72,7 +86,7 @@ def get_analytics(
         "feedback": _get_feedback_stats(df),
         "storage_gb": storage_gb,
         "file_count": file_count
-    }
+    })
 
 
 def get_widget_analytics(
@@ -106,7 +120,7 @@ def get_widget_analytics(
     # Widget-specific analytics
     df['hour'] = pd.to_datetime(df['ts']).dt.hour
     
-    return {
+    return _clean_values({
         "total_interactions": len(df),
         "unique_sessions": df['session_id'].nunique(),
         "avg_session_length": df.groupby('session_id').size().mean(),
@@ -120,7 +134,7 @@ def get_widget_analytics(
             "avg_rating": df['user_feedback'].mean() if 'user_feedback' in df else None,
             "total_ratings": df['user_feedback'].count() if 'user_feedback' in df else 0
         }
-    }
+    })
 
 
 def _get_daily_counts(df: pd.DataFrame) -> list:
