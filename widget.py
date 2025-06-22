@@ -42,11 +42,13 @@ const features = {{
 
 // Authentication mechanism
 let authToken = localStorage.getItem('cq_auth_token');
-const headers = {{
+const headers = {
   'Content-Type': 'application/json',
   'X-Session-Id': sid
-}};
-if (authToken) headers['Authorization'] = `Bearer ${{authToken}}`;
+};
+if (authToken) headers['Authorization'] = `Bearer ${authToken}`;
+
+const circledNums = ['\u2460','\u2461','\u2462','\u2463','\u2464','\u2465','\u2466','\u2467','\u2468','\u2469'];
 
 function initWidget() {{
   // Dynamic positioning based on config
@@ -85,7 +87,7 @@ function initWidget() {{
       </div>
       <div id="cq-footer">
         <div id="cq-attachments"></div>
-        <textarea id="cq-input" placeholder="${{config.placeholder_text || 'Type your message...'}}"></textarea>
+        <textarea id="cq-input" placeholder="${{config.placeholder_text || 'Please ask your question...'}}"></textarea>
         <div class="cq-actions">
           ${{features.voiceInput ? '<button id="cq-mic" title="Voice input">🎤</button>' : ''}}
           ${{features.fileAttachments ? '<button id="cq-attach" title="Attach file">📎</button>' : ''}}
@@ -180,9 +182,9 @@ function sendMessage() {{
     body: JSON.stringify({{messages: msgs}})
   }})
   .then(r => r.json())
-  .then(data => {{
+  .then(data => {
     if (features.typing) $('cq-typing').style.display = 'none';
-    addMessage('assistant', data.reply);
+    addMessage('assistant', data.reply, data.sources);
     updateSources(data.sources);
     
     // Text-to-speech if enabled
@@ -198,19 +200,41 @@ function sendMessage() {{
   }});
 }}
 
-function addMessage(role, content) {{
-  msgs.push({{role, content}});
-  
+function addMessage(role, content, sources = []) {
+  msgs.push({ role, content });
+
   const msgDiv = document.createElement('div');
-  msgDiv.className = `cq-message cq-${{role}}`;
-  msgDiv.innerHTML = `
-    <div class="cq-avatar">${{role === 'user' ? '👤' : '🤖'}}</div>
-    <div class="cq-bubble">${{formatMessage(content)}}</div>
-  `;
-  
+  msgDiv.className = `cq-message cq-${role}`;
+
+  let bubble = `<div class="cq-avatar">${role === 'user' ? '👤' : '🤖'}</div>`;
+  bubble += `<div class="cq-bubble">${formatMessage(content)}`;
+  if (role === 'assistant' && sources && sources.length) {
+    sources.slice(0, 6).forEach((s, i) => {
+      bubble += ` <a href="${s.source}" target="_blank" class="cq-cite-num">${circledNums[i]}</a>`;
+    });
+  }
+  bubble += '</div>';
+  msgDiv.innerHTML = bubble;
+
+  if (role === 'assistant' && sources && sources.length) {
+    const citeDiv = document.createElement('div');
+    citeDiv.className = 'cq-cite-window';
+    let idx = 0;
+    citeDiv.innerHTML = `<a class="cq-citation-link" href="${sources[0].source}" target="_blank">${sources[0].source}</a>${sources.length > 1 ? '<span>→</span>' : ''}`;
+    if (sources.length > 1) {
+      citeDiv.querySelector('span').addEventListener('click', () => {
+        idx = (idx + 1) % sources.length;
+        const src = sources[idx];
+        citeDiv.querySelector('a').href = src.source;
+        citeDiv.querySelector('a').textContent = src.source;
+      });
+    }
+    msgDiv.appendChild(citeDiv);
+  }
+
   $('cq-messages').appendChild(msgDiv);
   $('cq-messages').scrollTop = $('cq-messages').scrollHeight;
-}}
+}
 
 function formatMessage(text) {{
   return text
@@ -662,6 +686,25 @@ def generate_widget_css(config):
   #cq-sources a:hover {{
     text-decoration: underline;
   }}
+
+  .cq-cite-num {{
+    margin-left: 4px;
+    font-size: 12px;
+    text-decoration: none;
+  }}
+
+  .cq-cite-window {{
+    margin-top: 4px;
+    font-size: 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }}
+
+  .cq-cite-window span {
+    cursor: pointer;
+    user-select: none;
+  }
   
   .cq-dark #cq-sources a {{
     color: #4fc3f7;
