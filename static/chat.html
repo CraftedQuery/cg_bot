@@ -35,6 +35,9 @@
         .msg{max-width:80%;margin-bottom:12px;padding:10px 14px;border-radius:10px;line-height:1.4;}
         .user{background:var(--primary);color:var(--white);margin-left:auto;}
         .bot{background:var(--gray-200);color:var(--gray-800);margin-right:auto;}
+        .cite-num{margin-left:4px;font-size:12px;text-decoration:none;}
+        .cite-window{margin-top:4px;font-size:12px;display:flex;align-items:center;gap:6px;}
+        .cite-window span{cursor:pointer;user-select:none;}
         form{display:flex;border-top:1px solid var(--gray-200);}
         #chatInput{flex:1;padding:16px;border:none;font-size:16px;}
         #chatInput:focus{outline:none;}
@@ -78,6 +81,7 @@ let sidebarVisible=false;
 let chatHistory=[];
 let filteredHistory=[];
 let selectedChat=null;
+const circledNums=['\u2460','\u2461','\u2462','\u2463','\u2464','\u2465','\u2466','\u2467','\u2468','\u2469'];
 
 const sidebar=document.getElementById('sidebar');
 const toggleSidebarBtn=document.getElementById('toggleSidebar');
@@ -121,10 +125,32 @@ function renderHistory(){
     });
 }
 
-function addMessage(text,cls){
+function addMessage(text,cls,sources=[]){
     const div=document.createElement('div');
     div.className='msg '+cls;
-    div.textContent=text;
+    let html=text;
+    if(cls==='bot' && sources && sources.length){
+        sources.slice(0,6).forEach((s,i)=>{
+            html+=` <a href="${s.source}" target="_blank" class="cite-num" title="${s.source}">${circledNums[i]}</a>`;
+        });
+    }
+    div.innerHTML=html;
+    if(cls==='bot' && sources && sources.length){
+        const cite=document.createElement('div');
+        cite.className='cite-window';
+        let idx=0;
+        cite.innerHTML=`Where did this answer come from? ${sources.length>1?'<span class="cite-prev">&#8592;</span>':''}<a class="cite-link" href="${sources[0].source}" target="_blank">${sources[0].source}</a>${sources.length>1?'<span class="cite-next">&#8594;</span>':''}`;
+        const update=()=>{
+            const src=sources[idx];
+            cite.querySelector('.cite-link').href=src.source;
+            cite.querySelector('.cite-link').textContent=src.source;
+        };
+        if(sources.length>1){
+            cite.querySelector('.cite-prev').addEventListener('click',()=>{idx=(idx-1+sources.length)%sources.length;update();});
+            cite.querySelector('.cite-next').addEventListener('click',()=>{idx=(idx+1)%sources.length;update();});
+        }
+        div.appendChild(cite);
+    }
     document.getElementById('messages').appendChild(div);
     document.getElementById('messages').scrollTop=document.getElementById('messages').scrollHeight;
 }
@@ -147,7 +173,7 @@ async function sendMessage(msg){
     });
     if(res.ok){
         const data=await res.json();
-        addMessage(data.reply,'bot');
+        addMessage(data.reply,'bot',data.sources||[]);
     }else{
         addMessage('Error: '+res.status,'bot');
     }
