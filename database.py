@@ -8,6 +8,15 @@ from pathlib import Path
 from .config import DB_PATH
 
 
+def _ensure_column(con: sqlite3.Connection, table: str, column_def: str) -> None:
+    """Add column to table if it doesn't exist."""
+    col_name = column_def.split()[0]
+    cur = con.execute(f"PRAGMA table_info({table})")
+    cols = [r[1] for r in cur.fetchall()]
+    if col_name not in cols:
+        con.execute(f"ALTER TABLE {table} ADD COLUMN {column_def}")
+
+
 def init_database():
     """Initialize the database with required tables"""
     with sqlite3.connect(DB_PATH) as con:
@@ -53,6 +62,11 @@ def init_database():
             )
         """
         )
+        # Ensure newer columns exist when upgrading from older versions
+        _ensure_column(con, "llm_logs", "tenant TEXT")
+        _ensure_column(con, "llm_logs", "agent TEXT")
+        _ensure_column(con, "llm_logs", "description TEXT")
+        _ensure_column(con, "llm_logs", "error_message TEXT")
         con.commit()
 
 
