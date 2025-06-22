@@ -210,7 +210,7 @@ function addMessage(role, content, sources = []) {{
   bubble += `<div class="cq-bubble">${{formatMessage(content)}}`;
   if (role === 'assistant' && sources && sources.length) {{
     sources.slice(0, 6).forEach((s, i) => {{
-      bubble += ` <a href="${{s.source}}" target="_blank" class="cq-cite-num">${{circledNums[i]}}</a>`;
+      bubble += ` <a href="${{s.source}}" target="_blank" class="cq-cite-num" title="${{s.source}}">${{circledNums[i]}}</a>`;
     }});
   }}
   bubble += '</div>';
@@ -220,13 +220,20 @@ function addMessage(role, content, sources = []) {{
     const citeDiv = document.createElement('div');
     citeDiv.className = 'cq-cite-window';
     let idx = 0;
-    citeDiv.innerHTML = `<a class="cq-citation-link" href="${{sources[0].source}}" target="_blank">${{sources[0].source}}</a>${{sources.length > 1 ? '<span>→</span>' : ''}}`;
+    citeDiv.innerHTML = `${{sources.length > 1 ? '<span class="cq-prev">←</span>' : ''}}<a class="cq-citation-link" href="${{sources[0].source}}" target="_blank">${{sources[0].source}}</a>${{sources.length > 1 ? '<span class="cq-next">→</span>' : ''}}`;
+    const updateCitation = () => {{
+      const src = sources[idx];
+      citeDiv.querySelector('a').href = src.source;
+      citeDiv.querySelector('a').textContent = src.source;
+    }};
     if (sources.length > 1) {{
-      citeDiv.querySelector('span').addEventListener('click', () => {{
+      citeDiv.querySelector('.cq-prev').addEventListener('click', () => {{
+        idx = (idx - 1 + sources.length) % sources.length;
+        updateCitation();
+      }});
+      citeDiv.querySelector('.cq-next').addEventListener('click', () => {{
         idx = (idx + 1) % sources.length;
-        const src = sources[idx];
-        citeDiv.querySelector('a').href = src.source;
-        citeDiv.querySelector('a').textContent = src.source;
+        updateCitation();
       }});
     }}
     msgDiv.appendChild(citeDiv);
