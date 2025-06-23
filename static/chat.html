@@ -133,7 +133,11 @@ function renderHistory(){
         title.textContent=item.question.slice(0,30);
         const preview=document.createElement('div');
         preview.className='preview';
-        preview.textContent=new Date(item.timestamp).toLocaleString();
+        if(item.timestamp){
+            preview.textContent=new Date(item.timestamp).toLocaleString();
+        }else{
+            preview.textContent='';
+        }
         li.appendChild(title);
         li.appendChild(preview);
         li.onclick=()=>sendMessage(item.question);
