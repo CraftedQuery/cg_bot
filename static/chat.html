@@ -14,7 +14,15 @@
             --gray-800: #424242;
             --white: #ffffff;
         }
-        html,body{height:100%;margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--gray-100);color:var(--gray-800);}
+        html,body{
+            height:100%;
+            margin:0;
+            font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+            background:var(--gray-100);
+            color:var(--gray-800);
+            border:0.5in solid var(--gray-200);
+            box-sizing:border-box;
+        }
         #app{display:flex;height:100%;overflow:hidden;}
         #sidebar{width:260px;background:var(--white);border-right:1px solid var(--gray-200);display:flex;flex-direction:column;transition:transform .3s ease;}
         #sidebar.collapsed{transform:translateX(-100%);}
@@ -39,10 +47,13 @@
         .cite-window{margin-top:4px;font-size:12px;display:flex;align-items:center;gap:6px;}
         .cite-window span{cursor:pointer;user-select:none;}
         form{display:flex;border-top:1px solid var(--gray-200);}
-        #chatInput{flex:1;padding:16px;border:none;font-size:16px;}
+        #chatInput{flex:1;padding:32px 16px;border:none;font-size:16px;}
         #chatInput:focus{outline:none;}
         #sendBtn{background:var(--primary);color:var(--white);border:none;padding:0 18px;cursor:pointer;transition:background .2s;}
         #sendBtn:hover{background:var(--primary-dark);}
+        .btn{display:inline-block;padding:12px 24px;background:var(--primary);color:var(--white);border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;text-align:center;}
+        .btn:hover{background:var(--primary-dark);transform:translateY(-1px);}
+        .btn-small{padding:6px 12px;font-size:12px;}
         @media(max-width:768px){#sidebar{position:absolute;z-index:10;height:100%;}
         #chatWindow{max-width:none;width:100%;}}
     </style>
@@ -61,7 +72,7 @@
         <div id="chatHeader">
             <button id="toggleSidebar">☰</button>
             <span id="chatTitle">Chat</span>
-            <button id="homeBtn">Home</button>
+            <button id="homeBtn" class="btn btn-small">Home</button>
         </div>
         <div id="messages"></div>
         <form id="chatForm">
