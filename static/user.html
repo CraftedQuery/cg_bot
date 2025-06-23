@@ -40,6 +40,7 @@
         .col-num { width: 50px; }
         .col-desc { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .col-action { width: 110px; text-align: center; }
+        .col-files { width: 70px; text-align: center; }
         .btn-small { padding: 6px 12px; font-size: 12px; }
     </style>
 </head>
@@ -78,6 +79,7 @@
                     <div class="col-action">Open</div>
                     <div class="col-action file-col" id="addFilesHeader">Add Files</div>
                     <div class="col-action file-col" id="viewFilesHeader">View Files</div>
+                    <div class="col-files" id="fileCountHeader"># Files</div>
                 </div>
                 <div id="agentsContainer"></div>
             </div>
@@ -131,6 +133,9 @@ async function loadUser(){
         if(!currentUser.allow_files){
             document.getElementById('addFilesHeader').classList.add('hidden');
             document.getElementById('viewFilesHeader').classList.add('hidden');
+            document.getElementById('fileCountHeader').classList.add('hidden');
+        } else {
+            document.getElementById('fileCountHeader').classList.remove('hidden');
         }
         loadAgents();
     }
@@ -161,7 +166,7 @@ function displayAgents(data){
 
             const desc = document.createElement('div');
             desc.className = 'col-desc';
-            desc.textContent = a.bot_name || a.agent;
+            desc.textContent = a.agent;
             row.appendChild(desc);
 
             const openCol = document.createElement('div');
@@ -191,6 +196,12 @@ function displayAgents(data){
                 viewBtn.onclick = () => viewFiles(t.tenant, a.agent);
                 viewCol.appendChild(viewBtn);
                 row.appendChild(viewCol);
+
+                const filesCol = document.createElement('div');
+                filesCol.className = 'col-files';
+                filesCol.textContent = '...';
+                row.appendChild(filesCol);
+                loadFileCount(t.tenant, a.agent, filesCol);
             }
 
             container.appendChild(row);
@@ -220,6 +231,20 @@ function viewFiles(tenant, agent){
     }
     const url = `/user_files.html?tenant=${encodeURIComponent(tenant)}&agent=${encodeURIComponent(agent)}`;
     window.open(url, '_blank');
+}
+
+async function loadFileCount(tenant, agent, el){
+    try{
+        const res = await fetch(`${API_BASE}/files?tenant=${tenant}&agent=${agent}`, {headers:{Authorization:`Bearer ${authToken}`}});
+        if(res.ok){
+            const data = await res.json();
+            el.textContent = data.length;
+        } else {
+            el.textContent = '0';
+        }
+    }catch(e){
+        el.textContent = '0';
+    }
 }
 
 function logout(){
