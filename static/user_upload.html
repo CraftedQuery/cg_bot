@@ -12,6 +12,9 @@
         .btn { margin-top:20px; padding:12px 24px; background:#1E88E5; color:#fff; border:none; border-radius:8px; cursor:pointer; font-weight:600; }
         table { width:100%; margin-top:20px; border-collapse:collapse; }
         th, td { padding:8px; border-bottom:1px solid #e0e0e0; text-align:left; }
+        .hidden { display:none; }
+        #replacePrompt { margin-top:20px; }
+        #replacePrompt button { margin-right:10px; }
     </style>
 </head>
 <body>
@@ -19,6 +22,11 @@
     <div id="dropZone" class="drop-zone">Drag and Drop files here<br>or<br><button id="fileSelect" class="btn" type="button">Click to upload</button></div>
     <input type="file" id="fileInput" multiple class="hidden" />
     <div id="result" style="margin-top:20px"></div>
+    <div id="replacePrompt" class="hidden">
+        <span id="replaceMessage"></span><br>
+        <button id="replaceBtn" class="btn" type="button">Replace</button>
+        <button id="abortBtn" class="btn" type="button">Abort</button>
+    </div>
 
 <script>
 const params = new URLSearchParams(window.location.search);
@@ -44,6 +52,25 @@ async function init(){
 const dropZone = document.getElementById('dropZone');
 const fileInput = document.getElementById('fileInput');
 const result = document.getElementById('result');
+const replacePrompt = document.getElementById('replacePrompt');
+const replaceMessage = document.getElementById('replaceMessage');
+const replaceBtn = document.getElementById('replaceBtn');
+const abortBtn = document.getElementById('abortBtn');
+let pendingFiles = null;
+
+replaceBtn.addEventListener('click', async () => {
+    replacePrompt.classList.add('hidden');
+    if(pendingFiles){
+        await uploadFiles(pendingFiles, true);
+        pendingFiles = null;
+    }
+});
+
+abortBtn.addEventListener('click', () => {
+    replacePrompt.classList.add('hidden');
+    pendingFiles = null;
+    result.textContent = 'Upload canceled';
+});
 
 fileInput.addEventListener('change', () => uploadFiles(fileInput.files));
 dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('hover'); });
@@ -62,11 +89,9 @@ async function uploadFiles(files, replace=false){
         fileInput.value = '';
     }else if(res.status === 409 && !replace){
         const data = await res.json().catch(()=>({detail:'File exists'}));
-        if(confirm(`${data.detail} Replace?`)){
-            await uploadFiles(files, true);
-        } else {
-            result.textContent = 'Upload canceled';
-        }
+        pendingFiles = files;
+        replaceMessage.textContent = data.detail;
+        replacePrompt.classList.remove('hidden');
     }else{
         const data = await res.json().catch(()=>({detail:'Upload failed'}));
         result.textContent = data.detail || 'Upload failed';
