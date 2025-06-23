@@ -134,12 +134,12 @@ async def chat_history(
 
     with get_db() as con:
         cur = con.execute(
-            "SELECT question, answer FROM chat_logs WHERE tenant = ? AND agent = ? ORDER BY id DESC LIMIT ?",
+            "SELECT ts, question, answer FROM chat_logs WHERE tenant = ? AND agent = ? ORDER BY id DESC LIMIT ?",
             (tenant, agent, limit),
         )
         rows = cur.fetchall()
 
     return [
-        {"question": q, "answer": a}
-        for q, a in reversed(rows)
+        {"timestamp": ts, "question": q, "answer": a}
+        for ts, q, a in reversed(rows)
     ]
