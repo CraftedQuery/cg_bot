@@ -1022,10 +1022,10 @@
                     await loadUser();
                     showMainInterface();
                 } else {
-                    logout();
+                    handleUnauthorized();
                 }
             } catch (error) {
-                logout();
+                handleUnauthorized();
             }
         }
 
@@ -1073,8 +1073,7 @@
             clearTimeout(inactivityTimer);
             if (authToken) {
                 inactivityTimer = setTimeout(() => {
-                    alert('Logged out due to inactivity');
-                    logout();
+                    handleUnauthorized();
                 }, userTimeoutMinutes * 60 * 1000);
             }
         }
@@ -1914,8 +1913,7 @@
                 const result = await response.json();
 
                 if (response.status === 401) {
-                    logout();
-                    showError('uploadResult', 'Session expired. Please log in again.');
+                    handleUnauthorized('uploadResult');
                 } else if (response.ok) {
                     resultDiv.innerHTML = `<div class="success">${result.message}</div>`;
                     resultDiv.classList.remove('hidden');
@@ -1962,6 +1960,15 @@
         }
 
         // Utility functions
+        function handleUnauthorized(elementId) {
+            const message = `Please log in again, your session has expired ${userTimeoutMinutes} inactive.`;
+            logout();
+            if (elementId) {
+                showError(elementId, message);
+            } else {
+                alert(message);
+            }
+        }
         function showError(elementId, message) {
             const element = document.getElementById(elementId);
             if (element) {
