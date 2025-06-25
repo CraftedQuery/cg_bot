@@ -624,6 +624,10 @@
                     <button id="llmLogsBtn" class="btn">Show LLM Logs</button>
                     <div id="llmLogs" class="hidden"></div>
                 </div>
+                <div class="form-group">
+                    <label for="userTimeout">User Timeout (minutes)</label>
+                    <input type="number" id="userTimeout" min="1" value="30" style="width:80px;">
+                </div>
             </div>
         </div>
     </div>
@@ -899,6 +903,8 @@
         let authToken = localStorage.getItem('rag_auth_token');
         let currentUser = null;
         let usersCache = [];
+        let userTimeoutMinutes = parseInt(localStorage.getItem('user_timeout_minutes')) || 30;
+        let inactivityTimer = null;
         const API_BASE = window.location.origin;
 
         // Initialize app
@@ -953,6 +959,19 @@
             
             // Analytics tenant selector
             document.getElementById('analyticsTenant').addEventListener('change', loadAnalytics);
+
+            // User timeout configuration
+            const timeoutInput = document.getElementById('userTimeout');
+            timeoutInput.value = userTimeoutMinutes;
+            timeoutInput.addEventListener('change', function() {
+                userTimeoutMinutes = parseInt(this.value) || 30;
+                localStorage.setItem('user_timeout_minutes', userTimeoutMinutes);
+                resetInactivityTimer();
+            });
+
+            ['mousemove', 'keydown', 'click', 'scroll'].forEach(evt => {
+                document.addEventListener(evt, resetInactivityTimer);
+            });
         }
 
         async function handleLogin(e) {
@@ -1028,6 +1047,7 @@
         }
 
         function logout() {
+            clearTimeout(inactivityTimer);
             localStorage.removeItem('rag_auth_token');
             authToken = null;
             currentUser = null;
@@ -1046,6 +1066,17 @@
             document.getElementById('loginPage').classList.add('hidden');
             document.getElementById('mainInterface').classList.remove('hidden');
             loadDashboard();
+            resetInactivityTimer();
+        }
+
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            if (authToken) {
+                inactivityTimer = setTimeout(() => {
+                    alert('Logged out due to inactivity');
+                    logout();
+                }, userTimeoutMinutes * 60 * 1000);
+            }
         }
 
         function switchTab(tabName) {
