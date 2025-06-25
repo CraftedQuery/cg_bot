@@ -466,10 +466,10 @@ async function handleCreateUser(e){
             closeModal('createUserModal');
             e.target.reset();
         }else{
-            alert('Failed to create user');
+            alert('Your permissions are not sufficient to complete this action');
         }
     }catch(err){
-        alert('Failed to create user');
+        alert('Your permissions are not sufficient to complete this action');
     }
 }
 

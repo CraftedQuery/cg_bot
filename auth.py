@@ -183,7 +183,8 @@ async def get_admin_user(current_user: User = Depends(get_current_active_user)):
     """Get the current user if they are an admin"""
     if current_user.role not in ["admin", "system_admin"]:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your permissions are not sufficient to complete this action",
         )
     return current_user
 
@@ -192,7 +193,8 @@ async def get_system_admin_user(current_user: User = Depends(get_current_active_
     """Ensure the user is a system administrator"""
     if current_user.role != "system_admin":
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your permissions are not sufficient to complete this action",
         )
     return current_user
 
@@ -204,7 +206,7 @@ async def get_files_user(current_user: User = Depends(get_current_active_user)):
     if not getattr(current_user, "allow_files", False):
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="Not enough permissions",
+            detail="Your permissions are not sufficient to complete this action",
         )
     return current_user
 

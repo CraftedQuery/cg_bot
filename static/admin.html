@@ -1756,10 +1756,10 @@
                     e.target.reset();
                 } else {
                     const error = await response.json();
-                    showError('createUserError', error.detail || 'Failed to create user');
+                    showError('createUserError', error.detail || 'Your permissions are not sufficient to complete this action');
                 }
             } catch (error) {
-                showError('createUserError', 'Failed to create user');
+                showError('createUserError', 'Your permissions are not sufficient to complete this action');
             }
         }
 
