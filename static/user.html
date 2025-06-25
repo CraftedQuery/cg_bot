@@ -122,6 +122,7 @@
             <div id="adminMenu" class="action-bar hidden">
                 <div class="col-label">ACTIONS</div>
                 <div class="col-action"><button id="addCaseBtn" class="btn btn-small">Add Case</button></div>
+                <div class="col-action"><button id="createUserBtn" class="btn btn-small">Create User</button></div>
                 <div class="col-action"><button id="manageUsersBtn" class="btn btn-small">Manage Users</button></div>
             </div>
             <div class="agent-table">
@@ -155,6 +156,44 @@
         </div>
     </div>
 
+    <!-- Create User Modal -->
+    <div id="createUserModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Create New User</h3>
+                <button class="close-btn" onclick="closeModal('createUserModal')">&times;</button>
+            </div>
+            <form id="createUserForm">
+                <div class="form-group">
+                    <label for="newUsername">Username</label>
+                    <input type="text" id="newUsername" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label for="newPassword">Password</label>
+                    <input type="password" id="newPassword" name="password" required>
+                </div>
+                <div class="form-group">
+                    <label for="newUserAgent">Agent</label>
+                    <select id="newUserAgent" name="agent" required>
+                        <option value="*">All Agents</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="newUserRole">Role</label>
+                    <select id="newUserRole" name="role" required>
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="newUserFiles" name="allow_files">
+                    <label for="newUserFiles">File Permissions</label>
+                </div>
+                <button type="submit" class="btn">Create User</button>
+            </form>
+        </div>
+    </div>
+
 <script>
 const API_BASE = '';
 let authToken = localStorage.getItem('rag_auth_token');
@@ -170,8 +209,14 @@ document.getElementById('addCaseBtn').addEventListener('click', () => {
     document.getElementById('createCaseForm').reset();
     showModal('createCaseModal');
 });
+document.getElementById('createUserBtn').addEventListener('click', () => {
+    document.getElementById('createUserForm').reset();
+    loadAgentsForTenant(currentUser.tenant);
+    showModal('createUserModal');
+});
 document.getElementById('manageUsersBtn').addEventListener('click', () => window.open('/admin.html', '_blank'));
 document.getElementById('createCaseForm').addEventListener('submit', handleCreateCase);
+document.getElementById('createUserForm').addEventListener('submit', handleCreateUser);
 
 async function handleLogin(e){
     e.preventDefault();
@@ -336,6 +381,37 @@ function closeModal(modalId){
     document.getElementById(modalId).classList.add('hidden');
 }
 
+async function loadAgentsForTenant(tenant){
+    const select = document.getElementById('newUserAgent');
+    if(!select) return;
+    select.innerHTML = '';
+
+    const optAll = document.createElement('option');
+    optAll.value = '*';
+    optAll.textContent = 'All Agents';
+    select.appendChild(optAll);
+
+    if(!tenant || tenant === '*') return;
+
+    try{
+        const res = await fetch(`${API_BASE}/tenants`, {headers:{'Authorization':`Bearer ${authToken}`}});
+        if(res.ok){
+            const tenants = await res.json();
+            const t = tenants.find(t => t.tenant === tenant);
+            if(t){
+                (t.agents || []).forEach(agent => {
+                    const option = document.createElement('option');
+                    option.value = agent;
+                    option.textContent = agent;
+                    select.appendChild(option);
+                });
+            }
+        }
+    }catch(err){
+        console.error('Failed to load agents for user:', err);
+    }
+}
+
 // Handle creation of a new case (agent)
 async function handleCreateCase(e){
     e.preventDefault();
@@ -363,6 +439,35 @@ async function handleCreateCase(e){
         }
     }catch(err){
         alert('Failed to create case');
+    }
+}
+
+async function handleCreateUser(e){
+    e.preventDefault();
+    const fd = new FormData(e.target);
+    const userData = {
+        username: fd.get('username'),
+        password: fd.get('password'),
+        tenant: currentUser.tenant,
+        agents: [fd.get('agent')],
+        role: fd.get('role'),
+        disabled: false,
+        allow_files: fd.get('allow_files') === 'on'
+    };
+    try{
+        const res = await fetch(`${API_BASE}/users`, {
+            method:'POST',
+            headers:{'Authorization':`Bearer ${authToken}`,'Content-Type':'application/json'},
+            body: JSON.stringify(userData)
+        });
+        if(res.ok){
+            closeModal('createUserModal');
+            e.target.reset();
+        }else{
+            alert('Failed to create user');
+        }
+    }catch(err){
+        alert('Failed to create user');
     }
 }
 
