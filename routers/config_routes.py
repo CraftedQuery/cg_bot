@@ -12,7 +12,9 @@ from ..config import (
     BASE_CONFIG_DIR,
     load_config,
     save_config,
-    store_path
+    store_path,
+    cfg_path,
+    uploads_path,
 )
 from ..vectorstore import get_vector_store_size
 
@@ -43,6 +45,36 @@ async def create_agent(
         raise HTTPException(status_code=403, detail="You don't have access to this tenant")
     load_config(tenant, agent)
     return {"message": "Agent created", "tenant": tenant, "agent": agent}
+
+
+@router.delete("/agents/{tenant}/{agent}")
+async def delete_agent(
+    tenant: str,
+    agent: str,
+    current_user: User = Depends(get_admin_user),
+):
+    """Delete an agent and all of its data"""
+    if current_user.role != "system_admin" and current_user.tenant != tenant:
+        raise HTTPException(status_code=403, detail="You don't have access to this tenant")
+
+    from shutil import rmtree
+    from ..database import delete_agent_data
+
+    cfg_file = cfg_path(tenant, agent)
+    if cfg_file.exists():
+        cfg_file.unlink()
+
+    store_dir = store_path(tenant, agent)
+    if store_dir.exists():
+        rmtree(store_dir, ignore_errors=True)
+
+    uploads_dir = uploads_path(tenant, agent)
+    if uploads_dir.exists():
+        rmtree(uploads_dir, ignore_errors=True)
+
+    delete_agent_data(tenant, agent)
+
+    return {"message": "Agent deleted", "tenant": tenant, "agent": agent}
 
 
 @router.get("/config")

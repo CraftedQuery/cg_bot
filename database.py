@@ -207,6 +207,24 @@ def delete_uploaded_file_by_name(tenant: str, agent: str, filename: str) -> None
         con.commit()
 
 
+def delete_agent_data(tenant: str, agent: str) -> None:
+    """Delete all records related to an agent."""
+    with get_db() as con:
+        con.execute(
+            "DELETE FROM chat_logs WHERE tenant = ? AND agent = ?",
+            (tenant, agent),
+        )
+        con.execute(
+            "DELETE FROM uploaded_files WHERE tenant = ? AND agent = ?",
+            (tenant, agent),
+        )
+        con.execute(
+            "DELETE FROM llm_logs WHERE tenant = ? AND agent = ?",
+            (tenant, agent),
+        )
+        con.commit()
+
+
 def get_uploaded_file(file_id: int):
     """Get metadata for a single uploaded file"""
     with get_db() as con:
