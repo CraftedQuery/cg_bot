@@ -231,7 +231,10 @@ async def serve_uploaded_file(
 
     # Enforce file permissions similar to get_files_user
     if user.role not in ["admin", "system_admin"] and not getattr(user, "allow_files", False):
-        raise HTTPException(status_code=403, detail="Not enough permissions")
+        raise HTTPException(
+            status_code=403,
+            detail="Your permissions are not sufficient to complete this action",
+        )
 
     if user.tenant != "*" and user.tenant != tenant:
         raise HTTPException(status_code=403, detail="You don't have access to this tenant")

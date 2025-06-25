@@ -66,12 +66,14 @@ async def create_new_user(user: UserCreate, admin: User = Depends(get_admin_user
     if admin.role == "system_admin":
         if user.role == "system_admin":
             raise HTTPException(
-                status_code=400, detail="Cannot create another system admin"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your permissions are not sufficient to complete this action",
             )
     else:
         if user.role != "user":
             raise HTTPException(
-                status_code=403, detail="Admins can only create regular users"
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Your permissions are not sufficient to complete this action",
             )
         user.tenant = admin.tenant
     if create_user(user):
@@ -93,7 +95,8 @@ async def update_existing_user(
         )
     if admin.role != "system_admin" and existing.tenant != admin.tenant:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Not enough permissions"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your permissions are not sufficient to complete this action",
         )
     if (
         "tenant" in user_data
@@ -101,7 +104,8 @@ async def update_existing_user(
         and user_data["tenant"] != admin.tenant
     ):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Cannot change tenant"
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Your permissions are not sufficient to complete this action",
         )
     if update_user(username, user_data):
         return {"message": "User updated successfully"}
