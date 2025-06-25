@@ -695,6 +695,46 @@
         </div>
     </div>
 
+    <!-- Edit User Modal -->
+    <div id="editUserModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Edit User</h3>
+                <button class="close-btn" onclick="closeModal('editUserModal')">&times;</button>
+            </div>
+            <form id="editUserForm">
+                <div class="form-group">
+                    <label for="editUsername">Username</label>
+                    <input type="text" id="editUsername" name="username" readonly>
+                </div>
+                <div class="form-group">
+                    <label for="editPassword">Password</label>
+                    <input type="password" id="editPassword" name="password" placeholder="Leave blank to keep current">
+                </div>
+                <div class="form-group">
+                    <label for="editUserTenant">Tenant</label>
+                    <select id="editUserTenant" name="tenant"></select>
+                </div>
+                <div class="form-group">
+                    <label for="editUserAgent">Agent</label>
+                    <select id="editUserAgent" name="agent"></select>
+                </div>
+                <div class="form-group">
+                    <label for="editUserRole">Role</label>
+                    <select id="editUserRole" name="role">
+                        <option value="user">User</option>
+                        <option value="admin">Admin</option>
+                    </select>
+                </div>
+                <div class="checkbox-group">
+                    <input type="checkbox" id="editUserFiles" name="allow_files">
+                    <label for="editUserFiles">File Permissions</label>
+                </div>
+                <button type="submit" class="btn">Save Changes</button>
+            </form>
+        </div>
+    </div>
+
     <!-- Agent Configuration Modal -->
     <div id="agentConfigModal" class="modal hidden">
         <div class="modal-content">
@@ -858,6 +898,7 @@
         // Global variables
         let authToken = localStorage.getItem('rag_auth_token');
         let currentUser = null;
+        let usersCache = [];
         const API_BASE = window.location.origin;
 
         // Initialize app
@@ -896,9 +937,13 @@
             document.getElementById('createUserForm').addEventListener('submit', handleCreateUser);
             document.getElementById('agentConfigForm').addEventListener('submit', handleSaveAgentConfig);
             document.getElementById('uploadForm').addEventListener('submit', handleFileUpload);
+            document.getElementById('editUserForm').addEventListener('submit', handleEditUser);
 
             document.getElementById('newUserTenant').addEventListener('change', function() {
                 loadAgentsForTenant(this.value);
+            });
+            document.getElementById('editUserTenant').addEventListener('change', function() {
+                loadAgentsForTenantEdit(this.value);
             });
             
             // Temperature slider
@@ -1134,6 +1179,7 @@
 
                 if (response.ok) {
                     const users = await response.json();
+                    usersCache = users;
                     displayUsers(users);
                 }
             } catch (error) {
@@ -1582,6 +1628,73 @@
             }
         }
 
+        async function loadTenantsForEditUser() {
+            try {
+                const response = await fetch(`${API_BASE}/tenants`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const tenants = await response.json();
+                    const select = document.getElementById('editUserTenant');
+                    if (!select) return;
+                    select.innerHTML = '';
+
+                    if (currentUser.role === 'system_admin') {
+                        const optAll = document.createElement('option');
+                        optAll.value = '*';
+                        optAll.textContent = 'All Tenants (Admin)';
+                        select.appendChild(optAll);
+                    }
+
+                    tenants.forEach(tenant => {
+                        const option = document.createElement('option');
+                        option.value = tenant.tenant;
+                        option.textContent = tenant.tenant;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load tenants for user:', error);
+            }
+        }
+
+        async function loadAgentsForTenantEdit(tenant) {
+            const select = document.getElementById('editUserAgent');
+            if (!select) return;
+            select.innerHTML = '';
+
+            const optAll = document.createElement('option');
+            optAll.value = '*';
+            optAll.textContent = 'All Agents';
+            select.appendChild(optAll);
+
+            if (!tenant || tenant === '*') {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/tenants`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const tenants = await response.json();
+                    const t = tenants.find(t => t.tenant === tenant);
+                    if (t) {
+                        t.agents.forEach(agent => {
+                            const option = document.createElement('option');
+                            option.value = agent;
+                            option.textContent = agent;
+                            select.appendChild(option);
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load agents for user:', error);
+            }
+        }
+
         async function handleCreateUser(e) {
             e.preventDefault();
             
@@ -1621,25 +1734,41 @@
         }
 
         async function editUser(username) {
-            // For simplicity, using prompt - in production, you'd want a proper modal
-            const newTenant = prompt(`Enter new tenant for ${username} (current tenant will be preserved if empty):`);
-            if (newTenant === null) return;
+            const user = usersCache.find(u => u.username === username);
+            if (!user) return;
 
-            const newRole = prompt(`Enter new role for ${username} (admin/user):`);
-            if (!['admin', 'user'].includes(newRole)) {
-                alert('Invalid role. Must be admin or user.');
-                return;
+            document.getElementById('editUserForm').reset();
+            await loadTenantsForEditUser();
+            document.getElementById('editUsername').value = user.username;
+            document.getElementById('editUserTenant').value = user.tenant;
+            await loadAgentsForTenantEdit(user.tenant);
+            const agentSelect = document.getElementById('editUserAgent');
+            if (user.agents && user.agents.length > 0) {
+                agentSelect.value = user.agents[0];
+            } else {
+                agentSelect.value = '*';
+            }
+            document.getElementById('editUserRole').value = user.role;
+            document.getElementById('editUserFiles').checked = !!user.allow_files;
+            showModal('editUserModal');
+        }
+
+        async function handleEditUser(e) {
+            e.preventDefault();
+
+            const formData = new FormData(e.target);
+            const username = formData.get('username');
+            const updateData = {
+                tenant: formData.get('tenant'),
+                agents: [formData.get('agent')],
+                role: formData.get('role'),
+                allow_files: formData.get('allow_files') === 'on'
+            };
+            if (formData.get('password')) {
+                updateData.password = formData.get('password');
             }
 
-            const allowFiles = confirm('Allow file uploads for this user?');
-
             try {
-                const updateData = { role: newRole };
-                if (newTenant.trim()) {
-                    updateData.tenant = newTenant.trim();
-                }
-                updateData.allow_files = allowFiles;
-
                 const response = await fetch(`${API_BASE}/users/${username}`, {
                     method: 'PUT',
                     headers: {
@@ -1650,11 +1779,15 @@
                 });
 
                 if (response.ok) {
+                    closeModal('editUserModal');
                     loadUsers();
                     showSuccess('User updated successfully!');
+                } else {
+                    const error = await response.json();
+                    showError('editUserError', error.detail || 'Failed to update user');
                 }
             } catch (error) {
-                console.error('Failed to update user:', error);
+                showError('editUserError', 'Failed to update user');
             }
         }
 
