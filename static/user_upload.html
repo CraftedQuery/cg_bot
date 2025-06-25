@@ -86,22 +86,37 @@ document.getElementById('fileSelect').addEventListener('click', () => fileInput.
 
 async function uploadFiles(files, replace=false){
     if(!files.length || (currentUser && !currentUser.allow_files)) return;
-    const fd = new FormData();
-    for(const f of files){ fd.append('files', f); }
-    const url = `${API_BASE}/upload?tenant=${tenant}&agent=${agent}${replace ? '&replace=true' : ''}`;
-    const res = await fetch(url,{ method:'POST', headers:{ 'Authorization':`Bearer ${authToken}` }, body:fd });
-    if(res.ok){
-        result.textContent = 'Upload successful';
-        fileInput.value = '';
-    }else if(res.status === 409 && !replace){
-        const data = await res.json().catch(()=>({detail:'File exists'}));
-        pendingFiles = files;
-        replaceMessage.textContent = data.detail;
-        replacePrompt.classList.remove('hidden');
-    }else{
-        const data = await res.json().catch(()=>({detail:'Upload failed'}));
-        result.textContent = data.detail || 'Upload failed';
+    const fileArr = Array.from(files);
+    const totalFiles = fileArr.length;
+    const totalSize = fileArr.reduce((n,f)=>n+f.size,0);
+    let uploaded = 0;
+
+    for(let i=0; i<fileArr.length; i++){
+        const file = fileArr[i];
+        const url = `${API_BASE}/upload?tenant=${tenant}&agent=${agent}${replace ? '&replace=true' : ''}`;
+        const fd = new FormData();
+        fd.append('files', file);
+
+        result.textContent = `Uploading ${i+1} of ${totalFiles}... (${(uploaded/1048576).toFixed(1)}MB/${(totalSize/1048576).toFixed(1)}MB)`;
+
+        const res = await fetch(url,{ method:'POST', headers:{ 'Authorization':`Bearer ${authToken}` }, body:fd });
+        if(res.status === 409 && !replace){
+            const data = await res.json().catch(()=>({detail:'File exists'}));
+            pendingFiles = fileArr.slice(i);
+            replaceMessage.textContent = data.detail;
+            replacePrompt.classList.remove('hidden');
+            return;
+        }
+        if(!res.ok){
+            const data = await res.json().catch(()=>({detail:'Upload failed'}));
+            result.textContent = data.detail || 'Upload failed';
+            return;
+        }
+        uploaded += file.size;
     }
+
+    result.textContent = `Upload successful (${(uploaded/1048576).toFixed(1)}MB/${(totalSize/1048576).toFixed(1)}MB)`;
+    fileInput.value = '';
 }
 </script>
 </body>
