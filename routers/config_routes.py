@@ -167,10 +167,11 @@ async def get_my_agents(current_user: User = Depends(get_current_active_user)):
     
     agents = []
     allowed = set(current_user.agents or [])
+    wildcard = '*' in allowed
     for config_file in tenant_dir.iterdir():
         if config_file.is_file() and config_file.suffix == ".json":
             agent_name = config_file.stem
-            if allowed and agent_name not in allowed:
+            if allowed and not wildcard and agent_name not in allowed:
                 continue
             config = load_config(user_tenant, agent_name)
 

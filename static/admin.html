@@ -585,6 +585,7 @@
                             <tr>
                                 <th>Username</th>
                                 <th>Tenant</th>
+                                <th>Agents</th>
                                 <th>Role</th>
                                 <th>File Permissions</th>
                                 <th>Status</th>
@@ -670,6 +671,12 @@
                     <label for="newUserTenant">Tenant</label>
                     <select id="newUserTenant" name="tenant" required>
                         <option value="*">All Tenants (Admin)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="newUserAgent">Agent</label>
+                    <select id="newUserAgent" name="agent" required>
+                        <option value="*">All Agents</option>
                     </select>
                 </div>
                 <div class="form-group">
@@ -889,6 +896,10 @@
             document.getElementById('createUserForm').addEventListener('submit', handleCreateUser);
             document.getElementById('agentConfigForm').addEventListener('submit', handleSaveAgentConfig);
             document.getElementById('uploadForm').addEventListener('submit', handleFileUpload);
+
+            document.getElementById('newUserTenant').addEventListener('change', function() {
+                loadAgentsForTenant(this.value);
+            });
             
             // Temperature slider
             document.getElementById('temperature').addEventListener('input', function() {
@@ -1136,9 +1147,11 @@
 
             users.forEach(user => {
                 const row = document.createElement('tr');
+                const agentsText = !user.agents || user.agents.length === 0 || user.agents.includes('*') ? '*' : user.agents.join(', ');
                 row.innerHTML = `
                     <td>${user.username}</td>
                     <td>${user.tenant}</td>
+                    <td>${agentsText}</td>
                     <td>${user.role}</td>
                     <td><input type="checkbox" class="filePermToggle" data-user="${user.username}" ${user.allow_files ? 'checked' : ''} ${(currentUser.role === 'admin' || currentUser.role === 'system_admin') ? '' : 'disabled'}></td>
                     <td>${user.disabled ? '❌ Disabled' : '✅ Active'}</td>
@@ -1525,9 +1538,47 @@
                         option.textContent = tenant.tenant;
                         select.appendChild(option);
                     });
+
+                    loadAgentsForTenant(select.value);
                 }
             } catch (error) {
                 console.error('Failed to load tenants for user:', error);
+            }
+        }
+
+        async function loadAgentsForTenant(tenant) {
+            const select = document.getElementById('newUserAgent');
+            if (!select) return;
+            select.innerHTML = '';
+
+            const optAll = document.createElement('option');
+            optAll.value = '*';
+            optAll.textContent = 'All Agents';
+            select.appendChild(optAll);
+
+            if (!tenant || tenant === '*') {
+                return;
+            }
+
+            try {
+                const response = await fetch(`${API_BASE}/tenants`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const tenants = await response.json();
+                    const t = tenants.find(t => t.tenant === tenant);
+                    if (t) {
+                        t.agents.forEach(agent => {
+                            const option = document.createElement('option');
+                            option.value = agent;
+                            option.textContent = agent;
+                            select.appendChild(option);
+                        });
+                    }
+                }
+            } catch (error) {
+                console.error('Failed to load agents for user:', error);
             }
         }
 
@@ -1539,6 +1590,7 @@
                 username: formData.get('username'),
                 password: formData.get('password'),
                 tenant: formData.get('tenant'),
+                agents: [formData.get('agent')],
                 role: formData.get('role'),
                 disabled: false,
                 allow_files: formData.get('allow_files') === 'on'
