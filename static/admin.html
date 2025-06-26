@@ -765,6 +765,25 @@
                         <option value="admin">Admin</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label for="editUserLanguage">Language</label>
+                    <select id="editUserLanguage" name="language">
+                        <option value="English">English</option>
+                        <option value="Spanish">Spanish</option>
+                        <option value="Chinese (Simplified)">Chinese (Simplified)</option>
+                        <option value="Korean">Korean</option>
+                        <option value="Arabic">Arabic</option>
+                        <option value="Hindi">Hindi</option>
+                        <option value="Japanese">Japanese</option>
+                        <option value="French">French</option>
+                        <option value="German">German</option>
+                        <option value="Portuguese (Brazil)">Portuguese (Brazil)</option>
+                        <option value="Italian">Italian</option>
+                        <option value="Bengali">Bengali</option>
+                        <option value="Indonesian">Indonesian</option>
+                        <option value="Swahili">Swahili</option>
+                    </select>
+                </div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="editUserFiles" name="allow_files">
                     <label for="editUserFiles">File Permissions</label>
@@ -1833,6 +1852,10 @@
                 agentSelect.value = '*';
             }
             document.getElementById('editUserRole').value = user.role;
+            const langSelect = document.getElementById('editUserLanguage');
+            if (langSelect) {
+                langSelect.value = user.language || 'English';
+            }
             document.getElementById('editUserFiles').checked = !!user.allow_files;
             showModal('editUserModal');
         }
@@ -1846,7 +1869,8 @@
                 tenant: formData.get('tenant'),
                 agents: [formData.get('agent')],
                 role: formData.get('role'),
-                allow_files: formData.get('allow_files') === 'on'
+                allow_files: formData.get('allow_files') === 'on',
+                language: formData.get('language')
             };
             if (formData.get('password')) {
                 updateData.password = formData.get('password');
