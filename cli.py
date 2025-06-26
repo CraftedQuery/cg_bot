@@ -168,7 +168,8 @@ def dashboard():
                     password=password,
                     tenant=tenant,
                     role=role,
-                    disabled=False
+                    disabled=False,
+                    language="English"
                 )
                 
                 if create_user(user_data):
@@ -351,7 +352,8 @@ def create_user_cli(
         password=password,
         tenant=tenant,
         role=role,
-        agents=agents or []
+        agents=agents or [],
+        language="English",
     )
     
     if create_user(user_data):
