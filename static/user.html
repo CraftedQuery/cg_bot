@@ -198,6 +198,15 @@
                         <option value="admin">Admin</option>
                     </select>
                 </div>
+                <div class="form-group">
+                    <label for="newUserLanguage">Language</label>
+                    <select id="newUserLanguage" name="language">
+                        <option value="English">English</option>
+                        <option value="Spanish">Spanish</option>
+                        <option value="French">French</option>
+                        <option value="German">German</option>
+                    </select>
+                </div>
                 <div class="checkbox-group">
                     <input type="checkbox" id="newUserFiles" name="allow_files">
                     <label for="newUserFiles">File Permissions</label>
@@ -472,7 +481,8 @@ async function handleCreateUser(e){
         agents: [fd.get('agent')],
         role: fd.get('role'),
         disabled: false,
-        allow_files: fd.get('allow_files') === 'on'
+        allow_files: fd.get('allow_files') === 'on',
+        language: fd.get('language')
     };
     try{
         const res = await fetch(`${API_BASE}/users`, {
