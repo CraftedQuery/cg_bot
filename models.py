@@ -13,6 +13,7 @@ class User(BaseModel):
     disabled: bool = False
     agents: Optional[List[str]] = []
     allow_files: bool = False
+    language: str = "English"
 
 
 class UserCreate(User):

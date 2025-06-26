@@ -55,6 +55,7 @@ def get_users_db():
                 "role": "system_admin",
                 "agents": [],
                 "allow_files": True,
+                "language": "English",
                 "hashed_password": pwd_context.hash("admin"),
                 "disabled": False,
             }
@@ -145,7 +146,7 @@ def authenticate_aad_token(token: str):
     user = get_user(username)
     if user:
         return user
-    return User(username=username, tenant="*", role="user", agents=[])
+    return User(username=username, tenant="*", role="user", agents=[], language="English")
 
 
 async def get_current_user(token: str = Depends(oauth2_scheme)):
@@ -224,6 +225,7 @@ def create_user(user_data: UserCreate):
         "role": user_data.role,
         "agents": user_data.agents or [],
         "allow_files": user_data.allow_files,
+        "language": user_data.language,
         "disabled": user_data.disabled,
         "hashed_password": hashed_password,
     }

@@ -47,8 +47,8 @@ exist an HTTP 404 error is raised until ingestion is performed.
 User accounts are stored in the JSON file `users.json` in the project root. The
 default file contains an `admin` account with the role `system_admin`.
 `auth.py` reads and writes this file when users are created or updated. Each
-record stores the username, tenant, role, assigned agents and a bcrypt-hashed
-password.
+record stores the username, tenant, role, assigned agents, preferred language
+and a bcrypt-hashed password.
 
 ## Tenants and Agents
 
