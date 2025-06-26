@@ -2036,7 +2036,7 @@
 
         // Utility functions
         function handleUnauthorized(elementId) {
-            const message = `Please log in again, your session has expired ${userTimeoutMinutes} inactive.`;
+            const message = 'Please log in again, your session has expired after 10 minutes inactive.';
             logout();
             if (elementId) {
                 showError(elementId, message);
