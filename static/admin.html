@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>RAG Chatbot Administration</title>
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Spectral:wght@400;700&display=swap">
     <style>
         * {
             margin: 0;
@@ -25,13 +26,19 @@
             --white: #ffffff;
             --shadow: 0 2px 4px rgba(0,0,0,0.1);
             --shadow-lg: 0 4px 12px rgba(0,0,0,0.15);
+            --body-font-size: 16px;
         }
-        
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            font-family: 'Inter', sans-serif;
             background: var(--gray-100);
             color: var(--gray-800);
             line-height: 1.6;
+            font-size: var(--body-font-size);
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Spectral', serif;
         }
         
         .container {
@@ -629,6 +636,10 @@
                     <label for="userTimeout">User Timeout (minutes)</label>
                     <input type="number" id="userTimeout" min="1" value="30" style="width:80px;">
                 </div>
+                <div class="form-group">
+                    <label for="bodyFontSize">Body Font Size (px)</label>
+                    <input type="number" id="bodyFontSize" min="12" max="24" style="width:80px;">
+                </div>
             </div>
         </div>
     </div>
@@ -905,15 +916,23 @@
         let currentUser = null;
         let usersCache = [];
         let userTimeoutMinutes = parseInt(localStorage.getItem('user_timeout_minutes')) || 30;
+        let bodyFontSize = parseInt(localStorage.getItem('body_font_size')) || 16;
         let inactivityTimer = null;
         const API_BASE = window.location.origin;
+
+        function applyBodyFontSize() {
+            document.documentElement.style.setProperty('--body-font-size', bodyFontSize + 'px');
+            const fsInput = document.getElementById('bodyFontSize');
+            if (fsInput) fsInput.value = bodyFontSize;
+        }
 
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
             if (authToken) {
                 validateToken();
             }
-            
+
+            applyBodyFontSize();
             setupEventListeners();
         });
 
@@ -968,6 +987,15 @@
                 userTimeoutMinutes = parseInt(this.value) || 30;
                 localStorage.setItem('user_timeout_minutes', userTimeoutMinutes);
                 resetInactivityTimer();
+            });
+
+            // Body font size configuration
+            const fontInput = document.getElementById('bodyFontSize');
+            fontInput.value = bodyFontSize;
+            fontInput.addEventListener('change', function() {
+                bodyFontSize = parseInt(this.value) || 16;
+                localStorage.setItem('body_font_size', bodyFontSize);
+                applyBodyFontSize();
             });
 
             ['mousemove', 'keydown', 'click', 'scroll'].forEach(evt => {
