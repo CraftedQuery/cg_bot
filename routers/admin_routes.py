@@ -167,12 +167,15 @@ async def get_llm_logs(limit: int = 100):
 @router.get("/llm_models")
 async def get_llm_models(provider: str = "anthropic"):
     """Return available models for a given LLM provider."""
+    provider = provider.lower()
+
     if provider == "anthropic":
         api_key = os.getenv("ANTHROPIC_API_KEY")
         if not api_key:
             raise HTTPException(400, "Anthropic API key not configured")
 
         import requests
+
         try:
             rsp = requests.get(
                 "https://api.anthropic.com/v1/models",
@@ -188,6 +191,32 @@ async def get_llm_models(provider: str = "anthropic"):
         except Exception as e:  # pragma: no cover - network errors
             raise HTTPException(502, f"Failed to fetch models: {e}")
 
+        return {"provider": provider, "models": names}
+
+    if provider == "openai":
+        api_key = os.getenv("OPENAI_API_KEY")
+        if not api_key:
+            raise HTTPException(400, "OpenAI API key not configured")
+
+        from openai import OpenAI
+
+        client = OpenAI(api_key=api_key)
+        try:
+            rsp = client.models.list()
+            names = [m.id for m in rsp.data if "gpt" in m.id]
+        except Exception as e:  # pragma: no cover - network errors
+            raise HTTPException(502, f"Failed to fetch models: {e}")
+
+        return {"provider": provider, "models": names}
+
+    if provider in {"vertexai", "google"}:
+        # Vertex AI does not currently provide an easy model listing API
+        # Return a curated list of common chat models.
+        names = [
+            "gemini-1.5-pro",
+            "gemini-1.5-flash",
+            "gemini-1.0-pro",
+        ]
         return {"provider": provider, "models": names}
 
     raise HTTPException(400, "Unknown provider")
