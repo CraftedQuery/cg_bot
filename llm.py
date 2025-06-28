@@ -46,6 +46,7 @@ def get_llm_response(
             None,
             tenant=tenant,
             agent=agent,
+            model=model,
             description=f"user:{user} q:{question}"
         )
 
@@ -56,6 +57,7 @@ def get_llm_response(
             str(e),
             tenant=tenant,
             agent=agent,
+            model=model,
             description=f"user:{user} q:{question}"
         )
         response = {
