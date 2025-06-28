@@ -25,9 +25,9 @@
             box-sizing:border-box;
             font-size:var(--body-font-size);
         }
-        #app{display:flex;height:100%;overflow:hidden;}
-        #sidebar{width:260px;background:var(--white);border-right:1px solid var(--gray-200);display:flex;flex-direction:column;transition:transform .3s ease;}
-        #sidebar.collapsed{transform:translateX(-100%);}
+        #app{display:flex;height:100%;overflow:hidden;position:relative;}
+        #sidebar{width:260px;background:var(--white);border-right:1px solid var(--gray-200);display:flex;flex-direction:column;transition:transform .3s ease;position:absolute;left:0;top:0;bottom:0;transform:translateX(-100%);z-index:10;}
+        #sidebar.visible{transform:translateX(0);}
         #sidebar header{display:flex;align-items:center;justify-content:space-between;padding:10px 15px;border-bottom:1px solid var(--gray-200);}
         #sidebar header h2{font-size:18px;margin:0;}
         #newChat{background:var(--primary);border:none;color:var(--white);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:14px;}
@@ -38,7 +38,9 @@
         #chatList li:hover{background:var(--gray-100);}
         #chatList .title{font-weight:600;}
         #chatList .preview{font-size:12px;color:var(--gray-700);margin-top:4px;}
-        #chatWindow{flex:1;display:flex;flex-direction:column;max-width:800px;margin:0 auto;background:var(--white);box-shadow:0 0 6px rgba(0,0,0,0.1);border-bottom:2px solid var(--gray-200);}
+        #chatWindow{flex:1;display:flex;flex-direction:column;max-width:800px;margin:0 auto;background:var(--white);box-shadow:0 0 6px rgba(0,0,0,0.1);border-bottom:2px solid var(--gray-200);transition:transform .3s ease,max-width .3s ease;}
+        #chatWindow.shifted{transform:translateX(260px);}
+        #chatWindow.expanded{max-width:none;width:100%;}
         #chatHeader{display:flex;align-items:center;justify-content:space-between;padding:10px 15px;background:linear-gradient(90deg,var(--primary),var(--primary-dark));color:var(--white);}
         #toggleSidebar{background:none;border:none;color:var(--white);font-size:20px;cursor:pointer;}
         #messages{flex:1;overflow-y:auto;padding:15px;}
@@ -56,13 +58,13 @@
         .btn{display:inline-block;padding:12px 24px;background:var(--primary);color:var(--white);border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;text-align:center;}
         .btn:hover{background:var(--primary-dark);transform:translateY(-1px);}
         .btn-small{padding:6px 12px;font-size:12px;}
-        @media(max-width:768px){#sidebar{position:absolute;z-index:10;height:100%;}
-        #chatWindow{max-width:none;width:100%;}}
+        @media(max-width:768px){#chatWindow{max-width:none;width:100%;}
+        #chatWindow.shifted{transform:none;}}
     </style>
 </head>
 <body>
 <div id="app">
-    <div id="sidebar" class="collapsed">
+    <div id="sidebar">
         <header>
             <h2>Chats</h2>
             <button id="newChat">New Chat</button>
@@ -106,11 +108,16 @@ const toggleSidebarBtn=document.getElementById('toggleSidebar');
 const chatTitleEl=document.getElementById('chatTitle');
 const chatList=document.getElementById('chatList');
 const searchInput=document.getElementById('search');
+const chatWindow=document.getElementById('chatWindow');
 chatTitleEl.textContent=`Chat with ${agent}`;
+
+chatWindow.classList.add('expanded');
 
 toggleSidebarBtn.onclick=()=>{
     sidebarVisible=!sidebarVisible;
-    sidebar.classList.toggle('collapsed',!sidebarVisible);
+    sidebar.classList.toggle('visible',sidebarVisible);
+    chatWindow.classList.toggle('shifted',sidebarVisible);
+    chatWindow.classList.toggle('expanded',!sidebarVisible);
 };
 
 document.getElementById('homeBtn').onclick=()=>{window.location.href='/user.html'};
