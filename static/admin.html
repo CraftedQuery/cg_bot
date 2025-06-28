@@ -1602,8 +1602,8 @@
         // Agent configuration
         async function configureAgent(tenant, agent) {
             try {
-                // Load current configuration
-                const response = await fetch(`${API_BASE}/config?tenant=${tenant}&agent=${agent}`, {
+                // Load current configuration (full details)
+                const response = await fetch(`${API_BASE}/config/full?tenant=${tenant}&agent=${agent}`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
 
