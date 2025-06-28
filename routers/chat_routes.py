@@ -45,6 +45,8 @@ async def chat(
     
     # Create system message with context
     sys_content = cfg["system_prompt"]
+    # Ensure the assistant responds in the language used by the user
+    sys_content += "\nPlease respond in the same language as the question."
     if cfg.get("local_only", True):
         sys_content += "\nUse only the provided Context to answer. Do not search the internet."
     sys_content += "\nContext:\n" + ctx
