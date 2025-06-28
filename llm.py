@@ -124,13 +124,16 @@ def _get_anthropic_response(messages: List[Dict], model: str = None, temperature
             else:
                 filtered.append({"role": role, "content": content})
 
-        rsp = client.messages.create(
-            model=model,
-            max_tokens=1000,
-            temperature=temperature,
-            system=system_prompt,
-            messages=filtered,
-        )
+        kwargs = {
+            "model": model,
+            "max_tokens": 1000,
+            "temperature": temperature,
+            "messages": filtered,
+        }
+        if system_prompt:
+            kwargs["system"] = system_prompt
+
+        rsp = client.messages.create(**kwargs)
     except Exception as e:
         raise
 
