@@ -13,16 +13,28 @@ from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 
-from .models import User, UserCreate, TokenData
-from .config import (
-    SECRET_KEY,
-    ALGORITHM,
-    ACCESS_TOKEN_EXPIRE_MINUTES,
-    BASE_DIR,
-    AAD_TENANT_ID,
-    AAD_CLIENT_ID,
-    AAD_JWKS_PATH,
-)
+try:  # Allow running as part of a package or standalone
+    from .models import User, UserCreate, TokenData
+    from .config import (
+        SECRET_KEY,
+        ALGORITHM,
+        ACCESS_TOKEN_EXPIRE_MINUTES,
+        BASE_DIR,
+        AAD_TENANT_ID,
+        AAD_CLIENT_ID,
+        AAD_JWKS_PATH,
+    )
+except Exception:  # pragma: no cover - fallback for direct script execution
+    from models import User, UserCreate, TokenData
+    from config import (
+        SECRET_KEY,
+        ALGORITHM,
+        ACCESS_TOKEN_EXPIRE_MINUTES,
+        BASE_DIR,
+        AAD_TENANT_ID,
+        AAD_CLIENT_ID,
+        AAD_JWKS_PATH,
+    )
 
 # Override with environment variable if available
 SECRET_KEY = os.getenv("JWT_SECRET_KEY", SECRET_KEY)
@@ -62,7 +74,16 @@ def get_users_db():
         }
         users_file.write_text(json.dumps(default_admin, indent=2))
         return default_admin
-    return json.loads(users_file.read_text())
+
+    users = json.loads(users_file.read_text())
+    changed = False
+    for username, data in users.items():
+        if data.get("role") is None:
+            data["role"] = "system_admin" if username == "admin" else "user"
+            changed = True
+    if changed:
+        users_file.write_text(json.dumps(users, indent=2))
+    return users
 
 
 def save_users_db(users_data):
