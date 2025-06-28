@@ -1015,7 +1015,7 @@
             });
 
             document.getElementById('llmProvider').addEventListener('change', function() {
-                loadModels(this.value);
+                loadModels(this.value, null);
             });
             
             // Temperature slider
@@ -1497,26 +1497,37 @@
             `;
         }
 
-        async function loadModels(provider) {
+        async function loadModels(provider, currentModel) {
             const select = document.getElementById('llmModel');
             select.innerHTML = '<option>Loading...</option>';
+            let models = [];
             try {
                 const resp = await fetch(`${API_BASE}/llm_models?provider=${provider}`);
                 if (resp.ok) {
                     const data = await resp.json();
-                    select.innerHTML = '';
-                    data.models.forEach(m => {
-                        const opt = document.createElement('option');
-                        opt.value = m;
-                        opt.textContent = m;
-                        select.appendChild(opt);
-                    });
-                } else {
-                    select.innerHTML = '<option value="">Unavailable</option>';
+                    models = data.models || [];
                 }
             } catch (err) {
                 console.error('Failed to load models', err);
-                select.innerHTML = '<option value="">Unavailable</option>';
+            }
+
+            select.innerHTML = '';
+            models.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m;
+                select.appendChild(opt);
+            });
+
+            if (currentModel) {
+                let found = models.includes(currentModel);
+                if (!found) {
+                    const opt = document.createElement('option');
+                    opt.value = currentModel;
+                    opt.textContent = currentModel;
+                    select.appendChild(opt);
+                }
+                select.value = currentModel;
             }
         }
 
@@ -1629,8 +1640,7 @@
             document.getElementById('widgetMode').value = config.mode || 'inline';
             document.getElementById('autoOpen').checked = config.auto_open || false;
             document.getElementById('llmProvider').value = config.llm_provider || 'openai';
-            await loadModels(document.getElementById('llmProvider').value);
-            document.getElementById('llmModel').value = config.llm_model || 'gpt-4o-mini';
+            await loadModels(document.getElementById('llmProvider').value, config.llm_model || 'gpt-4o-mini');
             document.getElementById('temperature').value = config.temperature || 0.3;
             document.getElementById('tempValue').textContent = config.temperature || 0.3;
             document.getElementById('localOnly').checked = config.local_only !== false;
