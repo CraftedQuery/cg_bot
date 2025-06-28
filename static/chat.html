@@ -50,11 +50,16 @@
         .cite-num{margin-left:4px;font-size:12px;text-decoration:none;}
         .cite-window{margin-top:4px;font-size:12px;display:flex;align-items:center;gap:6px;}
         .cite-window span{cursor:pointer;user-select:none;}
-        form{display:flex;border-top:1px solid var(--gray-200);}
+        form{display:flex;border-top:1px solid var(--gray-200);align-items:center;}
         #chatInput{flex:1;padding:32px 16px;border:none;font-size:16px;}
         #chatInput:focus{outline:none;}
         #sendBtn{background:var(--primary);color:var(--white);border:none;padding:0 18px;cursor:pointer;transition:background .2s;}
         #sendBtn:hover{background:var(--primary-dark);}
+        #guideBtn{width:40px;height:40px;border-radius:50%;background:var(--primary);color:var(--white);border:none;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;margin-left:8px;margin-right:8px;}
+        #guideBtn:hover{background:var(--primary-dark);}
+        #guideOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;}
+        #guideOverlay .content{background:var(--white);padding:30px;border-radius:12px;max-width:600px;width:90%;text-align:center;line-height:1.4;}
+        .hidden{display:none;}
         .btn{display:inline-block;padding:12px 24px;background:var(--primary);color:var(--white);border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;text-align:center;}
         .btn:hover{background:var(--primary-dark);transform:translateY(-1px);}
         .btn-small{padding:6px 12px;font-size:12px;}
@@ -81,8 +86,21 @@
         <div id="messages"></div>
         <form id="chatForm">
             <input id="chatInput" type="text" autocomplete="off" placeholder="Please ask your question...">
+            <button id="guideBtn" type="button">?</button>
             <button id="sendBtn" type="submit"><img src="gavel-2-64.ico" alt="Send" style="width:20px;height:20px;"></button>
         </form>
+        <div id="guideOverlay" class="hidden">
+            <div class="content">
+                Quick-Start Prompting Guide for your “Second Chair” Digital Navigator<br><br>
+                Talk to it like a colleague. Write a complete sentence or two—just as you’d brief your in-house legal analyst:<br>
+                “Under California contract law, is this 2-year, 10-mile non-compete for a physician enforceable? Give me a 3-paragraph memo with two on-point cases.”<br><br>
+                Give the essentials up front. Jurisdiction, key facts, and the exact output you want. The clearer the scene, the sharper the answer.<br><br>
+                One request at a time. Separate drafting tasks (“draft interrogatories”) from analysis tasks (“summarize deposition themes”) to avoid mixed results.<br><br>
+                Narrow the lane. If you don’t want antitrust angles, say so. Boundaries keep the AI from wandering.<br><br>
+                Iterate like draft reviews. Follow up with “Great—tighten the reasonableness analysis” instead of starting over.<br><br>
+                Treat every prompt as a concise assignment memo, and your Digital Navigator will respond with work product that needs minimal polishing.
+            </div>
+        </div>
     </div>
 </div>
 <script>
@@ -225,6 +243,13 @@ document.getElementById('chatForm').addEventListener('submit',e=>{
     e.preventDefault();
     const m=document.getElementById('chatInput');
     if(m.value.trim()){const t=m.value.trim();m.value='';sendMessage(t);}
+});
+
+document.getElementById('guideBtn').addEventListener('click',()=>{
+    document.getElementById('guideOverlay').classList.remove('hidden');
+});
+document.getElementById('guideOverlay').addEventListener('click',()=>{
+    document.getElementById('guideOverlay').classList.add('hidden');
 });
 
 loadHistory();
