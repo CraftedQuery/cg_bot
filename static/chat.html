@@ -58,6 +58,7 @@
         #guideBtn{width:40px;height:40px;border-radius:50%;background:var(--primary);color:var(--white);border:none;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;margin-left:8px;margin-right:8px;}
         #guideBtn:hover{background:var(--primary-dark);}
         #guideOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;}
+        #guideOverlay.hidden{display:none;}
         #guideOverlay .content{background:var(--white);padding:30px;border-radius:12px;max-width:600px;width:90%;text-align:center;line-height:1.4;}
         .hidden{display:none;}
         .btn{display:inline-block;padding:12px 24px;background:var(--primary);color:var(--white);border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;text-align:center;}
@@ -87,7 +88,7 @@
         <form id="chatForm">
             <input id="chatInput" type="text" autocomplete="off" placeholder="Please ask your question...">
             <button id="guideBtn" type="button">?</button>
-            <button id="sendBtn" type="submit"><img src="gavel-2-64.ico" alt="Send" style="width:20px;height:20px;"></button>
+            <button id="sendBtn" type="submit">Send</button>
         </form>
         <div id="guideOverlay" class="hidden">
             <div class="content">
