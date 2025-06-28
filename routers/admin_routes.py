@@ -143,25 +143,42 @@ async def get_llm_logs(limit: int = 100):
 
     with get_db() as con:
         cur = con.execute(
-            "SELECT ts, provider, status, tenant, agent, description, error_message FROM llm_logs ORDER BY id DESC LIMIT ?",
+            "SELECT ts, provider, status, tenant, agent, model, description, error_message FROM llm_logs ORDER BY id DESC LIMIT ?",
             (limit,),
         )
         rows = cur.fetchall()
 
-    return {
-        "logs": [
-            {
-                "ts": r[0],
-                "provider": r[1],
-                "status": r[2],
-                "tenant": r[3],
-                "agent": r[4],
-                "description": r[5],
-                "error": r[6],
-            }
-            for r in rows
-        ]
-    }
+        logs = []
+        for r in rows:
+            ts, provider, status, tenant, agent, model, desc, error = r
+            answer = None
+            question = None
+            if desc and "q:" in desc:
+                question = desc.split("q:", 1)[1]
+            if question:
+                cur2 = con.execute(
+                    "SELECT answer FROM chat_logs WHERE tenant = ? AND agent = ? AND question = ? ORDER BY id DESC LIMIT 1",
+                    (tenant or "", agent or "", question),
+                )
+                row2 = cur2.fetchone()
+                if row2:
+                    answer = row2[0]
+
+            logs.append(
+                {
+                    "ts": ts,
+                    "provider": provider,
+                    "status": status,
+                    "tenant": tenant,
+                    "agent": agent,
+                    "model": model,
+                    "description": desc,
+                    "answer": answer,
+                    "error": error,
+                }
+            )
+
+    return {"logs": logs}
 
 
 @router.get("/llm_models")

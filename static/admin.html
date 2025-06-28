@@ -1471,7 +1471,9 @@
                     <td>${log.status}</td>
                     <td>${log.tenant || ''}</td>
                     <td>${log.agent || ''}</td>
+                    <td>${log.model || ''}</td>
                     <td>${log.description ? log.description : (log.error ? 'error: ' + log.error : '')}</td>
+                    <td>${log.answer || ''}</td>
                 </tr>
             `).join('');
             return `
@@ -1484,7 +1486,9 @@
                                 <th>Status</th>
                                 <th>Tenant</th>
                                 <th>Agent</th>
+                                <th>Model</th>
                                 <th>Description</th>
+                                <th>Answer</th>
                             </tr>
                         </thead>
                         <tbody>${rows}</tbody>
