@@ -3,3 +3,4 @@ venv/
 *.pyc
 
 .env
+static/gavel-2-64.ico
