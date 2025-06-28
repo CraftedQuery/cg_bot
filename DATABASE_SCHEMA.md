@@ -58,6 +58,7 @@ CREATE TABLE IF NOT EXISTS llm_logs(
     status TEXT,
     tenant TEXT,
     agent TEXT,
+    model TEXT,
     description TEXT,
     error_message TEXT
 );
@@ -71,6 +72,7 @@ Fields:
 - **status** – Either `success` or `error`.
 - **tenant** – Tenant associated with the call.
 - **agent** – Agent name.
+- **model** – Model name used for the request.
 - **description** – Additional context (file name, user question, etc.).
 - **error_message** – Error text if the request failed.
 

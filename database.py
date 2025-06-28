@@ -65,6 +65,7 @@ def init_database():
         # Ensure newer columns exist when upgrading from older versions
         _ensure_column(con, "llm_logs", "tenant TEXT")
         _ensure_column(con, "llm_logs", "agent TEXT")
+        _ensure_column(con, "llm_logs", "model TEXT")
         _ensure_column(con, "llm_logs", "description TEXT")
         _ensure_column(con, "llm_logs", "error_message TEXT")
         con.commit()
@@ -125,6 +126,7 @@ def log_llm_event(
     *,
     tenant: str | None = None,
     agent: str | None = None,
+    model: str | None = None,
     description: str | None = None,
 ):
     """Log an LLM request or error with optional context"""
@@ -133,14 +135,15 @@ def log_llm_event(
     with get_db() as con:
         con.execute(
             """INSERT INTO llm_logs
-               (ts, provider, status, tenant, agent, description, error_message)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+               (ts, provider, status, tenant, agent, model, description, error_message)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 datetime.now(timezone.utc).isoformat(),
                 provider,
                 status,
                 tenant,
                 agent,
+                model,
                 description,
                 error_message,
             )

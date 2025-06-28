@@ -4,7 +4,7 @@ routers/admin_routes.py - Admin interface endpoints
 
 from pathlib import Path
 import os
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException
 from fastapi.responses import HTMLResponse
 
 router = APIRouter(tags=["admin"])
@@ -162,3 +162,32 @@ async def get_llm_logs(limit: int = 100):
             for r in rows
         ]
     }
+
+
+@router.get("/llm_models")
+async def get_llm_models(provider: str = "anthropic"):
+    """Return available models for a given LLM provider."""
+    if provider == "anthropic":
+        api_key = os.getenv("ANTHROPIC_API_KEY")
+        if not api_key:
+            raise HTTPException(400, "Anthropic API key not configured")
+
+        import requests
+        try:
+            rsp = requests.get(
+                "https://api.anthropic.com/v1/models",
+                headers={
+                    "x-api-key": api_key,
+                    "anthropic-version": "2023-06-01",
+                },
+                timeout=10,
+            )
+            rsp.raise_for_status()
+            data = rsp.json()
+            names = [m.get("name") for m in data.get("models", [])]
+        except Exception as e:  # pragma: no cover - network errors
+            raise HTTPException(502, f"Failed to fetch models: {e}")
+
+        return {"provider": provider, "models": names}
+
+    raise HTTPException(400, "Unknown provider")

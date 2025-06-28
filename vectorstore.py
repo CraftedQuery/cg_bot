@@ -138,6 +138,7 @@ def create_vector_store(
                 "success",
                 tenant=tenant,
                 agent=agent,
+                model=model,
                 description=src,
             )
         (path / "meta.json").write_text(json.dumps({"provider": provider, "model": model}))
