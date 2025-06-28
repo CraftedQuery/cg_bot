@@ -182,12 +182,16 @@ async def get_llm_models(provider: str = "anthropic"):
                 headers={
                     "x-api-key": api_key,
                     "anthropic-version": "2023-06-01",
+                    "accept": "application/json",
                 },
                 timeout=10,
             )
             rsp.raise_for_status()
             data = rsp.json()
-            names = [m.get("name") for m in data.get("models", [])]
+            # The API changed the response format from {"models": [...]} to
+            # {"data": [...]}. Handle either case to remain backward compatible.
+            models = data.get("models") or data.get("data") or []
+            names = [m.get("name") or m.get("id") for m in models]
         except Exception as e:  # pragma: no cover - network errors
             raise HTTPException(502, f"Failed to fetch models: {e}")
 
