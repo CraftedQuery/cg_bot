@@ -89,6 +89,17 @@ def get_user(username: str):
         # Remove hashed_password from user data before returning
         if "hashed_password" in user_data:
             user_data.pop("hashed_password")
+        # Ensure essential fields have defaults
+        if user_data.get("role") is None:
+            user_data["role"] = "user"
+        if user_data.get("agents") is None:
+            user_data["agents"] = []
+        if user_data.get("allow_files") is None:
+            user_data["allow_files"] = False
+        if user_data.get("language") is None:
+            user_data["language"] = "English"
+        if user_data.get("disabled") is None:
+            user_data["disabled"] = False
         return User(**user_data)
     return None
 
@@ -240,7 +251,9 @@ def update_user(username: str, user_data: dict):
         return False
 
     for key, value in user_data.items():
-        if key not in ["username", "hashed_password", "password"]:
+        if key in ["username", "hashed_password", "password"]:
+            continue
+        if value is not None:
             users_db[username][key] = value
 
     if "password" in user_data:
