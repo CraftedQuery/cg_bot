@@ -585,6 +585,16 @@ function showError(elementId, message) {
         alert(message);
     }
 }
+
+// Automatically validate an existing token on page load so that returning
+// users are taken directly to their home screen instead of the login form.
+document.addEventListener('DOMContentLoaded', () => {
+    if (authToken) {
+        validateToken();
+    } else {
+        showLoginPage();
+    }
+});
 </script>
 </body>
 </html>
