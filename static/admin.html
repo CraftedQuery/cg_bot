@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Second Chair Login</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Spectral:wght@400;700&family=Satoshi:wght@400;700&display=swap">
+<link rel="stylesheet" href="styles.css">
     <style>
         * {
             margin: 0;
@@ -12,30 +13,7 @@
             box-sizing: border-box;
         }
         
-        :root {
-            --primary: #1E88E5;
-            --primary-dark: #1976D2;
-            --secondary: #4CAF50;
-            --danger: #f44336;
-            --warning: #FF9800;
-            --gray-100: #f5f5f5;
-            --gray-200: #e0e0e0;
-            --gray-300: #bdbdbd;
-            --gray-600: #757575;
-            --gray-800: #424242;
-            --white: #ffffff;
-            --shadow: 0 2px 4px rgba(0,0,0,0.1);
-            --shadow-lg: 0 4px 12px rgba(0,0,0,0.15);
-            --body-font-size: 16px;
-        }
 
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--gray-100);
-            color: var(--gray-800);
-            line-height: 1.6;
-            font-size: var(--body-font-size);
-        }
 
         h1, h2, h3, h4, h5, h6 {
             font-family: 'Spectral', serif;
@@ -551,6 +529,7 @@
                 <button class="nav-tab" data-tab="users">👥 Users</button>
                 <button class="nav-tab" data-tab="analytics">📈 Analytics</button>
                 <button class="nav-tab" data-tab="settings">⚙️ Settings</button>
+                <button class="nav-tab" data-tab="styling">🎨 Styling</button>
             </div>
 
             <!-- Dashboard Panel -->
@@ -639,13 +618,38 @@
                 <div class="form-group">
                     <label for="userTimeout">User Timeout (minutes)</label>
                     <input type="number" id="userTimeout" min="1" value="30" style="width:80px;">
-                </div>
-                <div class="form-group">
-                    <label for="bodyFontSize">Body Font Size (px)</label>
-                    <input type="number" id="bodyFontSize" min="12" max="24" style="width:80px;">
-                </div>
             </div>
         </div>
+            <!-- Styling Panel -->
+            <div id="stylingPanel" class="content-panel hidden">
+                <h2>Styling</h2>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="primary">Primary Color</label>
+                        <input type="color" id="primary">
+                    </div>
+                    <div class="form-group">
+                        <label for="primaryDark">Primary Dark</label>
+                        <input type="color" id="primaryDark">
+                    </div>
+                    <div class="form-group">
+                        <label for="secondary">Secondary Color</label>
+                        <input type="color" id="secondary">
+                    </div>
+                    <div class="form-group">
+                        <label for="danger">Danger Color</label>
+                        <input type="color" id="danger">
+                    </div>
+                    <div class="form-group">
+                        <label for="warning">Warning Color</label>
+                        <input type="color" id="warning">
+                    </div>
+                    <div class="form-group">
+                        <label for="bodyFontSize">Body Font Size (px)</label>
+                        <input type="number" id="bodyFontSize" min="12" max="24" style="width:80px;">
+                    </div>
+                </div>
+            </div>
     </div>
 
     <!-- Modals -->
@@ -957,15 +961,32 @@
         let authToken = localStorage.getItem('rag_auth_token');
         let currentUser = null;
         let usersCache = [];
-        let userTimeoutMinutes = parseInt(localStorage.getItem('user_timeout_minutes')) || 30;
-        let bodyFontSize = parseInt(localStorage.getItem('body_font_size')) || 16;
+        const styleDefaults = {
+            primary: "#1E88E5",
+            primaryDark: "#1976D2",
+            secondary: "#4CAF50",
+            danger: "#f44336",
+            warning: "#FF9800",
+            bodyFontSize: 16
+        };
+        let userTimeoutMinutes = parseInt(localStorage.getItem("user_timeout_minutes")) || 30;
         let inactivityTimer = null;
         const API_BASE = window.location.origin;
 
-        function applyBodyFontSize() {
-            document.documentElement.style.setProperty('--body-font-size', bodyFontSize + 'px');
-            const fsInput = document.getElementById('bodyFontSize');
-            if (fsInput) fsInput.value = bodyFontSize;
+        function applyCustomStyles() {
+            Object.keys(styleDefaults).forEach(key => {
+                const stored = localStorage.getItem("style_" + key) || styleDefaults[key];
+                if (key === "bodyFontSize") {
+                    document.documentElement.style.setProperty("--body-font-size", stored + "px");
+                    const fs = document.getElementById("bodyFontSize");
+                    if (fs) fs.value = stored;
+                } else {
+                    const cssVar = "--" + key.replace(/([A-Z])/g, "-$1").toLowerCase();
+                    document.documentElement.style.setProperty(cssVar, stored);
+                    const el = document.getElementById(key);
+                    if (el) el.value = stored;
+                }
+            });
         }
 
         // Initialize app
@@ -974,7 +995,7 @@
                 validateToken();
             }
 
-            applyBodyFontSize();
+            applyCustomStyles();
             setupEventListeners();
         });
 
@@ -1035,13 +1056,15 @@
                 resetInactivityTimer();
             });
 
-            // Body font size configuration
-            const fontInput = document.getElementById('bodyFontSize');
-            fontInput.value = bodyFontSize;
-            fontInput.addEventListener('change', function() {
-                bodyFontSize = parseInt(this.value) || 16;
-                localStorage.setItem('body_font_size', bodyFontSize);
-                applyBodyFontSize();
+            // Styling inputs
+            ["primary","primaryDark","secondary","danger","warning","bodyFontSize"].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener("change", () => {
+                        localStorage.setItem("style_" + id, el.value);
+                        applyCustomStyles();
+                    });
+                }
             });
 
             ['mousemove', 'keydown', 'click', 'scroll'].forEach(evt => {
