@@ -9,6 +9,7 @@
     --gray-300: #bdbdbd;
     --gray-600: #757575;
     --gray-800: #424242;
+    --footer-bg: #424242;
     --black: #000000;
     --white: #ffffff;
     --shadow: 0 2px 4px rgba(0,0,0,0.1);
@@ -27,7 +28,7 @@ body {
 .hidden { display: none !important; }
 
 footer {
-    background: var(--gray-800);
+    background: var(--footer-bg);
     color: var(--white);
     padding: 20px;
     text-align: center;
