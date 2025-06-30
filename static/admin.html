@@ -649,6 +649,42 @@
                         <input type="number" id="bodyFontSize" min="12" max="24" style="width:80px;">
                     </div>
                 </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="logoUrl">Footer Logo URL</label>
+                        <input type="text" id="logoUrl">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="footerLink1Text">Link 1 Text</label>
+                        <input type="text" id="footerLink1Text">
+                    </div>
+                    <div class="form-group">
+                        <label for="footerLink1Url">Link 1 URL</label>
+                        <input type="text" id="footerLink1Url">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="footerLink2Text">Link 2 Text</label>
+                        <input type="text" id="footerLink2Text">
+                    </div>
+                    <div class="form-group">
+                        <label for="footerLink2Url">Link 2 URL</label>
+                        <input type="text" id="footerLink2Url">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="footerLink3Text">Link 3 Text</label>
+                        <input type="text" id="footerLink3Text">
+                    </div>
+                    <div class="form-group">
+                        <label for="footerLink3Url">Link 3 URL</label>
+                        <input type="text" id="footerLink3Url">
+                    </div>
+                </div>
             </div>
     </div>
 
@@ -967,7 +1003,14 @@
             secondary: "#4CAF50",
             danger: "#f44336",
             warning: "#FF9800",
-            bodyFontSize: 16
+            bodyFontSize: 16,
+            logoUrl: "https://www.craftedquery.com/logo.svg",
+            footerLink1Text: "About us",
+            footerLink1Url: "https://www.craftedquery.com/about",
+            footerLink2Text: "Contact us",
+            footerLink2Url: "https://www.craftedquery.com/contact",
+            footerLink3Text: "Status",
+            footerLink3Url: "https://www.craftedquery.com/status"
         };
         let userTimeoutMinutes = parseInt(localStorage.getItem("user_timeout_minutes")) || 30;
         let inactivityTimer = null;
@@ -980,11 +1023,30 @@
                     document.documentElement.style.setProperty("--body-font-size", stored + "px");
                     const fs = document.getElementById("bodyFontSize");
                     if (fs) fs.value = stored;
+                } else if (key === "logoUrl" || key.startsWith("footerLink")) {
+                    const el = document.getElementById(key);
+                    if (el) el.value = stored;
                 } else {
                     const cssVar = "--" + key.replace(/([A-Z])/g, "-$1").toLowerCase();
                     document.documentElement.style.setProperty(cssVar, stored);
                     const el = document.getElementById(key);
                     if (el) el.value = stored;
+                }
+            });
+
+            const logo = document.getElementById("footerLogo");
+            if (logo) logo.src = localStorage.getItem("style_logoUrl") || styleDefaults.logoUrl;
+
+            const links = [
+                {id: "footerLink1", text: "footerLink1Text", url: "footerLink1Url"},
+                {id: "footerLink2", text: "footerLink2Text", url: "footerLink2Url"},
+                {id: "footerLink3", text: "footerLink3Text", url: "footerLink3Url"}
+            ];
+            links.forEach(l => {
+                const a = document.getElementById(l.id);
+                if (a) {
+                    a.textContent = localStorage.getItem("style_" + l.text) || styleDefaults[l.text];
+                    a.href = localStorage.getItem("style_" + l.url) || styleDefaults[l.url];
                 }
             });
         }
@@ -1057,7 +1119,7 @@
             });
 
             // Styling inputs
-            ["primary","primaryDark","secondary","danger","warning","bodyFontSize"].forEach(id => {
+            ["primary","primaryDark","secondary","danger","warning","bodyFontSize","logoUrl","footerLink1Text","footerLink1Url","footerLink2Text","footerLink2Url","footerLink3Text","footerLink3Url"].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
                     el.addEventListener("change", () => {
@@ -2167,10 +2229,10 @@
         }
     </script>
 <footer>
-    <img src="https://www.craftedquery.com/logo.svg" alt="Crafted Query Logo"> 2025 © Crafted Query. All rights reserved. -
-    <a href="https://www.craftedquery.com/about">About us</a> -
-    <a href="https://www.craftedquery.com/contact">Contact us</a> -
-    Status.
+    <img id="footerLogo" src="https://www.craftedquery.com/logo.svg" alt="Crafted Query Logo"> 2025 © Crafted Query. All rights reserved. -
+    <a id="footerLink1" href="https://www.craftedquery.com/about">About us</a> -
+    <a id="footerLink2" href="https://www.craftedquery.com/contact">Contact us</a> -
+    <a id="footerLink3" href="https://www.craftedquery.com/status">Status</a>.
 </footer>
 </body>
 </html>
