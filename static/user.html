@@ -267,9 +267,47 @@
 const API_BASE = '';
 let authToken = localStorage.getItem('rag_auth_token');
 let currentUser = null;
-const styleDefaults={primary:"#1E88E5",primaryDark:"#1976D2",secondary:"#4CAF50",danger:"#f44336",warning:"#FF9800",bodyFontSize:16};
-function applyCustomStyles(){Object.keys(styleDefaults).forEach(k=>{const v=localStorage.getItem("style_"+k)||styleDefaults[k];if(k==="bodyFontSize"){document.documentElement.style.setProperty("--body-font-size",v+"px");}else{const cssVar="--"+k.replace(/([A-Z])/g,"-$1").toLowerCase();document.documentElement.style.setProperty(cssVar,v);}});}
-applyCustomStyles();
+const styleDefaults={
+    primary:"#1E88E5",
+    primaryDark:"#1976D2",
+    secondary:"#4CAF50",
+    danger:"#f44336",
+    warning:"#FF9800",
+    footerBg:"#424242",
+    bodyFontSize:16,
+    logoUrl:"https://www.craftedquery.com/logo.svg",
+    footerLink1Text:"About us",
+    footerLink1Url:"https://www.craftedquery.com/about",
+    footerLink2Text:"Contact us",
+    footerLink2Url:"https://www.craftedquery.com/contact",
+    footerLink3Text:"Status",
+    footerLink3Url:"https://www.craftedquery.com/status"
+};
+function applyCustomStyles(){
+    Object.keys(styleDefaults).forEach(k=>{
+        const v=localStorage.getItem("style_"+k)||styleDefaults[k];
+        if(k==="bodyFontSize"){
+            document.documentElement.style.setProperty("--body-font-size",v+"px");
+        }else if(!k.startsWith("footerLink") && k!=="logoUrl"){
+            const cssVar="--"+k.replace(/([A-Z])/g,"-$1").toLowerCase();
+            document.documentElement.style.setProperty(cssVar,v);
+        }
+    });
+    const logo=document.getElementById("footerLogo");
+    if(logo) logo.src=localStorage.getItem("style_logoUrl")||styleDefaults.logoUrl;
+    const links=[
+        {id:"footerLink1",text:"footerLink1Text",url:"footerLink1Url"},
+        {id:"footerLink2",text:"footerLink2Text",url:"footerLink2Url"},
+        {id:"footerLink3",text:"footerLink3Text",url:"footerLink3Url"}
+    ];
+    links.forEach(l=>{
+        const a=document.getElementById(l.id);
+        if(a){
+            a.textContent=localStorage.getItem("style_"+l.text)||styleDefaults[l.text];
+            a.href=localStorage.getItem("style_"+l.url)||styleDefaults[l.url];
+        }
+    });
+}
 
 document.getElementById('loginForm').addEventListener('submit', handleLogin);
 document.getElementById('logoutBtn').addEventListener('click', logout);
@@ -589,6 +627,7 @@ function showError(elementId, message) {
 // Automatically validate an existing token on page load so that returning
 // users are taken directly to their home screen instead of the login form.
 document.addEventListener('DOMContentLoaded', () => {
+    applyCustomStyles();
     if (authToken) {
         validateToken();
     } else {
@@ -597,10 +636,10 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 <footer>
-    <img src="https://www.craftedquery.com/logo.svg" alt="Crafted Query Logo"> 2025 © Crafted Query. All rights reserved. -
-    <a href="https://www.craftedquery.com/about">About us</a> -
-    <a href="https://www.craftedquery.com/contact">Contact us</a> -
-    Status.
+    <img id="footerLogo" src="https://www.craftedquery.com/logo.svg" alt="Crafted Query Logo"> 2025 © Crafted Query. All rights reserved. -
+    <a id="footerLink1" href="https://www.craftedquery.com/about">About us</a> -
+    <a id="footerLink2" href="https://www.craftedquery.com/contact">Contact us</a> -
+    <a id="footerLink3" href="https://www.craftedquery.com/status">Status</a>.
 </footer>
 </body>
 </html>
