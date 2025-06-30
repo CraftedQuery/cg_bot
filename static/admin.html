@@ -651,6 +651,12 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
+                        <label for="footerBg">Footer Color</label>
+                        <input type="color" id="footerBg">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
                         <label for="logoUrl">Footer Logo URL</label>
                         <input type="text" id="logoUrl">
                     </div>
@@ -1003,6 +1009,7 @@
             secondary: "#4CAF50",
             danger: "#f44336",
             warning: "#FF9800",
+            footerBg: "#424242",
             bodyFontSize: 16,
             logoUrl: "https://www.craftedquery.com/logo.svg",
             footerLink1Text: "About us",
@@ -1119,7 +1126,7 @@
             });
 
             // Styling inputs
-            ["primary","primaryDark","secondary","danger","warning","bodyFontSize","logoUrl","footerLink1Text","footerLink1Url","footerLink2Text","footerLink2Url","footerLink3Text","footerLink3Url"].forEach(id => {
+            ["primary","primaryDark","secondary","danger","warning","footerBg","bodyFontSize","logoUrl","footerLink1Text","footerLink1Url","footerLink2Text","footerLink2Url","footerLink3Text","footerLink3Url"].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
                     el.addEventListener("change", () => {
