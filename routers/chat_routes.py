@@ -10,6 +10,7 @@ from ..config import DEFAULT_TENANT, DEFAULT_AGENT, load_config
 from ..vectorstore import search_documents
 from ..llm import get_llm_response
 from ..database import log_chat, update_feedback
+from langdetect import detect, DetectorFactory
 
 router = APIRouter(tags=["chat"])
 
@@ -43,10 +44,35 @@ async def chat(
     # Build context from search results
     ctx = "\n".join(content for content, _, _ in search_results)
     
+    # Detect the language of the user's question
+    try:
+        DetectorFactory.seed = 0
+        lang_code = detect(q) if q else "en"
+    except Exception:
+        lang_code = "en"
+    lang_map = {
+        "en": "English",
+        "es": "Spanish",
+        "fr": "French",
+        "de": "German",
+        "pt": "Portuguese",
+        "it": "Italian",
+        "zh-cn": "Chinese (Simplified)",
+        "zh-tw": "Chinese (Traditional)",
+        "ja": "Japanese",
+        "ko": "Korean",
+        "ar": "Arabic",
+        "hi": "Hindi",
+        "bn": "Bengali",
+        "id": "Indonesian",
+        "sw": "Swahili",
+    }
+    language = lang_map.get(lang_code.lower(), "English")
+
     # Create system message with context
     sys_content = cfg["system_prompt"]
     # Ensure the assistant responds in the language used by the user
-    sys_content += "\nPlease respond in the same language as the question."
+    sys_content += f"\nPlease respond in {language}."
     if cfg.get("local_only", True):
         sys_content += "\nUse only the provided Context to answer. Do not search the internet."
     sys_content += "\nContext:\n" + ctx
