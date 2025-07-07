@@ -1153,7 +1153,7 @@
             const formData = new FormData(e.target);
             
             try {
-                const response = await fetch(`${API_BASE}/token`, {
+                const response = await fetch('/api/auth/local', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',

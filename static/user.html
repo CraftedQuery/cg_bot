@@ -333,7 +333,7 @@ async function handleLogin(e){
 
     const fd = new FormData(e.target);
     try{
-        const res = await fetch(`${API_BASE}/token`, {
+        const res = await fetch('/api/auth/local', {
             method:'POST',
             headers:{'Content-Type':'application/x-www-form-urlencoded'},
             body:`username=${encodeURIComponent(fd.get('username'))}&password=${encodeURIComponent(fd.get('password'))}`
