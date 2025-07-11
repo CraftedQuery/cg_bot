@@ -144,8 +144,8 @@
             <h2>Second Chair Login</h2>
             <form id="loginForm">
                 <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required>
+                    <label for="email">Email</label>
+                    <input type="email" id="email" name="email" required>
                 </div>
                 <div class="form-group">
                     <label for="password">Password</label>
@@ -336,7 +336,7 @@ async function handleLogin(e){
         const res = await fetch('/api/auth/local', {
             method:'POST',
             headers:{'Content-Type':'application/x-www-form-urlencoded'},
-            body:`username=${encodeURIComponent(fd.get('username'))}&password=${encodeURIComponent(fd.get('password'))}`
+            body:`email=${encodeURIComponent(fd.get('email'))}&password=${encodeURIComponent(fd.get('password'))}`
         });
         if(res.ok){
             const data = await res.json();
@@ -345,7 +345,7 @@ async function handleLogin(e){
             await loadUser();
             showAgentPage();
         } else {
-            showError('loginError', 'Invalid username or password');
+            showError('loginError', 'Invalid email or password');
         }
     } catch(err){
         showError('loginError', 'Login failed. Please try again.');
