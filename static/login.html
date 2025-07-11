@@ -33,9 +33,12 @@
     const useAuth = () => {
       const [user,setUser] = React.useState(null);
       React.useEffect(()=>{
-        fetch('/api/auth/me',{credentials:'include'})
-          .then(r=>r.ok?r.json():null)
-          .then(d=>setUser(d));
+        const token = localStorage.getItem('rag_auth_token');
+        if(token){
+          fetch('/users/me',{headers:{'Authorization':`Bearer ${token}`}})
+            .then(r=>r.ok?r.json():null)
+            .then(d=>setUser(d));
+        }
       },[]);
       return user;
     };
@@ -46,16 +49,19 @@
         e.preventDefault();
         setError('');
         const fd=new FormData(e.target);
-        const res = await fetch('/api/auth/local', {
+        const res = await fetch('/token', {
           method:'POST',
           headers:{'Content-Type':'application/x-www-form-urlencoded'},
-          body:new URLSearchParams(fd),
+          body:new URLSearchParams({
+            username: fd.get('username'),
+            password: fd.get('password')
+          }),
           credentials:'include'
         });
         if(res.ok){window.location='/dashboard';} else {setError('Invalid credentials');}
       };
       return React.createElement('form',{onSubmit,className:'space-y-4'},[
-        React.createElement('input',{className:'border p-2 w-full',name:'email',type:'email',placeholder:'Email',required:true}),
+        React.createElement('input',{className:'border p-2 w-full',name:'username',type:'text',placeholder:'Username',required:true}),
         React.createElement('input',{className:'border p-2 w-full',name:'password',type:'password',placeholder:'Password',required:true}),
         React.createElement('button',{className:'btn btn-full',type:'submit'},'Sign in'),
         error?React.createElement('div',{className:'text-red-600'},error):null
@@ -80,9 +86,8 @@
       const isMsal = useIsAuthenticated();
       if(!user && !isMsal) return React.createElement(Navigate,{to:'/'})
       const logout = () => {
-        fetch('/api/auth/logout',{method:'POST',credentials:'include'}).then(()=>{
-          msalInstance.logoutRedirect();
-        });
+        localStorage.removeItem('rag_auth_token');
+        msalInstance.logoutRedirect();
       };
       return React.createElement('div',null,[
         React.createElement('h2',null,'Dashboard'),
