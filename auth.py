@@ -75,7 +75,24 @@ def get_users_db():
         users_file.write_text(json.dumps(default_admin, indent=2))
         return default_admin
 
-    users = json.loads(users_file.read_text())
+    try:
+        users = json.loads(users_file.read_text())
+    except json.JSONDecodeError:
+        # Handle corrupted file by recreating default admin account
+        default_admin = {
+            "admin": {
+                "username": "admin",
+                "tenant": "*",
+                "role": "system_admin",
+                "agents": [],
+                "allow_files": True,
+                "language": "English",
+                "hashed_password": pwd_context.hash("admin"),
+                "disabled": False,
+            }
+        }
+        users_file.write_text(json.dumps(default_admin, indent=2))
+        return default_admin
     changed = False
     for username, data in users.items():
         if data.get("role") is None:

@@ -1,6 +1,7 @@
 import os
 import json
 import importlib.util
+import types
 from pathlib import Path
 
 import pytest
@@ -19,6 +20,30 @@ def temp_users(tmp_path, monkeypatch):
         spec.loader.exec_module(module)
         sys.modules[mod_name] = module
 
+    # Provide a dummy jose module to satisfy imports
+    jose_mod = types.ModuleType('jose')
+    jose_mod.JWTError = Exception
+    jose_mod.jwt = types.SimpleNamespace(encode=lambda *a, **k: 'x', decode=lambda *a, **k: {})
+    sys.modules['jose'] = jose_mod
+
+    passlib_mod = types.ModuleType('passlib')
+    context_mod = types.ModuleType('passlib.context')
+
+    class DummyCryptContext:
+        def __init__(self, *args, **kwargs):
+            pass
+
+        def hash(self, password):
+            return 'hashed-' + password
+
+        def verify(self, plain, hashed):
+            return hashed == 'hashed-' + plain
+
+    context_mod.CryptContext = DummyCryptContext
+    passlib_mod.context = context_mod
+    sys.modules['passlib'] = passlib_mod
+    sys.modules['passlib.context'] = context_mod
+
     spec_path = os.path.join(base, 'auth.py')
     spec = importlib.util.spec_from_file_location('auth', spec_path)
     auth = importlib.util.module_from_spec(spec)
@@ -36,3 +61,17 @@ def test_admin_role_migration(temp_users):
     # file should be updated
     saved = json.loads(users_path.read_text())
     assert saved["admin"]["role"] == "system_admin"
+
+
+def test_corrupted_users_db_resets_to_admin(temp_users):
+    """Corrupted users.json should recreate default admin account"""
+    users_path = temp_users / "users.json"
+    users_path.write_text("{bad json")
+
+    import auth
+
+    users = auth.get_users_db()
+    assert "admin" in users
+    assert users["admin"]["role"] == "system_admin"
+    saved = json.loads(users_path.read_text())
+    assert "admin" in saved
