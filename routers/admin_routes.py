@@ -104,6 +104,7 @@ async def llm_test():
     """Manually test connectivity to the configured LLM providers"""
     from datetime import datetime, timezone
     from ..llm import _get_openai_response, _get_anthropic_response
+    from ..database import log_llm_event
 
     openai_error = None
     anthropic_error = None
@@ -114,17 +115,27 @@ async def llm_test():
         try:
             _get_openai_response([{"role": "user", "content": "ping"}])
             openai_status = "ready"
+            log_llm_event("openai", "success", None, description="connectivity test")
         except Exception as e:
             openai_status = "failed"
             openai_error = str(e)
+            log_llm_event("openai", "error", openai_error, description="connectivity test")
+    else:
+        openai_error = "API key is missing"
+        log_llm_event("openai", "skipped", openai_error, description="connectivity test")
 
     if os.getenv("ANTHROPIC_API_KEY"):
         try:
             _get_anthropic_response([{"role": "user", "content": "ping"}])
             anthropic_status = "ready"
+            log_llm_event("anthropic", "success", None, description="connectivity test")
         except Exception as e:
             anthropic_status = "failed"
             anthropic_error = str(e)
+            log_llm_event("anthropic", "error", anthropic_error, description="connectivity test")
+    else:
+        anthropic_error = "API key is missing"
+        log_llm_event("anthropic", "skipped", anthropic_error, description="connectivity test")
 
     return {
         "timestamp": datetime.now(timezone.utc).isoformat(),
