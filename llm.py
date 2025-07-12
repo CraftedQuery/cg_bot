@@ -103,6 +103,7 @@ def _get_anthropic_response(messages: List[Dict], model: str = None, temperature
     """Get response from Anthropic"""
     try:
         import anthropic
+        NOT_GIVEN = getattr(anthropic, "NOT_GIVEN", None)
     except ImportError:
         raise ImportError("anthropic package not installed")
 
@@ -127,7 +128,7 @@ def _get_anthropic_response(messages: List[Dict], model: str = None, temperature
             model=model,
             max_tokens=1000,
             temperature=temperature,
-            system=system_prompt,
+            system=system_prompt if system_prompt is not None else NOT_GIVEN,
             messages=filtered,
         )
     except Exception as e:
