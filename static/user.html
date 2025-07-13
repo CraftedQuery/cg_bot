@@ -6,6 +6,7 @@
     <title>Second Chair Login</title>
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Spectral:wght@400;700&family=Satoshi:wght@400;700&display=swap">
 <link rel="stylesheet" href="/static/styles.css">
+    <script src="https://unpkg.com/@azure/msal-browser/dist/msal-browser.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
@@ -155,6 +156,7 @@
                     <span id="loginSpinner" class="spinner hidden"></span>
                     Login
                 </button>
+                <button type="button" id="msLoginBtn" class="btn btn-full btn-secondary" style="margin-top:10px;">Login with Microsoft</button>
                 <div id="loginError" class="error hidden"></div>
             </form>
         </div>
@@ -267,6 +269,14 @@
 const API_BASE = '';
 let authToken = localStorage.getItem('rag_auth_token');
 let currentUser = null;
+const msalConfig = {
+    auth: {
+        clientId: 'YOUR_CLIENT_ID', // TODO: set Microsoft Entra client ID
+        authority: 'https://login.microsoftonline.com/YOUR_TENANT_ID', // TODO: set tenant authority
+        redirectUri: window.location.href
+    }
+};
+const msalInstance = new msal.PublicClientApplication(msalConfig);
 const styleDefaults={
     primary:"#1E88E5",
     primaryDark:"#1976D2",
@@ -310,6 +320,7 @@ function applyCustomStyles(){
 }
 
 document.getElementById('loginForm').addEventListener('submit', handleLogin);
+document.getElementById('msLoginBtn').addEventListener('click', handleMicrosoftLogin);
 document.getElementById('logoutBtn').addEventListener('click', logout);
 document.getElementById('addCaseBtn').addEventListener('click', () => {
     document.getElementById('createCaseForm').reset();
@@ -333,10 +344,10 @@ async function handleLogin(e){
 
     const fd = new FormData(e.target);
     try{
-        const res = await fetch('/api/auth/local', {
+        const res = await fetch('/token', {
             method:'POST',
             headers:{'Content-Type':'application/x-www-form-urlencoded'},
-            body:`email=${encodeURIComponent(fd.get('email'))}&password=${encodeURIComponent(fd.get('password'))}`
+            body:`username=${encodeURIComponent(fd.get('email'))}&password=${encodeURIComponent(fd.get('password'))}`
         });
         if(res.ok){
             const data = await res.json();
@@ -349,6 +360,38 @@ async function handleLogin(e){
         }
     } catch(err){
         showError('loginError', 'Login failed. Please try again.');
+    } finally {
+        spinner.classList.add('hidden');
+    }
+}
+
+async function handleMicrosoftLogin(){
+    const spinner = document.getElementById('loginSpinner');
+    const errorDiv = document.getElementById('loginError');
+    spinner.classList.remove('hidden');
+    errorDiv.classList.add('hidden');
+    try{
+        const result = await msalInstance.loginPopup({scopes:['user.read']});
+        if(result && result.accessToken){
+            const res = await fetch('/aad/token', {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({access_token: result.accessToken})
+            });
+            if(res.ok){
+                const data = await res.json();
+                authToken = data.access_token;
+                localStorage.setItem('rag_auth_token', authToken);
+                await loadUser();
+                showAgentPage();
+            } else {
+                showError('loginError', 'Microsoft login failed');
+            }
+        } else {
+            showError('loginError', 'Microsoft login failed');
+        }
+    }catch(err){
+        showError('loginError', 'Microsoft login failed');
     } finally {
         spinner.classList.add('hidden');
     }
