@@ -2,43 +2,72 @@
 utils/file_processors.py - File processing utilities
 """
 from pathlib import Path
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 
 from bs4 import BeautifulSoup
+
+
+def _find_heading(lines: List[str], start: int) -> Optional[str]:
+    """Return the last Markdown heading before the start line."""
+    for i in range(start, -1, -1):
+        line = lines[i].strip()
+        if line.startswith("#"):
+            return line.lstrip("#").strip() or None
+    return None
+
+
+def _chunk_text_with_lines(
+    text: str, *, page: Optional[int] = None, lines_per_chunk: int = 20
+) -> Tuple[List[str], List[Dict]]:
+    """Split text into line-based chunks and capture metadata."""
+    lines = text.splitlines()
+    chunks, metas = [], []
+
+    for i in range(0, len(lines), lines_per_chunk):
+        chunk_lines = lines[i : i + lines_per_chunk]
+        chunk = "\n".join(chunk_lines).strip()
+        if not chunk:
+            continue
+        meta = {
+            "line": i + 1,
+            "heading": _find_heading(lines, i),
+        }
+        if page is not None:
+            meta["page"] = page
+        chunks.append(chunk)
+        metas.append(meta)
+
+    return chunks, metas
 
 
 def process_file(file_path: Path, filename: str) -> Tuple[List[str], List[Dict]]:
     """Process a file and extract text chunks and metadata"""
     ext = file_path.suffix.lower()
-    raw_text = ""
     
     try:
         if ext == ".pdf":
-            raw_text = _process_pdf(file_path)
-        elif ext in {".txt", ".md"}:
-            raw_text = _process_text(file_path)
-        elif ext == ".docx":
-            raw_text = _process_docx(file_path)
-        elif ext == ".pptx":
-            raw_text = _process_pptx(file_path)
-        elif ext == ".xlsx":
-            raw_text = _process_xlsx(file_path)
-        elif ext == ".csv":
-            raw_text = _process_csv(file_path)
-        elif ext in {".html", ".htm"}:
-            raw_text = _process_html(file_path)
+            chunks, metadatas = _process_pdf(file_path)
         else:
-            return [], []
-        
-        # Import here to avoid circular dependency
-        from ..vectorstore import chunk_text
-        
-        # Chunk the text
-        chunks = chunk_text(raw_text)
-        
-        # Create metadata for each chunk
-        metadatas = [{"source": filename} for _ in chunks]
-        
+            if ext in {".txt", ".md"}:
+                raw_text = _process_text(file_path)
+            elif ext == ".docx":
+                raw_text = _process_docx(file_path)
+            elif ext == ".pptx":
+                raw_text = _process_pptx(file_path)
+            elif ext == ".xlsx":
+                raw_text = _process_xlsx(file_path)
+            elif ext == ".csv":
+                raw_text = _process_csv(file_path)
+            elif ext in {".html", ".htm"}:
+                raw_text = _process_html(file_path)
+            else:
+                return [], []
+
+            chunks, metadatas = _chunk_text_with_lines(raw_text)
+
+        for m in metadatas:
+            m["source"] = filename
+
         return chunks, metadatas
         
     except Exception as e:
@@ -46,22 +75,25 @@ def process_file(file_path: Path, filename: str) -> Tuple[List[str], List[Dict]]
         return [], []
 
 
-def _process_pdf(file_path: Path) -> str:
-    """Process PDF file"""
+def _process_pdf(file_path: Path) -> Tuple[List[str], List[Dict]]:
+    """Process PDF file into chunks with page metadata."""
     try:
         import pypdf
     except ImportError:
         raise ImportError("pypdf package not installed")
-    
+
     reader = pypdf.PdfReader(str(file_path))
-    text_parts = []
-    
-    for page in reader.pages:
+    chunks, metas = [], []
+
+    for idx, page in enumerate(reader.pages, start=1):
         text = page.extract_text()
-        if text:
-            text_parts.append(text)
-    
-    return "\n".join(text_parts)
+        if not text:
+            continue
+        page_chunks, page_meta = _chunk_text_with_lines(text, page=idx)
+        chunks.extend(page_chunks)
+        metas.extend(page_meta)
+
+    return chunks, metas
 
 
 def _process_text(file_path: Path) -> str:
