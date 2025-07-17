@@ -96,10 +96,17 @@ async def chat(
     # Extract sources
     sources, seen = [], set()
     for _, metadata, _ in search_results:
-        s = metadata.get("source", "")
-        if s and s not in seen:
-            sources.append({"source": s})
-            seen.add(s)
+        key = (metadata.get("source"), metadata.get("page"), metadata.get("line"))
+        if key[0] and key not in seen:
+            citation = {"source": key[0]}
+            if key[1] is not None:
+                citation["page"] = key[1]
+            if key[2] is not None:
+                citation["line"] = key[2]
+            if metadata.get("heading"):
+                citation["heading"] = metadata["heading"]
+            sources.append(citation)
+            seen.add(key)
     
     # Log the interaction
     log_chat(
