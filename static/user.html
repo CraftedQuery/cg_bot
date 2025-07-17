@@ -276,7 +276,14 @@ const msalConfig = {
         redirectUri: window.location.href
     }
 };
-const msalInstance = new msal.PublicClientApplication(msalConfig);
+let msalInstance = null;
+if (window.msal && window.msal.PublicClientApplication) {
+    msalInstance = new msal.PublicClientApplication(msalConfig);
+} else {
+    console.warn('MSAL library not loaded; Microsoft login disabled.');
+    const msBtn = document.getElementById('msLoginBtn');
+    if (msBtn) msBtn.style.display = 'none';
+}
 const styleDefaults={
     primary:"#1E88E5",
     primaryDark:"#1976D2",
@@ -366,6 +373,10 @@ async function handleLogin(e){
 }
 
 async function handleMicrosoftLogin(){
+    if(!msalInstance){
+        showError('loginError', 'Microsoft login not available');
+        return;
+    }
     const spinner = document.getElementById('loginSpinner');
     const errorDiv = document.getElementById('loginError');
     spinner.classList.remove('hidden');
