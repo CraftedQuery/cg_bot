@@ -171,7 +171,7 @@ let sidebarVisible=false;
 let chatHistory=[];
 let filteredHistory=[];
 let selectedChat=null;
-const circledNums=['\u2460','\u2461','\u2462','\u2463','\u2464','\u2465','\u2466','\u2467','\u2468','\u2469'];
+const citeNums=Array.from({length:10},(_,i)=>`(${i+1})`);
 
 const sidebar=document.getElementById('sidebar');
 const toggleSidebarBtn=document.getElementById('toggleSidebar');
@@ -241,10 +241,24 @@ function addMessage(text,cls,sources=[]){
     div.className='msg '+cls;
     let html=cls==='bot'?formatMessage(text):text;
     if(cls==='bot' && sources && sources.length){
-        sources.slice(0,6).forEach((s,i)=>{
-            const link=formatSourceLink(s.source);
-            const tip=[s.heading||'',s.page?`p.${s.page}`:'',s.line?`l.${s.line}`:'',s.source].filter(Boolean).join(' - ');
-            html+=` <a href="${link}" target="_blank" class="cite-num" title="${tip}">${circledNums[i]}</a>`;
+        const placed=new Set();
+        html=html.replace(/\((\d+)\)/g,(m,n)=>{
+            const idx=parseInt(n,10)-1;
+            if(idx>=0 && idx<sources.length){
+                placed.add(idx);
+                const s=sources[idx];
+                const link=formatSourceLink(s.source);
+                const tip=[s.heading||'',s.page?`p.${s.page}`:'',s.line?`l.${s.line}`:'',s.source].filter(Boolean).join(' - ');
+                return `<a href="${link}" target="_blank" class="cite-num" title="${tip}">(${idx+1})</a>`;
+            }
+            return m;
+        });
+        sources.slice(0,citeNums.length).forEach((s,i)=>{
+            if(!placed.has(i)){
+                const link=formatSourceLink(s.source);
+                const tip=[s.heading||'',s.page?`p.${s.page}`:'',s.line?`l.${s.line}`:'',s.source].filter(Boolean).join(' - ');
+                html+=` <a href="${link}" target="_blank" class="cite-num" title="${tip}">${citeNums[i]}</a>`;
+            }
         });
     }
     div.innerHTML=html;
