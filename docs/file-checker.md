@@ -101,13 +101,12 @@ Files are broken into chunks before embedding:
 # utils/file_processors.py
 
 # Import here to avoid circular dependency
-from ..vectorstore import chunk_text
+from ..utils.file_processors import _chunk_text_with_lines
 
-# Chunk the text
-chunks = chunk_text(raw_text)
-
-# Create metadata for each chunk
-metadatas = [{"source": filename} for _ in chunks]
+# Chunk the text with line metadata
+chunks, metadatas = _chunk_text_with_lines(raw_text)
+for m in metadatas:
+    m["source"] = filename
 ```
 
 ## 3. Background File Checker
