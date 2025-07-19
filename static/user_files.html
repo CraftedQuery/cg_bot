@@ -22,7 +22,7 @@
 </head>
 <body>
     <div class="header">
-        <h2>Files</h2>
+        <h2 id="caseTitle">Files</h2>
         <button id="homeBtn" class="btn btn-small" type="button">Home</button>
     </div>
     <table id="filesTable">
@@ -48,6 +48,10 @@ const agent = params.get('agent');
 const API_BASE = '';
 const authToken = localStorage.getItem('rag_auth_token');
 const tbody = document.querySelector('#filesTable tbody');
+const pageTitle = document.getElementById('caseTitle');
+if(agent && pageTitle){
+    pageTitle.textContent = `Files - ${agent}`;
+}
 let currentUser = null;
 let filesData = [];
 let currentPage = 1;
