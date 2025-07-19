@@ -45,7 +45,7 @@
         .user{background:var(--primary);color:var(--white);margin-left:auto;}
         .bot{background:var(--gray-200);color:var(--gray-800);margin-right:auto;}
         .cite-num{margin-left:4px;font-size:12px;text-decoration:none;}
-        .cite-window{margin-top:4px;font-size:1em;display:flex;flex-direction:column;align-items:flex-start;gap:2px;}
+        .cite-window{margin-top:4px;font-size:1em;display:flex;flex-direction:row;align-items:center;gap:2px;}
         .cite-detail{font-style:italic;}
         .cite-window span{cursor:pointer;user-select:none;}
         form{display:flex;border-top:1px solid var(--gray-200);align-items:center;}
@@ -253,7 +253,7 @@ function addMessage(text,cls,sources=[]){
         cite.className='cite-window';
         let idx=0;
         const detailLink=sources[0].page?`<a href="${formatSourceLink(sources[0].source)}#page=${sources[0].page}" target="_blank">Page ${sources[0].page}</a>`:'';
-        cite.innerHTML=`Sources: ${sources.length>1?'<span class="cite-prev">&#8592;</span>':''}<a class="cite-link" href="${formatSourceLink(sources[0].source)}" target="_blank">${sources[0].source}</a>${sources.length>1?'<span class="cite-next">&#8594;</span>':''}<div class="cite-detail">${detailLink}${sources[0].heading?` - ${sources[0].heading}`:''}</div>`;
+        cite.innerHTML=`Sources: ${sources.length>1?'<span class="cite-prev">&#8592;</span>':''}<a class="cite-link" href="${formatSourceLink(sources[0].source)}" target="_blank">${sources[0].source}</a>${sources.length>1?'<span class="cite-next">&#8594;</span>':''}<span class="cite-detail">${detailLink}${sources[0].heading?` - ${sources[0].heading}`:''}</span>`;
         const update=()=>{
             const src=sources[idx];
             cite.querySelector('.cite-link').href=formatSourceLink(src.source);

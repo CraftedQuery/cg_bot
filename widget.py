@@ -220,7 +220,7 @@ function addMessage(role, content, sources = []) {{
     const citeDiv = document.createElement('div');
     citeDiv.className = 'cq-cite-window';
     let idx = 0;
-    citeDiv.innerHTML = `${{sources.length > 1 ? '<span class="cq-prev">←</span>' : ''}}<a class="cq-citation-link" href="${{sources[0].source}}" target="_blank">${{sources[0].source}}</a>${{sources.length > 1 ? '<span class="cq-next">→</span>' : ''}}<div class="cq-detail">${{sources[0].page ? `Page ${sources[0].page}` : ''}}{{sources[0].heading ? ` - ${sources[0].heading}` : ''}}</div>`;
+    citeDiv.innerHTML = `${{sources.length > 1 ? '<span class="cq-prev">←</span>' : ''}}<a class="cq-citation-link" href="${{sources[0].source}}" target="_blank">${{sources[0].source}}</a>${{sources.length > 1 ? '<span class="cq-next">→</span>' : ''}}<span class="cq-detail">${{sources[0].page ? `Page ${sources[0].page}` : ''}}{{sources[0].heading ? ` - ${sources[0].heading}` : ''}}</span>`;
     const updateCitation = () => {{
       const src = sources[idx];
       citeDiv.querySelector('a').href = src.source;
@@ -706,8 +706,8 @@ def generate_widget_css(config):
     margin-top: 4px;
     font-size: 1em;
     display: flex;
-    flex-direction: column;
-    align-items: flex-start;
+    flex-direction: row;
+    align-items: center;
     gap: 2px;
   }}
 
