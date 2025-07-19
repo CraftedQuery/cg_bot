@@ -45,9 +45,9 @@
         .user{background:var(--primary);color:var(--white);margin-left:auto;}
         .bot{background:var(--gray-200);color:var(--gray-800);margin-right:auto;}
         .cite-num{margin-left:4px;font-size:12px;text-decoration:none;}
-        .cite-window{margin-top:4px;font-size:12px;display:flex;align-items:center;gap:6px;}
+        .cite-window{margin-top:4px;font-size:1em;display:flex;flex-direction:column;align-items:flex-start;gap:2px;}
+        .cite-detail{font-style:italic;}
         .cite-window span{cursor:pointer;user-select:none;}
-        .cite-heading{font-style:italic;margin-left:4px;}
         form{display:flex;border-top:1px solid var(--gray-200);align-items:center;}
         #chatInput{flex:1;padding:32px 16px;border:none;font-size:16px;}
         #chatInput:focus{outline:none;}
@@ -252,12 +252,13 @@ function addMessage(text,cls,sources=[]){
         const cite=document.createElement('div');
         cite.className='cite-window';
         let idx=0;
-        cite.innerHTML=`Where did this answer come from? ${sources.length>1?'<span class="cite-prev">&#8592;</span>':''}<a class="cite-link" href="${formatSourceLink(sources[0].source)}" target="_blank">${sources[0].source}</a><span class="cite-heading">${sources[0].heading||''}</span>${sources.length>1?'<span class="cite-next">&#8594;</span>':''}`;
+        cite.innerHTML=`Where did this answer come from? ${sources.length>1?'<span class="cite-prev">&#8592;</span>':''}<a class="cite-link" href="${formatSourceLink(sources[0].source)}" target="_blank">${sources[0].source}</a>${sources.length>1?'<span class="cite-next">&#8594;</span>':''}<div class="cite-detail">${sources[0].page?`Page ${sources[0].page}`:''}${sources[0].heading?` - ${sources[0].heading}`:''}</div>`;
         const update=()=>{
             const src=sources[idx];
             cite.querySelector('.cite-link').href=formatSourceLink(src.source);
             cite.querySelector('.cite-link').textContent=src.source;
-            cite.querySelector('.cite-heading').textContent=src.heading||'';
+            const detail=`${src.page?`Page ${src.page}`:''}${src.heading?` - ${src.heading}`:''}`;
+            cite.querySelector('.cite-detail').textContent=detail;
         };
         if(sources.length>1){
             cite.querySelector('.cite-prev').addEventListener('click',()=>{idx=(idx-1+sources.length)%sources.length;update();});
