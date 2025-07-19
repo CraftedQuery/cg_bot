@@ -252,13 +252,14 @@ function addMessage(text,cls,sources=[]){
         const cite=document.createElement('div');
         cite.className='cite-window';
         let idx=0;
-        cite.innerHTML=`Where did this answer come from? ${sources.length>1?'<span class="cite-prev">&#8592;</span>':''}<a class="cite-link" href="${formatSourceLink(sources[0].source)}" target="_blank">${sources[0].source}</a>${sources.length>1?'<span class="cite-next">&#8594;</span>':''}<div class="cite-detail">${sources[0].page?`Page ${sources[0].page}`:''}${sources[0].heading?` - ${sources[0].heading}`:''}</div>`;
+        const detailLink=sources[0].page?`<a href="${formatSourceLink(sources[0].source)}#page=${sources[0].page}" target="_blank">Page ${sources[0].page}</a>`:'';
+        cite.innerHTML=`Sources: ${sources.length>1?'<span class="cite-prev">&#8592;</span>':''}<a class="cite-link" href="${formatSourceLink(sources[0].source)}" target="_blank">${sources[0].source}</a>${sources.length>1?'<span class="cite-next">&#8594;</span>':''}<div class="cite-detail">${detailLink}${sources[0].heading?` - ${sources[0].heading}`:''}</div>`;
         const update=()=>{
             const src=sources[idx];
             cite.querySelector('.cite-link').href=formatSourceLink(src.source);
             cite.querySelector('.cite-link').textContent=src.source;
-            const detail=`${src.page?`Page ${src.page}`:''}${src.heading?` - ${src.heading}`:''}`;
-            cite.querySelector('.cite-detail').textContent=detail;
+            const detailLink=src.page?`<a href="${formatSourceLink(src.source)}#page=${src.page}" target="_blank">Page ${src.page}</a>`:'';
+            cite.querySelector('.cite-detail').innerHTML=`${detailLink}${src.heading?` - ${src.heading}`:''}`;
         };
         if(sources.length>1){
             cite.querySelector('.cite-prev').addEventListener('click',()=>{idx=(idx-1+sources.length)%sources.length;update();});
