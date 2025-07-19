@@ -173,6 +173,16 @@ let filteredHistory=[];
 let selectedChat=null;
 const citeNums=Array.from({length:10},(_,i)=>`(${i+1})`);
 
+function insertCitations(text,sources){
+    if(/\(\d+\)/.test(text)) return text;
+    const sentences=text.match(/[^.!?]+[.!?]+|[^.!?]+$/g);
+    if(!sentences) return text;
+    return sentences.map((s,i)=>{
+        if(i<sources.length) return s.trimEnd()+` (${i+1})`;
+        return s;
+    }).join(' ');
+}
+
 const sidebar=document.getElementById('sidebar');
 const toggleSidebarBtn=document.getElementById('toggleSidebar');
 const chatTitleEl=document.getElementById('chatTitle');
@@ -237,6 +247,9 @@ function formatMessage(text){
 }
 
 function addMessage(text,cls,sources=[]){
+    if(cls==='bot' && sources && sources.length){
+        text=insertCitations(text,sources);
+    }
     const div=document.createElement('div');
     div.className='msg '+cls;
     let html=cls==='bot'?formatMessage(text):text;
