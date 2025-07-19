@@ -8,7 +8,7 @@ from rich.console import Console
 from rich.progress import Progress
 from rich.panel import Panel
 
-from .vectorstore import create_vector_store, chunk_text
+from .vectorstore import update_vector_store, chunk_text
 from .utils.google_drive import list_drive_files, download_drive_file
 from .utils.web_scraper import parse_sitemap, download_page
 from .utils.file_processors import process_file
@@ -78,7 +78,7 @@ def ingest(
     if console:
         console.print(f"Processing [bold]{len(texts)}[/bold] text chunks into vector store...")
     
-    create_vector_store(
+    update_vector_store(
         tenant,
         agent,
         texts,

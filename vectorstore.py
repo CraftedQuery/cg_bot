@@ -151,6 +151,67 @@ def create_vector_store(
         raise HTTPException(500, f"Failed to create vector store: {str(e)}")
 
 
+def update_vector_store(
+    tenant: str,
+    agent: str,
+    texts: List[str],
+    metadatas: List[Dict],
+    provider: str = "openai",
+    model: str | None = None,
+) -> bool:
+    """Append texts to an existing vector store or create a new one."""
+    _require_deps()
+    try:
+        path = store_path(tenant, agent)
+        path.mkdir(parents=True, exist_ok=True)
+
+        meta_file = path / "meta.json"
+        current_meta = {}
+        if meta_file.exists():
+            try:
+                current_meta = json.loads(meta_file.read_text())
+            except Exception:
+                current_meta = {}
+
+        meta_provider = current_meta.get("provider", provider)
+        meta_model = current_meta.get("model", model)
+
+        emb = get_embedding_model(meta_provider, meta_model)
+
+        if path.exists() and any(path.iterdir()):
+            vec_store = FAISS.load_local(
+                str(path),
+                emb,
+                allow_dangerous_deserialization=True,
+            )
+            vec_store.add_texts(texts, metadatas=metadatas)
+        else:
+            vec_store = FAISS.from_texts(texts, emb, metadatas=metadatas)
+
+        vec_store.save_local(str(path))
+
+        unique_sources = {
+            m.get("source") for m in metadatas if m.get("source") is not None
+        }
+        for src in unique_sources:
+            log_llm_event(
+                f"{meta_provider}-embed",
+                "success",
+                tenant=tenant,
+                agent=agent,
+                model=meta_model,
+                description=src,
+            )
+
+        meta_file.write_text(json.dumps({"provider": meta_provider, "model": meta_model}))
+
+        clear_cache(tenant, agent)
+
+        return True
+    except Exception as e:
+        raise HTTPException(500, f"Failed to update vector store: {str(e)}")
+
+
 def chunk_text(text: str) -> List[str]:
     """Chunk text into smaller pieces for vectorization"""
     _require_deps()
