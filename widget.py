@@ -50,15 +50,15 @@ if (authToken) headers['Authorization'] = `Bearer ${{authToken}}`;
 
 const circledNums = ['\u2460','\u2461','\u2462','\u2463','\u2464','\u2465','\u2466','\u2467','\u2468','\u2469'];
 
-function insertCitations(text, sources) {
+function insertCitations(text, sources) {{
   if (/\(\d+\)/.test(text)) return text;
   const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g);
   if (!sentences) return text;
-    return sentences.map((s, i) => {
-      if (i < sources.length) return s.trimEnd() + ` (${{i + 1}})`;
-      return s;
-    }).join(' ');
-}
+  return sentences.map((s, i) => {{
+    if (i < sources.length) return s.trimEnd() + ` (${{i + 1}})`;
+    return s;
+  }}).join(' ');
+}}
 
 function initWidget() {{
   // Dynamic positioning based on config
@@ -211,10 +211,10 @@ function sendMessage() {{
 }}
 
 function addMessage(role, content, sources = []) {{
-  if (role === 'assistant' && sources && sources.length) {
+  if (role === 'assistant' && sources && sources.length) {{
     content = insertCitations(content, sources);
-  }
-  msgs.push({ role, content });
+  }}
+  msgs.push({{ role, content }});
 
   const msgDiv = document.createElement('div');
   msgDiv.className = `cq-message cq-${{role}}`;
