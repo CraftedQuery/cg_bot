@@ -8,39 +8,97 @@
     <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Spectral:wght@400;700&family=Satoshi:wght@400;700&display=swap">
     <style>
         * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:#f5f5f5; color:#424242; line-height:1.6; padding:40px; }
-        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; }
-        table { width:100%; border-collapse:collapse; background:#fff; }
-        th, td { padding:8px; border-bottom:1px solid #e0e0e0; }
-        th { background:#e0e0e0; text-transform:uppercase; font-size:14px; }
-        button { padding:6px 12px; border:none; border-radius:6px; background:#f44336; color:#fff; cursor:pointer; }
-        .btn { display:inline-block; padding:12px 24px; background:#1E88E5; color:#fff; border:none; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; }
-        .btn:hover { background:#1976D2; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--gray-100);
+            color: var(--gray-800);
+            line-height:1.6;
+            font-size: var(--body-font-size);
+        }
+        h1, h2, h3, h4, h5, h6 { font-family:'Spectral', serif; }
+        .container { max-width:1400px; margin:0 auto; padding:20px; }
+        .header {
+            background: var(--white);
+            padding:20px;
+            border-radius:12px;
+            box-shadow: var(--shadow);
+            margin-bottom:20px;
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+        }
+        table { width:100%; border-collapse:collapse; background: var(--white); }
+        th, td { padding:8px; border-bottom:1px solid var(--gray-200); }
+        th { background: var(--gray-200); text-transform:uppercase; font-size:14px; }
+        button { padding:6px 12px; border:none; border-radius:6px; background:var(--danger); color:var(--white); cursor:pointer; }
+        .btn { display:inline-block; padding:12px 24px; background:var(--primary); color:var(--white); border:none; border-radius:8px; cursor:pointer; font-size:14px; font-weight:600; transition:all 0.2s; }
+        .btn:hover { background:var(--primary-dark); }
         .btn-small { padding:6px 12px; font-size:12px; }
-        a { color:#1E88E5; text-decoration:none; }
+        a { color:var(--primary); text-decoration:none; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h2 id="caseTitle">Files</h2>
-        <button id="homeBtn" class="btn btn-small" type="button">Home</button>
+    <div class="container">
+        <div class="header">
+            <h2 id="caseTitle">Files</h2>
+            <button id="homeBtn" class="btn btn-small" type="button">Home</button>
+        </div>
+        <table id="filesTable">
+            <thead>
+                <tr>
+                    <th id="sortName" style="cursor:pointer">Name</th>
+                    <th>Size</th>
+                    <th id="sortDate" style="cursor:pointer">Updated</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        </table>
+        <div id="pager" style="margin-top:10px"></div>
     </div>
-    <table id="filesTable">
-        <thead>
-            <tr>
-                <th id="sortName" style="cursor:pointer">Name</th>
-                <th>Size</th>
-                <th id="sortDate" style="cursor:pointer">Updated</th>
-                <th>Status</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
-    <div id="pager" style="margin-top:10px"></div>
 <script>
-const styleDefaults={primary:"#1E88E5",primaryDark:"#1976D2",secondary:"#4CAF50",danger:"#f44336",warning:"#FF9800",bodyFontSize:16};
-function applyCustomStyles(){Object.keys(styleDefaults).forEach(k=>{const v=localStorage.getItem("style_"+k)||styleDefaults[k];if(k==="bodyFontSize"){document.documentElement.style.setProperty("--body-font-size",v+"px");}else{const cssVar="--"+k.replace(/([A-Z])/g,"-$1").toLowerCase();document.documentElement.style.setProperty(cssVar,v);}});}
+const styleDefaults={
+    primary:"#1E88E5",
+    primaryDark:"#1976D2",
+    secondary:"#4CAF50",
+    danger:"#f44336",
+    warning:"#FF9800",
+    footerBg:"#424242",
+    bodyFontSize:16,
+    logoUrl:"https://www.craftedquery.com/logo.svg",
+    footerLink1Text:"About us",
+    footerLink1Url:"https://www.craftedquery.com/about",
+    footerLink2Text:"Contact us",
+    footerLink2Url:"https://www.craftedquery.com/contact",
+    footerLink3Text:"Status",
+    footerLink3Url:"https://www.craftedquery.com/status"
+};
+function applyCustomStyles(){
+    Object.keys(styleDefaults).forEach(k=>{
+        const v=localStorage.getItem("style_"+k)||styleDefaults[k];
+        if(k==="bodyFontSize"){
+            document.documentElement.style.setProperty("--body-font-size",v+"px");
+        }else if(!k.startsWith("footerLink") && k!=="logoUrl"){
+            const cssVar="--"+k.replace(/([A-Z])/g,"-$1").toLowerCase();
+            document.documentElement.style.setProperty(cssVar,v);
+        }
+    });
+    const logo=document.getElementById("footerLogo");
+    if(logo) logo.src=localStorage.getItem("style_logoUrl")||styleDefaults.logoUrl;
+    const links=[
+        {id:"footerLink1",text:"footerLink1Text",url:"footerLink1Url"},
+        {id:"footerLink2",text:"footerLink2Text",url:"footerLink2Url"},
+        {id:"footerLink3",text:"footerLink3Text",url:"footerLink3Url"}
+    ];
+    links.forEach(l=>{
+        const a=document.getElementById(l.id);
+        if(a){
+            a.textContent=localStorage.getItem("style_"+l.text)||styleDefaults[l.text];
+            a.href=localStorage.getItem("style_"+l.url)||styleDefaults[l.url];
+        }
+    });
+}
 applyCustomStyles();
 const params = new URLSearchParams(window.location.search);
 const tenant = params.get('tenant');
@@ -126,10 +184,10 @@ document.getElementById('sortName').addEventListener('click',()=>{sortField='nam
 document.getElementById('sortDate').addEventListener('click',()=>{sortField='date';sortAsc=!sortAsc;render();});
 </script>
 <footer>
-    <img src="https://www.craftedquery.com/logo.svg" alt="Crafted Query Logo"> 2025 © Crafted Query. All rights reserved. -
-    <a href="https://www.craftedquery.com/about">About us</a> -
-    <a href="https://www.craftedquery.com/contact">Contact us</a> -
-    Status.
+    <img id="footerLogo" src="https://www.craftedquery.com/logo.svg" alt="Crafted Query Logo"> 2025 © Crafted Query. All rights reserved. -
+    <a id="footerLink1" href="https://www.craftedquery.com/about">About us</a> -
+    <a id="footerLink2" href="https://www.craftedquery.com/contact">Contact us</a> -
+    <a id="footerLink3" href="https://www.craftedquery.com/status">Status</a>.
 </footer>
 </body>
 </html>
