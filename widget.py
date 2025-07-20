@@ -54,10 +54,10 @@ function insertCitations(text, sources) {
   if (/\(\d+\)/.test(text)) return text;
   const sentences = text.match(/[^.!?]+[.!?]+|[^.!?]+$/g);
   if (!sentences) return text;
-  return sentences.map((s, i) => {
-    if (i < sources.length) return s.trimEnd() + ` (${i + 1})`;
-    return s;
-  }).join(' ');
+    return sentences.map((s, i) => {
+      if (i < sources.length) return s.trimEnd() + ` (${{i + 1}})`;
+      return s;
+    }).join(' ');
 }
 
 function initWidget() {{
@@ -228,7 +228,7 @@ function addMessage(role, content, sources = []) {{
       if (idx >= 0 && idx < sources.length) {{
         placed.add(idx);
         const s = sources[idx];
-        return ` <a href="${{s.source}}" target="_blank" class="cq-cite-num" title="${{s.source}}">(${idx + 1})</a>`;
+        return ` <a href="${{s.source}}" target="_blank" class="cq-cite-num" title="${{s.source}}">(${{idx + 1}})</a>`;
       }}
       return m;
     }});
@@ -245,12 +245,12 @@ function addMessage(role, content, sources = []) {{
     const citeDiv = document.createElement('div');
     citeDiv.className = 'cq-cite-window';
     let idx = 0;
-    citeDiv.innerHTML = `${{sources.length > 1 ? '<span class="cq-prev">←</span>' : ''}}<a class="cq-citation-link" href="${{sources[0].source}}" target="_blank">${{sources[0].source}}</a>${{sources.length > 1 ? '<span class="cq-next">→</span>' : ''}}<span class="cq-detail">${{sources[0].page ? `Page ${sources[0].page}` : ''}}{{sources[0].heading ? ` - ${sources[0].heading}` : ''}}</span>`;
+    citeDiv.innerHTML = `${{sources.length > 1 ? '<span class="cq-prev">←</span>' : ''}}<a class="cq-citation-link" href="${{sources[0].source}}" target="_blank">${{sources[0].source}}</a>${{sources.length > 1 ? '<span class="cq-next">→</span>' : ''}}<span class="cq-detail">${{sources[0].page ? `Page ${{sources[0].page}}` : ''}}{{sources[0].heading ? ` - ${{sources[0].heading}}` : ''}}</span>`;
     const updateCitation = () => {{
       const src = sources[idx];
       citeDiv.querySelector('a').href = src.source;
       citeDiv.querySelector('a').textContent = src.source;
-      const detail = `${{src.page ? `Page ${src.page}` : ''}}{{src.heading ? ` - ${src.heading}` : ''}}`;
+      const detail = `${{src.page ? `Page ${{src.page}}` : ''}}{{src.heading ? ` - ${{src.heading}}` : ''}}`;
       citeDiv.querySelector('.cq-detail').textContent = detail;
     }};
     if (sources.length > 1) {{
