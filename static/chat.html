@@ -361,10 +361,13 @@ templatesBtn.addEventListener('click',e=>{e.stopPropagation();templatesDropdown.
 document.addEventListener('click',e=>{if(!templatesContainer.contains(e.target))templatesDropdown.classList.remove('show');});
 document.querySelectorAll('.template-option').forEach(o=>o.addEventListener('click',()=>{
     const input=document.getElementById('chatInput');
-    if(o.textContent.trim()==='Case Brief'){
+    const text=o.textContent.trim();
+    if(text==='Case Brief'){
         input.value="Create an IRAC case brief for the uploaded opinion of this case. Follow California Citation Style (Cal., Cal.app., Cal.Rptr). Include separate 'Procedural History' after Facts.";
+    }else if(text==='Motion outline (Memo of Points & Authority)'|| text==='Motion Outline'){
+        input.value="Draft a Memorandum of Points & Authorities supporting a motion to Compel Discovery. Use the Sample Form L structure, insert record cites; add TOC/TOA placeholders.";
     }else{
-        input.value=o.textContent;
+        input.value=text;
     }
     templatesDropdown.classList.remove('show');
 }));
