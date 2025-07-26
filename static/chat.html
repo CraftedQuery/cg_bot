@@ -359,7 +359,15 @@ const templatesDropdown=document.getElementById('templatesDropdown');
 const templatesContainer=document.getElementById('templatesContainer');
 templatesBtn.addEventListener('click',e=>{e.stopPropagation();templatesDropdown.classList.toggle('show');});
 document.addEventListener('click',e=>{if(!templatesContainer.contains(e.target))templatesDropdown.classList.remove('show');});
-document.querySelectorAll('.template-option').forEach(o=>o.addEventListener('click',()=>{document.getElementById('chatInput').value=o.textContent;templatesDropdown.classList.remove('show');}));
+document.querySelectorAll('.template-option').forEach(o=>o.addEventListener('click',()=>{
+    const input=document.getElementById('chatInput');
+    if(o.textContent.trim()==='Case Brief'){
+        input.value="Create an IRAC case brief for the uploaded opinion of this case. Follow California Citation Style (Cal., Cal.app., Cal.Rptr). Include separate 'Procedural History' after Facts.";
+    }else{
+        input.value=o.textContent;
+    }
+    templatesDropdown.classList.remove('show');
+}));
 
 loadHistory();
 </script>
