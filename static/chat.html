@@ -363,6 +363,8 @@ document.querySelectorAll('.template-option').forEach(o=>o.addEventListener('cli
     const input=document.getElementById('chatInput');
     if(o.textContent.trim()==='Case Brief'){
         input.value="Create an IRAC case brief for the uploaded opinion of this case. Follow California Citation Style (Cal., Cal.app., Cal.Rptr). Include separate 'Procedural History' after Facts.";
+    }else if(o.textContent.trim()==='Chronology'){
+        input.value="Build a chronological table for all pleadings & exhibits in this case. Columns:  Date | Event | Source Doc (with P/L or Bates) | Witness | Significance. Sort ascending by date.";
     }else{
         input.value=o.textContent;
     }
