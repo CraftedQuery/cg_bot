@@ -361,12 +361,18 @@ templatesBtn.addEventListener('click',e=>{e.stopPropagation();templatesDropdown.
 document.addEventListener('click',e=>{if(!templatesContainer.contains(e.target))templatesDropdown.classList.remove('show');});
 document.querySelectorAll('.template-option').forEach(o=>o.addEventListener('click',()=>{
     const input=document.getElementById('chatInput');
-    if(o.textContent.trim()==='Case Brief'){
+    const text=o.textContent.trim();
+    if(text==='Case Brief'){
         input.value="Create an IRAC case brief for the uploaded opinion of this case. Follow California Citation Style (Cal., Cal.app., Cal.Rptr). Include separate 'Procedural History' after Facts.";
-    }else if(o.textContent.trim()==='Chronology'){
-        input.value="Build a chronological table for all pleadings & exhibits in this case. Columns:  Date | Event | Source Doc (with P/L or Bates) | Witness | Significance. Sort ascending by date.";
+
+    } else if (o.textContent.trim() === 'Chronology' || text === 'Chronology') {
+        input.value = "Build a chronological table for all pleadings & exhibits in this case. Columns:  Date | Event | Source Doc (with P/L or Bates) | Witness | Significance. Sort ascending by date.";
+    } else if (text === 'Motion outline (Memo of Points & Authority)' || text === 'Motion Outline') {
+        input.value = "Draft a Memorandum of Points & Authorities supporting a motion to Compel Discovery. Use the Sample Form L structure, insert record cites; add TOC/TOA placeholders.";
+    } else if (text === 'Deposition Summary') {
+        input.value = "Prepare a deposition summary. Start with a table: Page:Line | Topic | Key Testimony | Impeachment/Exhibit | Follow‑ups. Then add a 3‑paragraph narrative highlighting themes, admissions, and impeachment points, following California practice.";
     }else{
-        input.value=o.textContent;
+        input.value=text;
     }
     templatesDropdown.classList.remove('show');
 }));
