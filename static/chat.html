@@ -77,6 +77,10 @@
         #guideOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;}
         #guideOverlay.hidden{display:none;}
         #guideOverlay .content{background:var(--white);padding:30px;border-radius:12px;max-width:600px;width:90%;text-align:center;line-height:1.4;}
+        #witnessOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;}
+        #witnessOverlay.hidden{display:none;}
+        #witnessOverlay .content{background:var(--white);padding:20px;border-radius:12px;text-align:center;line-height:1.4;}
+        #witnessOverlay input{margin-top:8px;padding:8px;width:80%;font-size:14px;}
         .hidden{display:none;}
         .btn{display:inline-block;padding:12px 24px;background:var(--primary);color:var(--white);border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;text-align:center;}
         .btn:hover{background:var(--primary-dark);transform:translateY(-1px);}
@@ -133,6 +137,12 @@
                 <b>Narrow the lane.</b> If you don’t want antitrust angles, say so. Boundaries keep the AI from wandering.<br><br>
                 <b>Iterate like draft reviews.</b> Follow up with “Great—tighten the reasonableness analysis” instead of starting over.<br><br>
                 Treat every prompt as a concise assignment memo, and your Digital Navigator will respond with work product that needs minimal polishing.
+            </div>
+        </div>
+        <div id="witnessOverlay" class="hidden">
+            <div class="content">
+                <label for="witnessName">Witness Name:</label><br>
+                <input id="witnessName" type="text">
             </div>
         </div>
     </div>
@@ -357,6 +367,8 @@ document.getElementById('guideOverlay').addEventListener('click',()=>{
 const templatesBtn=document.getElementById('templatesBtn');
 const templatesDropdown=document.getElementById('templatesDropdown');
 const templatesContainer=document.getElementById('templatesContainer');
+const witnessOverlay=document.getElementById('witnessOverlay');
+const witnessName=document.getElementById('witnessName');
 templatesBtn.addEventListener('click',e=>{e.stopPropagation();templatesDropdown.classList.toggle('show');});
 document.addEventListener('click',e=>{if(!templatesContainer.contains(e.target))templatesDropdown.classList.remove('show');});
 document.querySelectorAll('.template-option').forEach(o=>o.addEventListener('click',()=>{
@@ -370,12 +382,28 @@ document.querySelectorAll('.template-option').forEach(o=>o.addEventListener('cli
     } else if (text === 'Motion outline (Memo of Points & Authority)' || text === 'Motion Outline') {
         input.value = "Draft a Memorandum of Points & Authorities supporting a motion to Compel Discovery. Use the Sample Form L structure, insert record cites; add TOC/TOA placeholders.";
     } else if (text === 'Deposition Summary') {
-        input.value = "Prepare a deposition summary. Start with a table: Page:Line | Topic | Key Testimony | Impeachment/Exhibit | Follow‑ups. Then add a 3‑paragraph narrative highlighting themes, admissions, and impeachment points, following California practice.";
+        witnessOverlay.classList.remove('hidden');
+        witnessName.focus();
+        templatesDropdown.classList.remove('show');
+        return;
     }else{
         input.value=text;
     }
     templatesDropdown.classList.remove('show');
 }));
+
+witnessName.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){
+        e.preventDefault();
+        const name=witnessName.value.trim();
+        witnessOverlay.classList.add('hidden');
+        if(name){
+            document.getElementById('chatInput').value=
+                `Generate a page-line Deposition Summary for witness ${name}. Use the California paralegal standard columns Page/Line - Testimony - Key Point - Follow-up Q. Keep ratio about 1 summary page for 5 transcript pages. Source-cite every row.`;
+        }
+    }
+});
+witnessOverlay.addEventListener('click',e=>{if(e.target===witnessOverlay)witnessOverlay.classList.add('hidden');});
 
 loadHistory();
 </script>
