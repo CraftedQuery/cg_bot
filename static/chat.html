@@ -399,7 +399,7 @@ witnessName.addEventListener('keydown',e=>{
         witnessOverlay.classList.add('hidden');
         if(name){
             document.getElementById('chatInput').value=
-                `Generate a page-line Deposition Summary for witness ${name}. Use the California paralegal standard columns Page/Line - Testimony - Key Point - Follow-up Q. Keep ratio about 1 summary page for 5 transcript pages. Source-cite every row.`;
+                `Generate a FULL page-line Deposition Summary for witness ${name}. Use the California paralegal standard columns Page/Line - Testimony - Key Point - Follow-up Q. Keep ration about 1 summary page (or equivalent rows) for 5 transcript pages - do not shorten excessively or provide samples. Source-cite every row directly from the document (e.g., "Source: PAGE40"). Approximate lines if not explicitly in OCR (e.g. assume 25 lines per page based on standard transcripts). Focus on case-relevant details.`;
         }
     }
 });
