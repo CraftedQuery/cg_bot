@@ -24,6 +24,7 @@ from ..database import (
     record_file_upload,
     update_file_status,
     set_file_ocr_used,
+    set_file_template,
     list_uploaded_files,
     delete_uploaded_file,
     get_uploaded_file,
@@ -183,6 +184,7 @@ async def get_files(
             "uploaded_at": r[3],
             "status": r[4],
             "ocr_used": bool(r[5]),
+            "template": bool(r[6]),
         }
         for r in rows
     ]
@@ -210,6 +212,27 @@ async def remove_file(
 
     delete_uploaded_file(file_id)
     return {"message": "File deleted"}
+
+
+@router.post("/files/{file_id}/template")
+async def update_file_template(
+    file_id: int,
+    template: bool,
+    current_user: User = Depends(get_files_user),
+):
+    """Set or unset the template flag for a file"""
+
+    info = get_uploaded_file(file_id)
+    if not info:
+        raise HTTPException(status_code=404, detail="File not found")
+
+    tenant, agent, _ = info
+
+    if current_user.tenant != "*" and current_user.tenant != tenant:
+        raise HTTPException(status_code=403, detail="You don't have access to this tenant")
+
+    set_file_template(file_id, template)
+    return {"message": "Template flag updated"}
 
 
 @router.get("/uploaded/{tenant}/{agent}/{filename}")

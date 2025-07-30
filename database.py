@@ -59,7 +59,8 @@ def init_database():
                 size INTEGER,
                 uploaded_at TEXT,
                 status TEXT,
-                ocr_used INTEGER DEFAULT 0
+                ocr_used INTEGER DEFAULT 0,
+                template INTEGER DEFAULT 0
             )
         """
         )
@@ -70,6 +71,7 @@ def init_database():
         _ensure_column(con, "llm_logs", "description TEXT")
         _ensure_column(con, "llm_logs", "error_message TEXT")
         _ensure_column(con, "uploaded_files", "ocr_used INTEGER DEFAULT 0")
+        _ensure_column(con, "uploaded_files", "template INTEGER DEFAULT 0")
         con.commit()
 
 
@@ -154,7 +156,13 @@ def log_llm_event(
 
 
 def record_file_upload(
-    tenant: str, agent: str, filename: str, size: int, *, ocr_used: bool = False
+    tenant: str,
+    agent: str,
+    filename: str,
+    size: int,
+    *,
+    ocr_used: bool = False,
+    template: bool = False,
 ) -> int:
     """Insert a new uploaded file record and return its ID"""
     from datetime import datetime, timezone
@@ -162,8 +170,8 @@ def record_file_upload(
     with get_db() as con:
         cur = con.execute(
             """INSERT INTO uploaded_files
-               (tenant, agent, filename, size, uploaded_at, status, ocr_used)
-               VALUES (?, ?, ?, ?, ?, ?, ?)""",
+               (tenant, agent, filename, size, uploaded_at, status, ocr_used, template)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 tenant,
                 agent,
@@ -172,6 +180,7 @@ def record_file_upload(
                 datetime.now(timezone.utc).isoformat(),
                 "in progress",
                 int(ocr_used),
+                int(template),
             ),
         )
         con.commit()
@@ -198,11 +207,21 @@ def set_file_ocr_used(file_id: int, used: bool) -> None:
         con.commit()
 
 
+def set_file_template(file_id: int, template: bool) -> None:
+    """Mark a file record as a template or not"""
+    with get_db() as con:
+        con.execute(
+            "UPDATE uploaded_files SET template = ? WHERE id = ?",
+            (int(template), file_id),
+        )
+        con.commit()
+
+
 def list_uploaded_files(tenant: str, agent: str):
     """List files for a tenant/agent ordered by upload time desc"""
     with get_db() as con:
         cur = con.execute(
-            "SELECT id, filename, size, uploaded_at, status, ocr_used FROM uploaded_files WHERE tenant = ? AND agent = ? ORDER BY uploaded_at DESC",
+            "SELECT id, filename, size, uploaded_at, status, ocr_used, template FROM uploaded_files WHERE tenant = ? AND agent = ? ORDER BY uploaded_at DESC",
             (tenant, agent),
         )
         return cur.fetchall()
