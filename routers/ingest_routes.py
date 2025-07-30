@@ -62,7 +62,7 @@ async def upload_files(
             if dest_path.exists() and not replace:
                 raise HTTPException(
                     status_code=409,
-                    detail=f"File '{file.filename}' already exists. Choose replace to overwrite or abort."
+                    detail=f"File '{file.filename}' already exists. Choose <O> for overwrite or <A> for abort."
                 )
 
             if dest_path.exists() and replace:
