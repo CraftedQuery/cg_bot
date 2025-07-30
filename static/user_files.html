@@ -50,6 +50,7 @@
                     <th>Size</th>
                     <th id="sortDate" style="cursor:pointer">Updated</th>
                     <th>Status</th>
+                    <th>OCR</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -166,6 +167,7 @@ function render(){
                      `<td>${(f.size/1024).toFixed(1)} KB</td>`+
                      `<td>${new Date(f.uploaded_at).toLocaleString()}</td>`+
                      `<td>${f.status}</td>`+
+                     `<td>${f.ocr_used ? 'Yes' : 'No'}</td>`+
                      `<td><button onclick="del(${f.id})">Delete</button></td>`;
         tbody.appendChild(tr);
     });
