@@ -43,6 +43,7 @@
             <h2 id="caseTitle">Files</h2>
             <button id="homeBtn" class="btn btn-small" type="button">Home</button>
         </div>
+        <p style="margin-bottom:10px">Check the <strong>Template</strong> box for files that should only be used as examples. Template files are ignored as training data for the chatbot.</p>
         <table id="filesTable">
             <thead>
                 <tr>
@@ -51,6 +52,7 @@
                     <th id="sortDate" style="cursor:pointer">Updated</th>
                     <th>Status</th>
                     <th>OCR</th>
+                    <th>Template</th>
                     <th>Actions</th>
                 </tr>
             </thead>
@@ -148,6 +150,13 @@ async function del(id){
     if(res.ok) load();
 }
 
+async function toggleTemplate(id, val){
+    if(currentUser && !currentUser.allow_files) return;
+    await fetch(`${API_BASE}/files/${id}/template?template=${val}`, {method:'POST', headers:{Authorization:`Bearer ${authToken}`}});
+    const f = filesData.find(x=>x.id===id);
+    if(f) f.template = val;
+}
+
 function render(){
     let data = [...filesData];
     data.sort((a,b)=>{
@@ -168,6 +177,7 @@ function render(){
                      `<td>${new Date(f.uploaded_at).toLocaleString()}</td>`+
                      `<td>${f.status}</td>`+
                      `<td>${f.ocr_used ? 'Yes' : 'No'}</td>`+
+                     `<td><input type="checkbox" ${f.template ? 'checked' : ''} onchange="toggleTemplate(${f.id}, this.checked)"></td>`+
                      `<td><button onclick="del(${f.id})">Delete</button></td>`;
         tbody.appendChild(tr);
     });
