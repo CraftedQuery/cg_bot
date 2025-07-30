@@ -58,7 +58,8 @@ def init_database():
                 filename TEXT,
                 size INTEGER,
                 uploaded_at TEXT,
-                status TEXT
+                status TEXT,
+                ocr_used INTEGER DEFAULT 0
             )
         """
         )
@@ -68,6 +69,7 @@ def init_database():
         _ensure_column(con, "llm_logs", "model TEXT")
         _ensure_column(con, "llm_logs", "description TEXT")
         _ensure_column(con, "llm_logs", "error_message TEXT")
+        _ensure_column(con, "uploaded_files", "ocr_used INTEGER DEFAULT 0")
         con.commit()
 
 
@@ -151,15 +153,17 @@ def log_llm_event(
         con.commit()
 
 
-def record_file_upload(tenant: str, agent: str, filename: str, size: int) -> int:
+def record_file_upload(
+    tenant: str, agent: str, filename: str, size: int, *, ocr_used: bool = False
+) -> int:
     """Insert a new uploaded file record and return its ID"""
     from datetime import datetime, timezone
 
     with get_db() as con:
         cur = con.execute(
             """INSERT INTO uploaded_files
-               (tenant, agent, filename, size, uploaded_at, status)
-               VALUES (?, ?, ?, ?, ?, ?)""",
+               (tenant, agent, filename, size, uploaded_at, status, ocr_used)
+               VALUES (?, ?, ?, ?, ?, ?, ?)""",
             (
                 tenant,
                 agent,
@@ -167,6 +171,7 @@ def record_file_upload(tenant: str, agent: str, filename: str, size: int) -> int
                 size,
                 datetime.now(timezone.utc).isoformat(),
                 "in progress",
+                int(ocr_used),
             ),
         )
         con.commit()
@@ -183,11 +188,21 @@ def update_file_status(file_id: int, status: str) -> None:
         con.commit()
 
 
+def set_file_ocr_used(file_id: int, used: bool) -> None:
+    """Mark a file record as having used OCR"""
+    with get_db() as con:
+        con.execute(
+            "UPDATE uploaded_files SET ocr_used = ? WHERE id = ?",
+            (int(used), file_id),
+        )
+        con.commit()
+
+
 def list_uploaded_files(tenant: str, agent: str):
     """List files for a tenant/agent ordered by upload time desc"""
     with get_db() as con:
         cur = con.execute(
-            "SELECT id, filename, size, uploaded_at, status FROM uploaded_files WHERE tenant = ? AND agent = ? ORDER BY uploaded_at DESC",
+            "SELECT id, filename, size, uploaded_at, status, ocr_used FROM uploaded_files WHERE tenant = ? AND agent = ? ORDER BY uploaded_at DESC",
             (tenant, agent),
         )
         return cur.fetchall()

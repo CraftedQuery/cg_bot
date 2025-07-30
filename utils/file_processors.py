@@ -6,6 +6,13 @@ from typing import List, Dict, Tuple, Optional
 
 from bs4 import BeautifulSoup
 
+try:
+    from pdf2image import convert_from_path
+    import pytesseract
+except Exception:
+    convert_from_path = None
+    pytesseract = None
+
 
 def _find_heading(lines: List[str], start: int) -> Optional[str]:
     """Return the last Markdown heading before the start line."""
@@ -40,13 +47,17 @@ def _chunk_text_with_lines(
     return chunks, metas
 
 
-def process_file(file_path: Path, filename: str) -> Tuple[List[str], List[Dict]]:
-    """Process a file and extract text chunks and metadata"""
+def process_file(file_path: Path, filename: str) -> Tuple[List[str], List[Dict], bool]:
+    """Process a file and extract text chunks and metadata.
+
+    Returns a tuple of chunks, metadata and a flag indicating if OCR was used.
+    """
     ext = file_path.suffix.lower()
     
+    ocr_used = False
     try:
         if ext == ".pdf":
-            chunks, metadatas = _process_pdf(file_path)
+            chunks, metadatas, ocr_used = _process_pdf(file_path)
         else:
             if ext in {".txt", ".md"}:
                 raw_text = _process_text(file_path)
@@ -61,22 +72,26 @@ def process_file(file_path: Path, filename: str) -> Tuple[List[str], List[Dict]]
             elif ext in {".html", ".htm"}:
                 raw_text = _process_html(file_path)
             else:
-                return [], []
+                return [], [], False
 
             chunks, metadatas = _chunk_text_with_lines(raw_text)
 
         for m in metadatas:
             m["source"] = filename
 
-        return chunks, metadatas
+        return chunks, metadatas, ocr_used
         
     except Exception as e:
         print(f"Error processing file {filename}: {str(e)}")
-        return [], []
+        return [], [], False
 
 
-def _process_pdf(file_path: Path) -> Tuple[List[str], List[Dict]]:
-    """Process PDF file into chunks with page metadata."""
+def _process_pdf(file_path: Path) -> Tuple[List[str], List[Dict], bool]:
+    """Process PDF file into chunks with page metadata.
+
+    If a page has no extractable text, OCR will be applied using pdf2image and
+    pytesseract. Returns a flag indicating whether OCR was used.
+    """
     try:
         import pypdf
     except ImportError:
@@ -84,16 +99,39 @@ def _process_pdf(file_path: Path) -> Tuple[List[str], List[Dict]]:
 
     reader = pypdf.PdfReader(str(file_path))
     chunks, metas = [], []
+    ocr_used = False
 
     for idx, page in enumerate(reader.pages, start=1):
         text = page.extract_text()
-        if not text:
+        if not text or not text.strip():
+            if convert_from_path and pytesseract:
+                try:
+                    images = convert_from_path(
+                        str(file_path), first_page=idx, last_page=idx
+                    )
+                    if images:
+                        text = pytesseract.image_to_string(images[0])
+                        if text.strip():
+                            ocr_used = True
+                except Exception:
+                    pass
+        if not text or not text.strip():
             continue
         page_chunks, page_meta = _chunk_text_with_lines(text, page=idx)
         chunks.extend(page_chunks)
         metas.extend(page_meta)
 
-    return chunks, metas
+    if not chunks and convert_from_path and pytesseract:
+        try:
+            images = convert_from_path(str(file_path))
+            text = "\n".join(pytesseract.image_to_string(im) for im in images)
+            if text.strip():
+                ocr_used = True
+                chunks, metas = _chunk_text_with_lines(text)
+        except Exception:
+            pass
+
+    return chunks, metas, ocr_used
 
 
 def _process_text(file_path: Path) -> str:
