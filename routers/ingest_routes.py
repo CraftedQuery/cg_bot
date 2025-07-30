@@ -23,6 +23,7 @@ from ..vectorstore import clear_cache
 from ..database import (
     record_file_upload,
     update_file_status,
+    set_file_ocr_used,
     list_uploaded_files,
     delete_uploaded_file,
     get_uploaded_file,
@@ -50,6 +51,7 @@ async def upload_files(
     
     temp_files = []
     file_ids = []
+    file_map = {}
     upload_dir = uploads_path(tenant, agent)
     upload_dir.mkdir(parents=True, exist_ok=True)
     try:
@@ -72,13 +74,17 @@ async def upload_files(
                 buffer.write(content)
 
             temp_files.append(dest_path)
-            file_ids.append(record_file_upload(tenant, agent, file.filename, dest_path.stat().st_size))
+            fid = record_file_upload(tenant, agent, file.filename, dest_path.stat().st_size)
+            file_ids.append(fid)
+            file_map[file.filename] = fid
         
         # Ingest the files
-        ingest(tenant, agent, files=temp_files)
+        ocr_flags = ingest(tenant, agent, files=temp_files)
 
-        for fid in file_ids:
+        for fname, fid in file_map.items():
             update_file_status(fid, "ready")
+            if fname in ocr_flags:
+                set_file_ocr_used(fid, ocr_flags[fname])
 
         # Clear vector store cache to force reload
         clear_cache(tenant, agent)
@@ -176,6 +182,7 @@ async def get_files(
             "size": r[2],
             "uploaded_at": r[3],
             "status": r[4],
+            "ocr_used": bool(r[5]),
         }
         for r in rows
     ]

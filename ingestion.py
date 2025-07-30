@@ -26,7 +26,10 @@ def ingest(
 ):
     """
     Ingest content from various sources into the vector store.
-    
+
+    Returns a dictionary mapping filenames to a boolean indicating whether OCR
+    was used during processing.
+
     Args:
         tenant: Tenant identifier
         agent: Agent identifier
@@ -36,6 +39,7 @@ def ingest(
         console: Optional Rich console for progress display
     """
     texts, metadatas = [], []
+    ocr_info: dict[str, bool] = {}
     
     if console:
         console.print(Panel.fit(
@@ -44,13 +48,14 @@ def ingest(
     
     # Process Google Drive files
     if drive:
-        texts_drive, metas_drive = _ingest_from_drive(drive, console)
+        texts_drive, metas_drive, drive_ocr = _ingest_from_drive(drive, console)
         texts.extend(texts_drive)
         metadatas.extend(metas_drive)
+        ocr_info.update(drive_ocr)
     
     # Process local files
     if files:
-        texts_files, metas_files = _ingest_from_files(
+        texts_files, metas_files, file_ocr = _ingest_from_files(
             files,
             tenant,
             agent,
@@ -59,6 +64,7 @@ def ingest(
         )
         texts.extend(texts_files)
         metadatas.extend(metas_files)
+        ocr_info.update(file_ocr)
     
     # Process sitemap URLs
     if sitemap:
@@ -72,7 +78,7 @@ def ingest(
             console.print(f"[yellow]{msg}[/yellow]")
         else:
             print(msg)
-        return
+        return {}
     
     # Create vector store
     if console:
@@ -93,10 +99,13 @@ def ingest(
     else:
         print(msg)
 
+    return ocr_info
+
 
 def _ingest_from_drive(folder_id: str, console: Optional[Console] = None) -> tuple:
     """Ingest files from Google Drive"""
     texts, metadatas = [], []
+    ocr_info: dict[str, bool] = {}
     
     try:
         files_list = list_drive_files(folder_id)
@@ -110,15 +119,17 @@ def _ingest_from_drive(folder_id: str, console: Optional[Console] = None) -> tup
                 for file_info in files_list:
                     progress.update(task, advance=1, description=f"Processing {file_info['name']}")
                     with download_drive_file(file_info["id"]) as file_path:
-                        chunks, metas = process_file(file_path, file_info["name"])
+                        chunks, metas, used_ocr = process_file(file_path, file_info["name"])
                         texts.extend(chunks)
                         metadatas.extend(metas)
+                        ocr_info[file_info["name"]] = used_ocr
         else:
             for file_info in files_list:
                 with download_drive_file(file_info["id"]) as file_path:
-                    chunks, metas = process_file(file_path, file_info["name"])
+                    chunks, metas, used_ocr = process_file(file_path, file_info["name"])
                     texts.extend(chunks)
                     metadatas.extend(metas)
+                    ocr_info[file_info["name"]] = used_ocr
                     
     except Exception as e:
         if console:
@@ -126,7 +137,7 @@ def _ingest_from_drive(folder_id: str, console: Optional[Console] = None) -> tup
         else:
             print(f"Error processing Google Drive: {str(e)}")
     
-    return texts, metadatas
+    return texts, metadatas, ocr_info
 
 
 def _ingest_from_files(
@@ -138,6 +149,7 @@ def _ingest_from_files(
 ) -> tuple:
     """Ingest local files"""
     texts, metadatas = [], []
+    ocr_info: dict[str, bool] = {}
     
     if console:
         with Progress() as progress:
@@ -147,16 +159,18 @@ def _ingest_from_files(
             )
             for file_path in files:
                 progress.update(task, advance=1, description=f"Processing {file_path.name}")
-                chunks, metas = process_file(file_path, file_path.name)
+                chunks, metas, used_ocr = process_file(file_path, file_path.name)
                 texts.extend(chunks)
                 metadatas.extend(metas)
+                ocr_info[file_path.name] = used_ocr
     else:
         for file_path in files:
-            chunks, metas = process_file(file_path, file_path.name)
+            chunks, metas, used_ocr = process_file(file_path, file_path.name)
             texts.extend(chunks)
             metadatas.extend(metas)
-    
-    return texts, metadatas
+            ocr_info[file_path.name] = used_ocr
+
+    return texts, metadatas, ocr_info
 
 
 def _ingest_from_sitemap(sitemap_url: str, console: Optional[Console] = None) -> tuple:
