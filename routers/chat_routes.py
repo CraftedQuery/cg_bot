@@ -9,7 +9,7 @@ from ..auth import get_current_active_user
 from ..config import DEFAULT_TENANT, DEFAULT_AGENT, load_config
 from ..vectorstore import search_documents
 from ..llm import get_llm_response
-from ..database import log_chat, update_feedback
+from ..database import log_chat, update_feedback, is_template_file
 from langdetect import detect, DetectorFactory
 
 router = APIRouter(tags=["chat"])
@@ -40,9 +40,19 @@ async def chat(
     
     # Search for relevant documents
     search_results = search_documents(tenant, agent, q)
-    
-    # Build context from search results
-    ctx = "\n".join(content for content, _, _ in search_results)
+
+    # Separate template chunks from case content
+    template_chunks = []
+    doc_chunks = []
+    for content, metadata, score in search_results:
+        src = metadata.get("source")
+        if src and is_template_file(tenant, agent, src):
+            template_chunks.append(content)
+        else:
+            doc_chunks.append((content, metadata, score))
+
+    # Build context from non-template search results
+    ctx = "\n".join(content for content, _, _ in doc_chunks)
     
     # Detect the language of the user's question
     try:
@@ -73,6 +83,8 @@ async def chat(
     sys_content = cfg["system_prompt"]
     # Ensure the assistant responds in the language used by the user
     sys_content += f"\nPlease respond in {language}."
+    if template_chunks:
+        sys_content += "\n" + "\n".join(template_chunks)
     if cfg.get("local_only", True):
         sys_content += "\nUse only the provided Context to answer. Do not search the internet."
     sys_content += "\nContext:\n" + ctx
@@ -95,7 +107,7 @@ async def chat(
     
     # Extract sources
     sources, seen = [], set()
-    for _, metadata, _ in search_results:
+    for _, metadata, _ in doc_chunks:
         key = (metadata.get("source"), metadata.get("page"), metadata.get("line"))
         if key[0] and key not in seen:
             citation = {"source": key[0]}

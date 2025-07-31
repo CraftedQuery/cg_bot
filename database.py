@@ -288,6 +288,17 @@ def count_uploaded_files(tenant: str, agent: str | None = None) -> int:
         return cur.fetchone()[0]
 
 
+def is_template_file(tenant: str, agent: str, filename: str) -> bool:
+    """Return True if the given uploaded file is marked as a template."""
+    with get_db() as con:
+        cur = con.execute(
+            "SELECT template FROM uploaded_files WHERE tenant = ? AND agent = ? AND filename = ?",
+            (tenant, agent, filename),
+        )
+        row = cur.fetchone()
+        return bool(row[0]) if row else False
+
+
 def update_feedback(chat_id: int, feedback: int):
     """Update feedback for a chat interaction"""
     with get_db() as con:
