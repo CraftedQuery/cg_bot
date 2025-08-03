@@ -3,6 +3,7 @@ analytics.py - Analytics and reporting functionality
 """
 import json
 import math
+import logging
 from datetime import datetime, timedelta, timezone
 from typing import Optional, Dict, Any
 
@@ -14,11 +15,14 @@ from .database import get_db, count_uploaded_files
 from .vectorstore import get_vector_store_size
 from .config import BASE_STORE_DIR
 
+logger = logging.getLogger(__name__)
+
 
 def _total_vector_store_size(tenant: str) -> int:
     """Return total vector store size in bytes for a tenant across all agents."""
     base = BASE_STORE_DIR / tenant
     if not base.exists():
+        logger.warning("Vector store directory %s does not exist", base)
         return 0
     size = 0
     for p in base.rglob("*"):
@@ -47,12 +51,20 @@ def get_analytics(
     agent: Optional[str] = None
 ) -> Dict[str, Any]:
     """Get analytics for a tenant"""
-    
+
     # Set default date range if not provided (last 7 days)
     if not end_date:
         end_date = datetime.now(timezone.utc).isoformat()
     if not start_date:
         start_date = (datetime.now(timezone.utc) - timedelta(days=7)).isoformat()
+
+    logger.info(
+        "Fetching analytics for tenant=%s agent=%s between %s and %s",
+        tenant,
+        agent,
+        start_date,
+        end_date,
+    )
     
     # Build query
     query = "SELECT * FROM chat_logs WHERE tenant = ? AND ts BETWEEN ? AND ?"
@@ -72,6 +84,7 @@ def get_analytics(
     
     # Generate analytics
     if df.empty:
+        logger.info("No analytics data found for tenant %s", tenant)
         return {"message": "No data available for selected period"}
     
     return _clean_values({
@@ -102,6 +115,14 @@ def get_widget_analytics(
         end_date = datetime.now(timezone.utc).isoformat()
     if not start_date:
         start_date = (datetime.now(timezone.utc) - timedelta(days=30)).isoformat()
+
+    logger.info(
+        "Fetching widget analytics for tenant=%s agent=%s between %s and %s",
+        tenant,
+        agent,
+        start_date,
+        end_date,
+    )
     
     # Base query
     query = "SELECT * FROM chat_logs WHERE tenant = ? AND ts BETWEEN ? AND ?"
@@ -115,6 +136,7 @@ def get_widget_analytics(
         df = pd.read_sql_query(query, con, params=params)
     
     if df.empty:
+        logger.info("No widget analytics data found for tenant %s", tenant)
         return {"message": "No data available for selected period"}
     
     # Widget-specific analytics

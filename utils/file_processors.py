@@ -3,6 +3,7 @@ utils/file_processors.py - File processing utilities
 """
 from pathlib import Path
 from typing import List, Dict, Tuple, Optional
+import logging
 
 from bs4 import BeautifulSoup
 
@@ -12,6 +13,8 @@ try:
 except Exception:
     convert_from_path = None
     pytesseract = None
+
+logger = logging.getLogger(__name__)
 
 
 def _find_heading(lines: List[str], start: int) -> Optional[str]:
@@ -72,6 +75,7 @@ def process_file(file_path: Path, filename: str) -> Tuple[List[str], List[Dict],
             elif ext in {".html", ".htm"}:
                 raw_text = _process_html(file_path)
             else:
+                logger.warning("Unsupported file type: %s", ext)
                 return [], [], False
 
             chunks, metadatas = _chunk_text_with_lines(raw_text)
@@ -80,9 +84,9 @@ def process_file(file_path: Path, filename: str) -> Tuple[List[str], List[Dict],
             m["source"] = filename
 
         return chunks, metadatas, ocr_used
-        
+
     except Exception as e:
-        print(f"Error processing file {filename}: {str(e)}")
+        logger.error("Error processing file %s: %s", filename, e)
         return [], [], False
 
 
