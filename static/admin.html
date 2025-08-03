@@ -622,6 +622,10 @@
                     <div id="llmLogs" class="hidden"></div>
                 </div>
                 <div class="form-group">
+                    <button id="chatLogsBtn" class="btn">Show Chat Logs</button>
+                    <div id="chatLogs" class="hidden"></div>
+                </div>
+                <div class="form-group">
                     <label for="userTimeout">User Timeout (minutes)</label>
                     <input type="number" id="userTimeout" min="1" value="30" style="width:80px;">
             </div>
@@ -1095,7 +1099,8 @@
             });
             document.getElementById('llmTestBtn').addEventListener('click', runLlmTest);
             document.getElementById('llmLogsBtn').addEventListener('click', loadLlmLogs);
-            
+            document.getElementById('chatLogsBtn').addEventListener('click', loadChatLogs);
+
             // Forms
             document.getElementById('createTenantForm').addEventListener('submit', handleCreateTenant);
             document.getElementById('createUserForm').addEventListener('submit', handleCreateUser);
@@ -1586,6 +1591,53 @@
                                 <th>Agent</th>
                                 <th>Model</th>
                                 <th>Description</th>
+                                <th>Answer</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        async function loadChatLogs() {
+            const container = document.getElementById('chatLogs');
+            container.classList.remove('hidden');
+            container.innerHTML = 'Loading...';
+            try {
+                const response = await fetch(`${API_BASE}/chat/history?limit=25`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    container.innerHTML = formatChatLogs(data);
+                } else {
+                    container.innerHTML = 'Failed to load logs';
+                }
+            } catch (error) {
+                console.error('Failed to load logs:', error);
+                container.innerHTML = 'Failed to load logs';
+            }
+        }
+
+        function formatChatLogs(logs) {
+            if (!logs.length) {
+                return '<p>No logs found.</p>';
+            }
+            const rows = logs.map(log => `
+                <tr>
+                    <td>${new Date(log.timestamp).toLocaleString()}</td>
+                    <td>${log.question}</td>
+                    <td>${log.answer}</td>
+                </tr>
+            `).join('');
+            return `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Question</th>
                                 <th>Answer</th>
                             </tr>
                         </thead>
