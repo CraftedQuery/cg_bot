@@ -2,8 +2,9 @@
 models.py - Pydantic models and schemas for the RAG chatbot
 """
 
-from typing import List, Optional, Dict, Any
-from pydantic import BaseModel
+from typing import Any
+
+from pydantic import BaseModel, Field
 
 
 class User(BaseModel):
@@ -11,7 +12,7 @@ class User(BaseModel):
     tenant: str
     role: str = "user"
     disabled: bool = False
-    agents: Optional[List[str]] = []
+    agents: list[str] = Field(default_factory=list)
     allow_files: bool = False
     language: str = "English"
 
@@ -26,9 +27,9 @@ class Token(BaseModel):
 
 
 class TokenData(BaseModel):
-    username: Optional[str] = None
-    tenant: Optional[str] = None
-    role: Optional[str] = None
+    username: str | None = None
+    tenant: str | None = None
+    role: str | None = None
 
 
 class AADTokenRequest(BaseModel):
@@ -38,37 +39,37 @@ class AADTokenRequest(BaseModel):
 
 
 class ChatRequest(BaseModel):
-    messages: List[dict]
+    messages: list[dict[str, Any]]
 
 
 class ChatResponse(BaseModel):
     reply: str
-    sources: List[dict]
+    sources: list[dict[str, Any]]
 
 
 class ConfigUpdateRequest(BaseModel):
-    bot_name: Optional[str] = None
-    system_prompt: Optional[str] = None
-    primary_color: Optional[str] = None
-    secondary_color: Optional[str] = None
-    avatar_url: Optional[str] = None
-    mode: Optional[str] = None
-    auto_open: Optional[bool] = None
-    llm_provider: Optional[str] = None
-    llm_model: Optional[str] = None
-    temperature: Optional[float] = None
-    allowed_domains: Optional[List[str]] = None
-    local_only: Optional[bool] = None
+    bot_name: str | None = None
+    system_prompt: str | None = None
+    primary_color: str | None = None
+    secondary_color: str | None = None
+    avatar_url: str | None = None
+    mode: str | None = None
+    auto_open: bool | None = None
+    llm_provider: str | None = None
+    llm_model: str | None = None
+    temperature: float | None = None
+    allowed_domains: list[str] | None = None
+    local_only: bool | None = None
 
 
 class EnhancedConfigUpdateRequest(ConfigUpdateRequest):
     """Enhanced configuration model with widget parameters"""
 
-    enable_voice: Optional[bool] = None
-    enable_files: Optional[bool] = None
-    enable_tts: Optional[bool] = None
-    enable_dark_mode: Optional[bool] = None
-    widget_position: Optional[str] = None
-    widget_size: Optional[str] = None
-    welcome_message: Optional[str] = None
-    placeholder_text: Optional[str] = None
+    enable_voice: bool | None = None
+    enable_files: bool | None = None
+    enable_tts: bool | None = None
+    enable_dark_mode: bool | None = None
+    widget_position: str | None = None
+    widget_size: str | None = None
+    welcome_message: str | None = None
+    placeholder_text: str | None = None

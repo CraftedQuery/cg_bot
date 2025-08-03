@@ -1,11 +1,13 @@
 """
 main.py - FastAPI application entry point
 """
+import logging
+from pathlib import Path
+
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import PlainTextResponse
 from fastapi.staticfiles import StaticFiles
-from pathlib import Path
 
 # Import routers
 from .routers import (
@@ -22,6 +24,8 @@ from .routers import (
 from .database import init_database
 from .widget import generate_widget_js
 from .config import DEFAULT_TENANT, DEFAULT_AGENT
+
+logging.basicConfig(level=logging.INFO)
 
 # Create FastAPI app
 app = FastAPI(

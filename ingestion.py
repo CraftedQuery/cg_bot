@@ -3,6 +3,7 @@ ingestion.py - Document ingestion and processing
 """
 from pathlib import Path
 from typing import List, Optional
+import logging
 
 from rich.console import Console
 from rich.progress import Progress
@@ -12,6 +13,8 @@ from .vectorstore import update_vector_store, chunk_text
 from .utils.google_drive import list_drive_files, download_drive_file
 from .utils.web_scraper import parse_sitemap, download_page
 from .utils.file_processors import process_file
+
+logger = logging.getLogger(__name__)
 
 
 def ingest(
@@ -40,7 +43,8 @@ def ingest(
     """
     texts, metadatas = [], []
     ocr_info: dict[str, bool] = {}
-    
+
+    logger.info("Starting ingestion for tenant %s, agent %s", tenant, agent)
     if console:
         console.print(Panel.fit(
             f"Starting ingestion for tenant [bold]{tenant}[/bold], agent [bold]{agent}[/bold]"
@@ -77,7 +81,7 @@ def ingest(
         if console:
             console.print(f"[yellow]{msg}[/yellow]")
         else:
-            print(msg)
+            logger.info(msg)
         return {}
     
     # Create vector store
@@ -93,11 +97,11 @@ def ingest(
         model=embedding_model,
     )
     
-    msg = f"Vector store created/updated successfully"
+    msg = "Vector store created/updated successfully"
     if console:
         console.print(f"[green]{msg}[/green]")
     else:
-        print(msg)
+        logger.info(msg)
 
     return ocr_info
 
@@ -109,7 +113,8 @@ def _ingest_from_drive(folder_id: str, console: Optional[Console] = None) -> tup
     
     try:
         files_list = list_drive_files(folder_id)
-        
+        logger.info("Found %d files in Drive folder %s", len(files_list), folder_id)
+
         if console:
             with Progress() as progress:
                 task = progress.add_task(
@@ -130,12 +135,11 @@ def _ingest_from_drive(folder_id: str, console: Optional[Console] = None) -> tup
                     texts.extend(chunks)
                     metadatas.extend(metas)
                     ocr_info[file_info["name"]] = used_ocr
-                    
+
     except Exception as e:
         if console:
             console.print(f"[red]Error processing Google Drive: {str(e)}[/red]")
-        else:
-            print(f"Error processing Google Drive: {str(e)}")
+        logger.error("Error processing Google Drive: %s", e)
     
     return texts, metadatas, ocr_info
 
@@ -150,6 +154,8 @@ def _ingest_from_files(
     """Ingest local files"""
     texts, metadatas = [], []
     ocr_info: dict[str, bool] = {}
+
+    logger.info("Processing %d local files for tenant %s, agent %s", len(files), tenant, agent)
     
     if console:
         with Progress() as progress:
@@ -176,10 +182,11 @@ def _ingest_from_files(
 def _ingest_from_sitemap(sitemap_url: str, console: Optional[Console] = None) -> tuple:
     """Ingest content from sitemap URLs"""
     texts, metadatas = [], []
-    
+
     try:
         urls = parse_sitemap(sitemap_url)
-        
+        logger.info("Found %d URLs in sitemap %s", len(urls), sitemap_url)
+
         if console:
             console.print(f"Found [bold]{len(urls)}[/bold] URLs in sitemap")
             with Progress() as progress:
@@ -206,7 +213,6 @@ def _ingest_from_sitemap(sitemap_url: str, console: Optional[Console] = None) ->
     except Exception as e:
         if console:
             console.print(f"[red]Error processing sitemap: {str(e)}[/red]")
-        else:
-            print(f"Error processing sitemap: {str(e)}")
+        logger.error("Error processing sitemap %s: %s", sitemap_url, e)
     
     return texts, metadatas
