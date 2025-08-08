@@ -1878,6 +1878,17 @@
             newTenantGroup.classList.add('hidden');
             newTenantInput.required = false;
 
+
+            const isAllAccess = currentUser && currentUser.tenant === '*';
+            let allowedTenants = [];
+            if (currentUser && !isAllAccess) {
+                if (Array.isArray(currentUser.tenant)) {
+                    allowedTenants = currentUser.tenant;
+                } else if (typeof currentUser.tenant === 'string') {
+                    allowedTenants = [currentUser.tenant];
+                }
+            }
+
             try {
                 const response = await fetch(`${API_BASE}/tenants`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
@@ -1885,18 +1896,24 @@
 
                 if (response.ok) {
                     const tenants = await response.json();
-                    tenants.forEach(t => {
-                        const option = document.createElement('option');
-                        option.value = t.tenant;
-                        option.textContent = t.tenant;
-                        select.appendChild(option);
-                    });
+
+                    tenants
+                        .filter(t => isAllAccess || allowedTenants.includes(t.tenant))
+                        .forEach(t => {
+                            const option = document.createElement('option');
+                            option.value = t.tenant;
+                            option.textContent = t.tenant;
+                            select.appendChild(option);
+                        });
+
                 }
             } catch (error) {
                 console.error('Failed to load tenants for creation:', error);
             }
 
-            if (currentUser && currentUser.tenant === '*') {
+
+            if (isAllAccess) {
+
                 const option = document.createElement('option');
                 option.value = '__new__';
                 option.textContent = 'Create New Tenant';

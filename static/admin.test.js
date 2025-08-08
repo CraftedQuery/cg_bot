@@ -46,7 +46,28 @@ test('limited access user sees only allowed tenants', async () => {
 
   const select = dom.window.document.getElementById('tenantName');
   const options = Array.from(select.options).map(o => o.value);
+
+  assert.deepStrictEqual(options, ['TenantA']);
+  assert.equal(options.includes('__new__'), false);
+
+  const group = dom.window.document.getElementById('newTenantNameGroup');
+  const input = dom.window.document.getElementById('newTenantName');
+  assert(group.classList.contains('hidden'));
+  assert.equal(input.required, false);
+});
+
+test('user with multiple tenant access sees only allowed tenants', async () => {
+  const dom = setupDom();
+  const vmCtx = dom.getInternalVMContext();
+  vm.runInContext('currentUser = { tenant: ["TenantA", "TenantB"], role: "user" };', vmCtx);
+
+  await dom.window.loadTenantsForCreation();
+
+  const select = dom.window.document.getElementById('tenantName');
+  const options = Array.from(select.options).map(o => o.value);
   assert.deepStrictEqual(options, ['TenantA', 'TenantB']);
+  assert.equal(options.includes('__new__'), false);
+
 
   const group = dom.window.document.getElementById('newTenantNameGroup');
   const input = dom.window.document.getElementById('newTenantName');
