@@ -4,10 +4,11 @@ main.py - FastAPI application entry point
 import logging
 from pathlib import Path
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from starlette.exceptions import HTTPException as StarletteHTTPException
 
 # Import routers
 from .routers import (
@@ -21,7 +22,7 @@ from .routers import (
 )
 
 # Import other modules
-from .database import init_database
+from .database import init_database, log_error
 from .widget import generate_widget_js
 from .config import DEFAULT_TENANT, DEFAULT_AGENT
 
@@ -58,6 +59,30 @@ app.include_router(user_routes.router)
 app.include_router(admin_routes.router)
 app.include_router(analytics_routes.router)
 app.include_router(ingest_routes.router)
+
+
+@app.exception_handler(StarletteHTTPException)
+async def http_exception_handler(request: Request, exc: StarletteHTTPException):
+    """Log HTTP errors and return JSON response."""
+    log_error(
+        endpoint=str(request.url.path),
+        tenant=request.query_params.get("tenant"),
+        agent=request.query_params.get("agent"),
+        message=str(exc.detail),
+    )
+    return JSONResponse(status_code=exc.status_code, content={"detail": exc.detail})
+
+
+@app.exception_handler(Exception)
+async def general_exception_handler(request: Request, exc: Exception):
+    """Catch-all handler for unexpected errors."""
+    log_error(
+        endpoint=str(request.url.path),
+        tenant=request.query_params.get("tenant"),
+        agent=request.query_params.get("agent"),
+        message=str(exc),
+    )
+    return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
 # Widget endpoint
 @app.get("/widget.js", response_class=PlainTextResponse)
