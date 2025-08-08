@@ -1878,6 +1878,7 @@
             newTenantGroup.classList.add('hidden');
             newTenantInput.required = false;
 
+
             const isAllAccess = currentUser && currentUser.tenant === '*';
             let allowedTenants = [];
             if (currentUser && !isAllAccess) {
@@ -1895,6 +1896,7 @@
 
                 if (response.ok) {
                     const tenants = await response.json();
+
                     tenants
                         .filter(t => isAllAccess || allowedTenants.includes(t.tenant))
                         .forEach(t => {
@@ -1903,12 +1905,15 @@
                             option.textContent = t.tenant;
                             select.appendChild(option);
                         });
+
                 }
             } catch (error) {
                 console.error('Failed to load tenants for creation:', error);
             }
 
+
             if (isAllAccess) {
+
                 const option = document.createElement('option');
                 option.value = '__new__';
                 option.textContent = 'Create New Tenant';
