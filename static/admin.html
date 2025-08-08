@@ -716,7 +716,11 @@
             <form id="createTenantForm">
                 <div class="form-group">
                     <label for="tenantName">Tenant Name</label>
-                    <input type="text" id="tenantName" name="tenantName" required>
+                    <select id="tenantName" name="tenantName" required></select>
+                </div>
+                <div id="newTenantNameGroup" class="form-group hidden">
+                    <label for="newTenantName">New Tenant Name</label>
+                    <input type="text" id="newTenantName" name="newTenantName">
                 </div>
                 <div class="form-group">
                     <label for="agentName">Initial Agent Name</label>
@@ -1091,7 +1095,10 @@
             });
             
             // Create buttons
-            document.getElementById('createTenantBtn').addEventListener('click', () => showModal('createTenantModal'));
+            document.getElementById('createTenantBtn').addEventListener('click', () => {
+                document.getElementById('createTenantForm').reset();
+                loadTenantsForCreation();
+            });
             document.getElementById('createUserBtn').addEventListener('click', () => {
                 document.getElementById('createUserForm').reset();
                 loadTenantsForUser();
@@ -1697,10 +1704,14 @@
         // Tenant management
         async function handleCreateTenant(e) {
             e.preventDefault();
-            
+
             const formData = new FormData(e.target);
-            const tenantName = formData.get('tenantName');
+            let tenantName = formData.get('tenantName');
             const agentName = formData.get('agentName');
+
+            if (tenantName === '__new__') {
+                tenantName = formData.get('newTenantName');
+            }
 
             try {
                 // Create tenant directory and agent config via API
@@ -1856,6 +1867,58 @@
         }
 
         // User management
+        async function loadTenantsForCreation() {
+            const select = document.getElementById('tenantName');
+            const newTenantGroup = document.getElementById('newTenantNameGroup');
+            const newTenantInput = document.getElementById('newTenantName');
+
+            if (!select) return;
+
+            select.innerHTML = '';
+            newTenantGroup.classList.add('hidden');
+            newTenantInput.required = false;
+
+            try {
+                const response = await fetch(`${API_BASE}/tenants`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+
+                if (response.ok) {
+                    const tenants = await response.json();
+                    tenants.forEach(t => {
+                        const option = document.createElement('option');
+                        option.value = t.tenant;
+                        option.textContent = t.tenant;
+                        select.appendChild(option);
+                    });
+                }
+            } catch (error) {
+                console.error('Failed to load tenants for creation:', error);
+            }
+
+            if (currentUser && currentUser.tenant === '*') {
+                const option = document.createElement('option');
+                option.value = '__new__';
+                option.textContent = 'Create New Tenant';
+                select.appendChild(option);
+            }
+
+            select.onchange = function() {
+                if (this.value === '__new__') {
+                    newTenantGroup.classList.remove('hidden');
+                    newTenantInput.required = true;
+                } else {
+                    newTenantGroup.classList.add('hidden');
+                    newTenantInput.required = false;
+                }
+            };
+
+            // Trigger change handler for initial state
+            select.dispatchEvent(new Event('change'));
+
+            showModal('createTenantModal');
+        }
+
         async function loadTenantsForUser() {
             try {
                 const response = await fetch(`${API_BASE}/tenants`, {
