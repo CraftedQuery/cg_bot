@@ -98,6 +98,44 @@ python -m rag_chatbot.cli serve --reload
 
 ⚠️ **Important**: Change the default password immediately after first login!
 
+## Logging
+
+The project uses Python's built-in `logging` module. The FastAPI entrypoint
+(`main.py`) configures basic logging with:
+
+```python
+import logging
+
+logging.basicConfig(level=logging.INFO)
+```
+
+This sends log messages to standard error with the default format. When running
+the server through other scripts, the CLI, or in a Jupyter notebook, call
+`logging.basicConfig` yourself so that log output appears.
+
+### Custom configuration
+
+You can customize log format, level, or handlers by configuring logging early in
+your entrypoint:
+
+```python
+import logging
+import os
+
+logging.basicConfig(
+    level=os.getenv("LOG_LEVEL", "INFO"),
+    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+    handlers=[
+        logging.StreamHandler(),
+        # logging.FileHandler("app.log"),  # Uncomment to write logs to a file
+    ],
+)
+```
+
+By default, logs appear in the console. Set `LOG_LEVEL=DEBUG` (or another level)
+to increase or reduce verbosity, or add a `FileHandler` to redirect output to a
+log file for production debugging.
+
 ## CLI Commands
 
 ### Interactive Dashboard

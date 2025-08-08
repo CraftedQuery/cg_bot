@@ -1,6 +1,7 @@
 """
 llm.py - LLM provider integrations
 """
+import logging
 import os
 import time
 from typing import List, Dict, Any
@@ -14,6 +15,8 @@ except Exception:  # pragma: no cover - fallback for direct script execution
     from database import log_llm_event
 
 from openai import OpenAI
+
+logger = logging.getLogger(__name__)
 
 
 def get_llm_response(
@@ -30,7 +33,8 @@ def get_llm_response(
     """Get response from selected LLM provider"""
     start_time = time.time()
     tokens_in = _estimate_tokens(messages)
-    
+    logger.info("LLM request to provider=%s model=%s", provider, model)
+
     try:
         if provider == "openai":
             response = _get_openai_response(messages, model, temperature)
@@ -60,6 +64,7 @@ def get_llm_response(
             model=model,
             description=f"user:{user} q:{question}"
         )
+        logger.exception("LLM request failed")
         response = {
             "content": f"Error generating response: {str(e)}",
             "tokens_out": 0
