@@ -4,8 +4,10 @@ routers/admin_routes.py - Admin interface endpoints
 
 from pathlib import Path
 import os
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import HTMLResponse
+
+from ..auth import get_admin_user
 
 router = APIRouter(tags=["admin"])
 
@@ -189,6 +191,25 @@ async def get_llm_logs(limit: int = 100):
                 }
             )
 
+    return {"logs": logs}
+
+
+@router.get("/error_logs", dependencies=[Depends(get_admin_user)])
+async def get_error_logs(limit: int = 100):
+    """Retrieve recent application error logs"""
+    from ..database import get_error_logs as db_get_error_logs
+
+    rows = db_get_error_logs(limit)
+    logs = [
+        {
+            "ts": ts,
+            "endpoint": endpoint,
+            "tenant": tenant,
+            "agent": agent,
+            "message": message,
+        }
+        for ts, endpoint, tenant, agent, message in rows
+    ]
     return {"logs": logs}
 
 

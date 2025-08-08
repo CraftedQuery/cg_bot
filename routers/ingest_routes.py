@@ -78,7 +78,7 @@ async def upload_files(
             fid = record_file_upload(tenant, agent, file.filename, dest_path.stat().st_size)
             file_ids.append(fid)
             file_map[file.filename] = fid
-        
+
         # Ingest the files
         ocr_flags = ingest(tenant, agent, files=temp_files)
 
@@ -94,14 +94,14 @@ async def upload_files(
             "message": f"Successfully uploaded and processed {len(files)} files",
             "files": [f.filename for f in files]
         }
-        
+
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(
             status_code=500,
             detail=f"Error processing files: {str(e)}"
         )
-    finally:
-        pass
 
 
 @router.post("/ingest/sitemap")

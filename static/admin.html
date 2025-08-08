@@ -622,8 +622,8 @@
                     <div id="llmLogs" class="hidden"></div>
                 </div>
                 <div class="form-group">
-                    <button id="chatLogsBtn" class="btn">Show Chat Logs</button>
-                    <div id="chatLogs" class="hidden"></div>
+                    <button id="errorLogsBtn" class="btn">Show Error Log</button>
+                    <div id="errorLogs" class="hidden"></div>
                 </div>
                 <div class="form-group">
                     <label for="userTimeout">User Timeout (minutes)</label>
@@ -1099,7 +1099,7 @@
             });
             document.getElementById('llmTestBtn').addEventListener('click', runLlmTest);
             document.getElementById('llmLogsBtn').addEventListener('click', loadLlmLogs);
-            document.getElementById('chatLogsBtn').addEventListener('click', loadChatLogs);
+            document.getElementById('errorLogsBtn').addEventListener('click', loadErrorLogs);
 
             // Forms
             document.getElementById('createTenantForm').addEventListener('submit', handleCreateTenant);
@@ -1600,17 +1600,17 @@
             `;
         }
 
-        async function loadChatLogs() {
-            const container = document.getElementById('chatLogs');
+        async function loadErrorLogs() {
+            const container = document.getElementById('errorLogs');
             container.classList.remove('hidden');
             container.innerHTML = 'Loading...';
             try {
-                const response = await fetch(`${API_BASE}/chat/history?limit=25`, {
+                const response = await fetch(`${API_BASE}/error_logs?limit=25`, {
                     headers: { 'Authorization': `Bearer ${authToken}` }
                 });
                 if (response.ok) {
                     const data = await response.json();
-                    container.innerHTML = formatChatLogs(data);
+                    container.innerHTML = formatErrorLogs(data.logs || []);
                 } else {
                     container.innerHTML = 'Failed to load logs';
                 }
@@ -1620,15 +1620,17 @@
             }
         }
 
-        function formatChatLogs(logs) {
+        function formatErrorLogs(logs) {
             if (!logs.length) {
                 return '<p>No logs found.</p>';
             }
             const rows = logs.map(log => `
                 <tr>
-                    <td>${new Date(log.timestamp).toLocaleString()}</td>
-                    <td>${log.question}</td>
-                    <td>${log.answer}</td>
+                    <td>${new Date(log.ts).toLocaleString()}</td>
+                    <td>${log.endpoint}</td>
+                    <td>${log.tenant || ''}</td>
+                    <td>${log.agent || ''}</td>
+                    <td>${log.message}</td>
                 </tr>
             `).join('');
             return `
@@ -1637,8 +1639,10 @@
                         <thead>
                             <tr>
                                 <th>Timestamp</th>
-                                <th>Question</th>
-                                <th>Answer</th>
+                                <th>Endpoint</th>
+                                <th>Tenant</th>
+                                <th>Agent</th>
+                                <th>Error</th>
                             </tr>
                         </thead>
                         <tbody>${rows}</tbody>

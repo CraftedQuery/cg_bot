@@ -76,3 +76,27 @@ Fields:
 - **description** – Additional context (file name, user question, etc.).
 - **error_message** – Error text if the request failed.
 
+## Table: `error_logs`
+
+The `error_logs` table stores internal application errors and the endpoint where they occurred.
+
+```sql
+CREATE TABLE IF NOT EXISTS error_logs(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    ts TEXT,
+    endpoint TEXT,
+    tenant TEXT,
+    agent TEXT,
+    message TEXT
+);
+```
+
+Fields:
+
+- **id** – Incrementing identifier.
+- **ts** – Timestamp when the error was logged.
+- **endpoint** – API path that triggered the error.
+- **tenant** – Tenant context if provided.
+- **agent** – Agent name if provided.
+- **message** – Error description.
+

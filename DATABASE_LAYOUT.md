@@ -6,9 +6,10 @@ and user records.
 
 ## Database
 
-The application logs all chat interactions in a SQLite database at
-`chat_logs.db`. The schema is created in `database.py` and contains a single
-`chat_logs` table:
+The application logs data in a SQLite database at
+`chat_logs.db`. The schema is created in `database.py` and includes tables
+such as `chat_logs`, `llm_logs`, `uploaded_files`, and `error_logs`. The
+`chat_logs` table stores individual chat interactions:
 
 | Column        | Type    | Description                                     |
 |---------------|---------|-------------------------------------------------|
@@ -25,6 +26,9 @@ The application logs all chat interactions in a SQLite database at
 | `tokens_out`  | INTEGER | Number of output tokens                         |
 | `user_feedback` | INTEGER | Optional thumbs up/down feedback              |
 | `user_ip`     | TEXT    | Request IP address for auditing                 |
+
+The `error_logs` table captures server-side errors with columns for timestamp,
+endpoint, tenant, agent, and message.
 
 ## Configuration Files
 
