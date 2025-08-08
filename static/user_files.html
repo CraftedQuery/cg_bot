@@ -102,7 +102,7 @@ function applyCustomStyles(){
         }
     });
 }
-applyCustomStyles();
+document.addEventListener("DOMContentLoaded", applyCustomStyles);
 const params = new URLSearchParams(window.location.search);
 const tenant = params.get('tenant');
 const agent = params.get('agent');
@@ -196,7 +196,7 @@ document.getElementById('sortName').addEventListener('click',()=>{sortField='nam
 document.getElementById('sortDate').addEventListener('click',()=>{sortField='date';sortAsc=!sortAsc;render();});
 </script>
 <footer>
-    <img id="footerLogo" src="https://www.craftedquery.com/logo.svg" alt="Crafted Query Logo"> 2025 © Crafted Query. All rights reserved. -
+    <img id="footerLogo" alt="Crafted Query Logo"> 2025 © Crafted Query. All rights reserved. -
     <a id="footerLink1" href="https://www.craftedquery.com/about">About us</a> -
     <a id="footerLink2" href="https://www.craftedquery.com/contact">Contact us</a> -
     <a id="footerLink3" href="https://www.craftedquery.com/status">Status</a>.

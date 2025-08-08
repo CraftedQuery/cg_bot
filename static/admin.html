@@ -622,6 +622,10 @@
                     <div id="llmLogs" class="hidden"></div>
                 </div>
                 <div class="form-group">
+                    <button id="errorLogsBtn" class="btn">Show Error Log</button>
+                    <div id="errorLogs" class="hidden"></div>
+                </div>
+                <div class="form-group">
                     <label for="userTimeout">User Timeout (minutes)</label>
                     <input type="number" id="userTimeout" min="1" value="30" style="width:80px;">
             </div>
@@ -1095,7 +1099,8 @@
             });
             document.getElementById('llmTestBtn').addEventListener('click', runLlmTest);
             document.getElementById('llmLogsBtn').addEventListener('click', loadLlmLogs);
-            
+            document.getElementById('errorLogsBtn').addEventListener('click', loadErrorLogs);
+
             // Forms
             document.getElementById('createTenantForm').addEventListener('submit', handleCreateTenant);
             document.getElementById('createUserForm').addEventListener('submit', handleCreateUser);
@@ -1587,6 +1592,57 @@
                                 <th>Model</th>
                                 <th>Description</th>
                                 <th>Answer</th>
+                            </tr>
+                        </thead>
+                        <tbody>${rows}</tbody>
+                    </table>
+                </div>
+            `;
+        }
+
+        async function loadErrorLogs() {
+            const container = document.getElementById('errorLogs');
+            container.classList.remove('hidden');
+            container.innerHTML = 'Loading...';
+            try {
+                const response = await fetch(`${API_BASE}/error_logs?limit=25`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    container.innerHTML = formatErrorLogs(data.logs || []);
+                } else {
+                    container.innerHTML = 'Failed to load logs';
+                }
+            } catch (error) {
+                console.error('Failed to load logs:', error);
+                container.innerHTML = 'Failed to load logs';
+            }
+        }
+
+        function formatErrorLogs(logs) {
+            if (!logs.length) {
+                return '<p>No logs found.</p>';
+            }
+            const rows = logs.map(log => `
+                <tr>
+                    <td>${new Date(log.ts).toLocaleString()}</td>
+                    <td>${log.endpoint}</td>
+                    <td>${log.tenant || ''}</td>
+                    <td>${log.agent || ''}</td>
+                    <td>${log.message}</td>
+                </tr>
+            `).join('');
+            return `
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Timestamp</th>
+                                <th>Endpoint</th>
+                                <th>Tenant</th>
+                                <th>Agent</th>
+                                <th>Error</th>
                             </tr>
                         </thead>
                         <tbody>${rows}</tbody>

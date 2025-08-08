@@ -83,7 +83,7 @@ async def chat(
     sys_content = cfg["system_prompt"]
     # Ensure the assistant responds in the language used by the user
     sys_content += f"\nPlease respond in {language}."
-    if template_chunks:
+    if template_chunks and "template" in q.lower():
         sys_content += "\n" + "\n".join(template_chunks)
     if cfg.get("local_only", True):
         sys_content += "\nUse only the provided Context to answer. Do not search the internet."

@@ -72,6 +72,18 @@ def init_database():
         _ensure_column(con, "llm_logs", "error_message TEXT")
         _ensure_column(con, "uploaded_files", "ocr_used INTEGER DEFAULT 0")
         _ensure_column(con, "uploaded_files", "template INTEGER DEFAULT 0")
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS error_logs(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT,
+                endpoint TEXT,
+                tenant TEXT,
+                agent TEXT,
+                message TEXT
+            )
+            """
+        )
         con.commit()
 
 
@@ -153,6 +165,42 @@ def log_llm_event(
             )
         )
         con.commit()
+
+
+def log_error(
+    endpoint: str,
+    message: str,
+    *,
+    tenant: str | None = None,
+    agent: str | None = None,
+) -> None:
+    """Log an application error with optional context"""
+    from datetime import datetime, timezone
+
+    with get_db() as con:
+        con.execute(
+            """INSERT INTO error_logs
+               (ts, endpoint, tenant, agent, message)
+               VALUES (?, ?, ?, ?, ?)""",
+            (
+                datetime.now(timezone.utc).isoformat(),
+                endpoint,
+                tenant,
+                agent,
+                message,
+            ),
+        )
+        con.commit()
+
+
+def get_error_logs(limit: int = 100):
+    """Retrieve recent error logs"""
+    with get_db() as con:
+        cur = con.execute(
+            "SELECT ts, endpoint, tenant, agent, message FROM error_logs ORDER BY id DESC LIMIT ?",
+            (limit,),
+        )
+        return cur.fetchall()
 
 
 def record_file_upload(
