@@ -46,6 +46,7 @@ test('limited access user sees only allowed tenants', async () => {
 
   const select = dom.window.document.getElementById('tenantName');
   const options = Array.from(select.options).map(o => o.value);
+
   assert.deepStrictEqual(options, ['TenantA']);
   assert.equal(options.includes('__new__'), false);
 
