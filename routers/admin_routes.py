@@ -194,7 +194,9 @@ async def get_llm_logs(limit: int = 100):
     return {"logs": logs}
 
 
+
 @router.get("/error_logs", dependencies=[Depends(get_admin_user)])
+
 async def get_error_logs(limit: int = 100):
     """Retrieve recent application error logs"""
     from ..database import get_error_logs as db_get_error_logs
