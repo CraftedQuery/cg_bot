@@ -705,8 +705,13 @@
     </div>
 
     <!-- Modals -->
-    
-    <!-- Create Tenant Modal -->
+
+    <!-- Create Tenant Modal
+         loadTenantsForCreation() populates the tenant dropdown based on the
+         current user's permissions. Users restricted to specific tenants only
+         see those names. Users with wildcard access ('*') see all tenants plus
+         a "Create New Tenant" option that reveals a text field for entering a
+         new tenant name. -->
     <div id="createTenantModal" class="modal hidden">
         <div class="modal-content">
             <div class="modal-header">
@@ -1867,6 +1872,12 @@
         }
 
         // User management
+
+
+        // Populate the tenant dropdown for the Create Tenant modal.
+        // Users with specific tenant access only see those tenants. Wildcard
+        // users ('*') see all tenants and an additional "Create New Tenant"
+        // option that toggles a text input for entering a new tenant name.
         async function loadTenantsForCreation() {
             const select = document.getElementById('tenantName');
             const newTenantGroup = document.getElementById('newTenantNameGroup');

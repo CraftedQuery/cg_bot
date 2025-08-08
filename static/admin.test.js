@@ -68,7 +68,6 @@ test('user with multiple tenant access sees only allowed tenants', async () => {
   assert.deepStrictEqual(options, ['TenantA', 'TenantB']);
   assert.equal(options.includes('__new__'), false);
 
-
   const group = dom.window.document.getElementById('newTenantNameGroup');
   const input = dom.window.document.getElementById('newTenantName');
   assert(group.classList.contains('hidden'));
