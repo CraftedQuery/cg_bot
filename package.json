@@ -1,0 +1,10 @@
+{
+  "name": "cg_bot",
+  "version": "1.0.0",
+  "scripts": {
+    "test": "node --test static/admin.test.js"
+  },
+  "devDependencies": {
+    "jsdom": "^26.1.0"
+  }
+}
