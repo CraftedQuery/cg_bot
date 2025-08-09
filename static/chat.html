@@ -332,6 +332,7 @@ async function loadHistory(){
     if(res.ok){
         const data=await res.json();
         chatHistory=(data.logs||[])
+
             // `llm_logs` is a shared table across tenants and agents, so we filter
             // by the active tenant/agent to avoid cross-tenant bleed. The table also
             // stores non-question events, but `llm.py` records user prompts as
@@ -339,6 +340,7 @@ async function loadHistory(){
             // include `q:` and split on it to recover the question. If this format
             // changes—or a question itself contains `q:`—the history parsing may
             // need adjustment.
+
             .filter(l=>l.tenant===tenant&&l.agent===agent&&l.description&&l.description.includes('q:'))
             .map(l=>{
                 const q=l.description.split('q:')[1]||'';
