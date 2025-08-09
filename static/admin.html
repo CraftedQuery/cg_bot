@@ -1083,26 +1083,29 @@
         let authToken = localStorage.getItem('rag_auth_token');
         let currentUser = null;
         let usersCache = [];
+        const styleKeys = [
+            "primary",
+            "primaryDark",
+            "secondary",
+            "danger",
+            "warning",
+            "gray-100",
+            "gray-200",
+            "gray-300",
+            "gray-600",
+            "gray-800",
+            "black",
+            "white",
+            "headerBg",
+            "headerText",
+            "btnRadius",
+            "footerBg",
+            "shadow",
+            "shadowLg",
+            "bodyFontSize"
+        ];
+
         const styleDefaults = {
-            primary: "#d71920",
-            primaryDark: "#b2181b",
-            secondary: "#2f2f2f",
-            danger: "#f44336",
-            warning: "#ff9800",
-            "gray-100": "#f5f5f5",
-            "gray-200": "#e0e0e0",
-            "gray-300": "#bdbdbd",
-            "gray-600": "#757575",
-            "gray-800": "#424242",
-            black: "#000000",
-            white: "#ffffff",
-            headerBg: "#d71920",
-            headerText: "#ffffff",
-            btnRadius: 4,
-            footerBg: "#2f2f2f",
-            shadow: "0 2px 4px rgba(0,0,0,0.1)",
-            shadowLg: "0 4px 12px rgba(0,0,0,0.15)",
-            bodyFontSize: 16,
             logoUrl: "https://www.craftedquery.com/logo.svg",
             footerLink1Text: "About us",
             footerLink1Url: "https://www.craftedquery.com/about",
@@ -1111,6 +1114,18 @@
             footerLink3Text: "Status",
             footerLink3Url: "https://www.craftedquery.com/status"
         };
+        function loadStyleDefaults() {
+            const rootStyles = getComputedStyle(document.documentElement);
+            styleKeys.forEach(key => {
+                const cssVar = "--" + key.replace(/([A-Z])/g, "-$1").toLowerCase();
+                let val = rootStyles.getPropertyValue(cssVar).trim();
+                if (key === "btnRadius" || key === "bodyFontSize") {
+                    val = parseInt(val) || 0;
+                }
+                styleDefaults[key] = val;
+            });
+        }
+
         let userTimeoutMinutes = parseInt(localStorage.getItem("user_timeout_minutes")) || 30;
         let inactivityTimer = null;
         const API_BASE = window.location.origin;
@@ -1156,11 +1171,13 @@
 
         // Initialize app
         document.addEventListener('DOMContentLoaded', function() {
+            loadStyleDefaults();
+            applyCustomStyles();
+
             if (authToken) {
                 validateToken();
             }
 
-            applyCustomStyles();
             setupEventListeners();
         });
 
@@ -1226,7 +1243,8 @@
             });
 
             // Styling inputs
-            ["primary","primaryDark","secondary","danger","warning","gray-100","gray-200","gray-300","gray-600","gray-800","black","white","headerBg","headerText","btnRadius","footerBg","shadow","shadowLg","bodyFontSize","logoUrl","footerLink1Text","footerLink1Url","footerLink2Text","footerLink2Url","footerLink3Text","footerLink3Url"].forEach(id => {
+            const styleInputIds = styleKeys.concat(["logoUrl","footerLink1Text","footerLink1Url","footerLink2Text","footerLink2Url","footerLink3Text","footerLink3Url"]);
+            styleInputIds.forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
                     el.addEventListener("change", () => {
