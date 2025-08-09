@@ -18,7 +18,8 @@
         h1, h2, h3, h4, h5, h6 { font-family:'Spectral', serif; }
         .container { max-width:1400px; margin:0 auto; padding:20px; }
         .header {
-            background: var(--white);
+            background: var(--header-bg);
+            color: var(--header-text);
             padding:20px;
             border-radius:12px;
             box-shadow: var(--shadow);
@@ -42,7 +43,7 @@
             background: var(--primary);
             color: var(--white);
             border:none;
-            border-radius:8px;
+            border-radius:var(--btn-radius);
             cursor:pointer;
             font-size:14px;
             font-weight:600;
@@ -76,12 +77,15 @@
 
 <script>
 const styleDefaults={
-    primary:"#1E88E5",
-    primaryDark:"#1976D2",
-    secondary:"#4CAF50",
+    primary:"#d71920",
+    primaryDark:"#b2181b",
+    secondary:"#2f2f2f",
     danger:"#f44336",
-    warning:"#FF9800",
-    footerBg:"#424242",
+    warning:"#ff9800",
+    headerBg:"#d71920",
+    headerText:"#ffffff",
+    btnRadius:4,
+    footerBg:"#2f2f2f",
     bodyFontSize:16,
     logoUrl:"https://www.craftedquery.com/logo.svg",
     footerLink1Text:"About us",
@@ -96,6 +100,8 @@ function applyCustomStyles(){
         const v=localStorage.getItem("style_"+k)||styleDefaults[k];
         if(k==="bodyFontSize"){
             document.documentElement.style.setProperty("--body-font-size",v+"px");
+        }else if(k==="btnRadius"){
+            document.documentElement.style.setProperty("--btn-radius",v+"px");
         }else if(!k.startsWith("footerLink") && k!=="logoUrl"){
             const cssVar="--"+k.replace(/([A-Z])/g,"-$1").toLowerCase();
             document.documentElement.style.setProperty(cssVar,v);

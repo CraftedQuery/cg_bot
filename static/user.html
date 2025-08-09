@@ -50,7 +50,7 @@
         .form-group input:focus { outline: none; border-color: var(--primary); }
         .form-group select { width: 100%; padding: 12px; border: 2px solid var(--gray-200); border-radius: 8px; font-size: 14px; transition: border-color 0.2s; }
         .form-group select:focus { outline: none; border-color: var(--primary); }
-        .btn { display: inline-block; padding: 12px 24px; background: var(--primary); color: var(--white); border: none; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s; text-align: center; }
+        .btn { display: inline-block; padding: 12px 24px; background: var(--primary); color: var(--white); border: none; border-radius: var(--btn-radius); cursor: pointer; font-size: 14px; font-weight: 600; transition: all 0.2s; text-align: center; }
         .btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
         .btn.btn-full { width: 100%; }
         .btn.btn-secondary { background: var(--secondary); }
@@ -62,7 +62,7 @@
         .hidden { display: none !important; }
         .error { color: var(--danger); font-size: 14px; margin-top: 8px; }
         .success { color: var(--secondary); font-size: 14px; margin-top: 8px; }
-        .header { background: var(--white); padding: 20px; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
+        .header { background: var(--header-bg); color: var(--header-text); padding: 20px; border-radius: 12px; box-shadow: var(--shadow); margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; }
         .agent-table { width: 100%; }
         .agent-header, .agent-row { display: flex; align-items: center; padding: 8px; }
         .agent-header { background: var(--gray-200); font-weight: 600; text-transform: uppercase; border-radius: 8px 8px 0 0; }
@@ -285,12 +285,15 @@ if (window.msal && window.msal.PublicClientApplication) {
     if (msBtn) msBtn.style.display = 'none';
 }
 const styleDefaults={
-    primary:"#1E88E5",
-    primaryDark:"#1976D2",
-    secondary:"#4CAF50",
+    primary:"#d71920",
+    primaryDark:"#b2181b",
+    secondary:"#2f2f2f",
     danger:"#f44336",
-    warning:"#FF9800",
-    footerBg:"#424242",
+    warning:"#ff9800",
+    headerBg:"#d71920",
+    headerText:"#ffffff",
+    btnRadius:4,
+    footerBg:"#2f2f2f",
     bodyFontSize:16,
     logoUrl:"https://www.craftedquery.com/logo.svg",
     footerLink1Text:"About us",
@@ -305,6 +308,8 @@ function applyCustomStyles(){
         const v=localStorage.getItem("style_"+k)||styleDefaults[k];
         if(k==="bodyFontSize"){
             document.documentElement.style.setProperty("--body-font-size",v+"px");
+        }else if(k==="btnRadius"){
+            document.documentElement.style.setProperty("--btn-radius",v+"px");
         }else if(!k.startsWith("footerLink") && k!=="logoUrl"){
             const cssVar="--"+k.replace(/([A-Z])/g,"-$1").toLowerCase();
             document.documentElement.style.setProperty(cssVar,v);

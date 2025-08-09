@@ -22,7 +22,7 @@
         #sidebar.visible{transform:translateX(0);}
         #sidebar header{display:flex;align-items:center;justify-content:space-between;padding:10px 15px;border-bottom:1px solid var(--gray-200);}
         #sidebar header h2{font-size:18px;margin:0;}
-        #newChat{background:var(--primary);border:none;color:var(--white);padding:6px 12px;border-radius:6px;cursor:pointer;font-size:14px;}
+        #newChat{background:var(--primary);border:none;color:var(--white);padding:6px 12px;border-radius:var(--btn-radius);cursor:pointer;font-size:14px;}
         #newChat:hover{background:var(--primary-dark);}
         #search{margin:10px;padding:8px;border:1px solid var(--gray-200);border-radius:6px;font-size:14px;width:calc(100% - 20px);}
         #chatList{flex:1;overflow-y:auto;list-style:none;margin:0;padding:0;}
@@ -38,13 +38,13 @@
             transform:none;
         }
         #chatWindow.expanded{max-width:none;width:100%;}
-        #chatHeader{display:flex;align-items:center;justify-content:space-between;padding:10px 15px;background:linear-gradient(90deg,var(--primary),var(--primary-dark));color:var(--white);}
+        #chatHeader{display:flex;align-items:center;justify-content:space-between;padding:10px 15px;background:var(--header-bg);color:var(--header-text);}
         #toggleSidebar{background:none;border:none;color:var(--white);font-size:20px;cursor:pointer;}
         #headerLeft{display:flex;align-items:center;gap:8px;}
         #templatesContainer{position:relative;}
-        #templatesBtn{background:var(--primary);color:var(--white);border:none;padding:6px 12px;border-radius:6px;cursor:pointer;font-size:14px;}
+        #templatesBtn{background:var(--primary);color:var(--white);border:none;padding:6px 12px;border-radius:var(--btn-radius);cursor:pointer;font-size:14px;}
         #templatesBtn:hover{background:var(--primary-dark);}
-        #templatesDropdown{position:absolute;top:100%;left:0;background:var(--white);color:var(--gray-800);border:1px solid var(--gray-200);border-radius:6px;box-shadow:var(--shadow);min-width:180px;display:none;flex-direction:column;z-index:100;}
+        #templatesDropdown{position:absolute;top:100%;left:0;background:var(--white);color:var(--gray-800);border:1px solid var(--gray-200);border-radius:var(--btn-radius);box-shadow:var(--shadow);min-width:180px;display:none;flex-direction:column;z-index:100;}
         #templatesDropdown.show{display:flex;}
         #templatesDropdown div{padding:8px 12px;cursor:pointer;white-space:nowrap;}
         #templatesDropdown div:hover{background:var(--gray-100);}
@@ -65,6 +65,7 @@
             border:none;
             width:80px;
             height:40px;
+            border-radius:var(--btn-radius);
             display:flex;
             align-items:center;
             justify-content:center;
@@ -82,7 +83,7 @@
         #witnessOverlay .content{background:var(--white);padding:20px;border-radius:12px;text-align:center;line-height:1.4;}
         #witnessOverlay input{margin-top:8px;padding:8px;width:80%;font-size:14px;}
         .hidden{display:none;}
-        .btn{display:inline-block;padding:12px 24px;background:var(--primary);color:var(--white);border:none;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;text-align:center;}
+        .btn{display:inline-block;padding:12px 24px;background:var(--primary);color:var(--white);border:none;border-radius:var(--btn-radius);cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;text-align:center;}
         .btn:hover{background:var(--primary-dark);transform:translateY(-1px);}
         .btn-small{padding:6px 12px;font-size:12px;}
         @media(max-width:768px){
@@ -155,12 +156,15 @@ const token=localStorage.getItem('rag_auth_token');
 const sessionId=sessionStorage.getItem('cq_sid')||Math.random().toString(36).slice(2);
 sessionStorage.setItem('cq_sid',sessionId);
 const styleDefaults={
-    primary:"#1E88E5",
-    primaryDark:"#1976D2",
-    secondary:"#4CAF50",
+    primary:"#d71920",
+    primaryDark:"#b2181b",
+    secondary:"#2f2f2f",
     danger:"#f44336",
-    warning:"#FF9800",
-    footerBg:"#424242",
+    warning:"#ff9800",
+    headerBg:"#d71920",
+    headerText:"#ffffff",
+    btnRadius:4,
+    footerBg:"#2f2f2f",
     bodyFontSize:16,
     logoUrl:"https://www.craftedquery.com/logo.svg",
     footerLink1Text:"About us",
@@ -175,6 +179,8 @@ function applyCustomStyles(){
         const v=localStorage.getItem("style_"+k)||styleDefaults[k];
         if(k==="bodyFontSize"){
             document.documentElement.style.setProperty("--body-font-size",v+"px");
+        }else if(k==="btnRadius"){
+            document.documentElement.style.setProperty("--btn-radius",v+"px");
         }else if(!k.startsWith("footerLink") && k!=="logoUrl"){
             const cssVar="--"+k.replace(/([A-Z])/g,"-$1").toLowerCase();
             document.documentElement.style.setProperty(cssVar,v);

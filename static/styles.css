@@ -1,17 +1,21 @@
 :root {
-    --primary: #1E88E5;
-    --primary-dark: #1976D2;
-    --secondary: #4CAF50;
+    /* LexisNexis inspired palette */
+    --primary: #d71920;
+    --primary-dark: #b2181b;
+    --secondary: #2f2f2f;
     --danger: #f44336;
-    --warning: #FF9800;
+    --warning: #ff9800;
     --gray-100: #f5f5f5;
     --gray-200: #e0e0e0;
     --gray-300: #bdbdbd;
     --gray-600: #757575;
     --gray-800: #424242;
-    --footer-bg: #424242;
+    --footer-bg: #2f2f2f;
     --black: #000000;
     --white: #ffffff;
+    --header-bg: #d71920;
+    --header-text: #ffffff;
+    --btn-radius: 4px;
     --shadow: 0 2px 4px rgba(0,0,0,0.1);
     --shadow-lg: 0 4px 12px rgba(0,0,0,0.15);
     --body-font-size: 16px;
@@ -49,4 +53,65 @@ footer a {
 
 footer a:hover {
     text-decoration: underline;
+}
+
+/* Headings */
+h1, h2, h3, h4, h5, h6 {
+    color: var(--header-text);
+    font-family: 'Spectral', serif;
+    margin-bottom: 0.5em;
+}
+
+/* Generic header container */
+.header {
+    background: var(--header-bg);
+    color: var(--header-text);
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: var(--shadow);
+}
+
+/* Buttons */
+.btn,
+button {
+    display: inline-block;
+    padding: 0.5rem 1rem;
+    background: var(--primary);
+    color: var(--white);
+    border: none;
+    border-radius: var(--btn-radius);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+    transition: all 0.2s;
+    text-align: center;
+}
+
+.btn:hover,
+button:hover {
+    background: var(--primary-dark);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: var(--secondary);
+}
+
+.btn-danger {
+    background: var(--danger);
+}
+
+.btn-warning {
+    background: var(--warning);
+}
+
+.btn-outline {
+    background: transparent;
+    border: 2px solid var(--primary);
+    color: var(--primary);
+}
+
+.btn-outline:hover {
+    background: var(--primary);
+    color: var(--white);
 }

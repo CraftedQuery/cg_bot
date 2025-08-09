@@ -89,7 +89,7 @@
             color: var(--white);
             text-decoration: none;
             border: none;
-            border-radius: 8px;
+            border-radius: var(--btn-radius);
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
@@ -148,7 +148,8 @@
         
         /* Main Interface */
         .header {
-            background: var(--white);
+            background: var(--header-bg);
+            color: var(--header-text);
             padding: 20px;
             border-radius: 12px;
             box-shadow: var(--shadow);
@@ -157,9 +158,9 @@
             justify-content: space-between;
             align-items: center;
         }
-        
+
         .header h1 {
-            color: var(--primary);
+            color: var(--header-text);
             font-size: 28px;
         }
         
@@ -661,6 +662,20 @@
                 </div>
                 <div class="form-row">
                     <div class="form-group">
+                        <label for="headerBg">Header Background</label>
+                        <input type="color" id="headerBg">
+                    </div>
+                    <div class="form-group">
+                        <label for="headerText">Header Text</label>
+                        <input type="color" id="headerText">
+                    </div>
+                    <div class="form-group">
+                        <label for="btnRadius">Button Radius (px)</label>
+                        <input type="number" id="btnRadius" min="0" max="50" style="width:80px;">
+                    </div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
                         <label for="footerBg">Footer Color</label>
                         <input type="color" id="footerBg">
                     </div>
@@ -1023,12 +1038,15 @@
         let currentUser = null;
         let usersCache = [];
         const styleDefaults = {
-            primary: "#1E88E5",
-            primaryDark: "#1976D2",
-            secondary: "#4CAF50",
+            primary: "#d71920",
+            primaryDark: "#b2181b",
+            secondary: "#2f2f2f",
             danger: "#f44336",
-            warning: "#FF9800",
-            footerBg: "#424242",
+            warning: "#ff9800",
+            headerBg: "#d71920",
+            headerText: "#ffffff",
+            btnRadius: 4,
+            footerBg: "#2f2f2f",
             bodyFontSize: 16,
             logoUrl: "https://www.craftedquery.com/logo.svg",
             footerLink1Text: "About us",
@@ -1049,6 +1067,10 @@
                     document.documentElement.style.setProperty("--body-font-size", stored + "px");
                     const fs = document.getElementById("bodyFontSize");
                     if (fs) fs.value = stored;
+                } else if (key === "btnRadius") {
+                    document.documentElement.style.setProperty("--btn-radius", stored + "px");
+                    const br = document.getElementById("btnRadius");
+                    if (br) br.value = stored;
                 } else if (key === "logoUrl" || key.startsWith("footerLink")) {
                     const el = document.getElementById(key);
                     if (el) el.value = stored;
@@ -1149,7 +1171,7 @@
             });
 
             // Styling inputs
-            ["primary","primaryDark","secondary","danger","warning","footerBg","bodyFontSize","logoUrl","footerLink1Text","footerLink1Url","footerLink2Text","footerLink2Url","footerLink3Text","footerLink3Url"].forEach(id => {
+            ["primary","primaryDark","secondary","danger","warning","headerBg","headerText","btnRadius","footerBg","bodyFontSize","logoUrl","footerLink1Text","footerLink1Url","footerLink2Text","footerLink2Url","footerLink3Text","footerLink3Url"].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) {
                     el.addEventListener("change", () => {
