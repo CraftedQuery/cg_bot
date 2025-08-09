@@ -328,9 +328,15 @@ function addMessage(text,cls,sources=[]){
 }
 
 async function loadHistory(){
-    const res=await fetch(`/history?tenant=${tenant}&agent=${agent}&limit=25`,{headers:{Authorization:`Bearer ${token}`}});
+    const res=await fetch(`/llm_logs?limit=25`,{headers:{Authorization:`Bearer ${token}`}});
     if(res.ok){
-        chatHistory=await res.json();
+        const data=await res.json();
+        chatHistory=(data.logs||[])
+            .filter(l=>l.tenant===tenant&&l.agent===agent&&l.description&&l.description.includes('q:'))
+            .map(l=>{
+                const q=l.description.split('q:')[1]||'';
+                return{timestamp:l.ts,question:q.trim()};
+            });
         filteredHistory=chatHistory;
         renderHistory();
     }
@@ -346,6 +352,7 @@ async function sendMessage(msg){
     if(res.ok){
         const data=await res.json();
         addMessage(data.reply,'bot',data.sources||[]);
+        await loadHistory();
     }else{
         addMessage('Error: '+res.status,'bot');
     }
