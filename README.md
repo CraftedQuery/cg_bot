@@ -1,376 +1,201 @@
-# RAG Chatbot - Multi-tenant RAG System
+# Multi-tenant RAG Chatbot
 
-A production-ready, multi-tenant Retrieval-Augmented Generation (RAG) chatbot system with advanced features including authentication, multiple LLM providers, and a customizable widget interface.
+This repository contains a production-focused Retrieval-Augmented Generation (RAG) chatbot. It supports multiple tenants and agents, protects access with JWTs, offers optional Microsoft Entra (Azure AD) support, and ships with a customizable web widget and CLI utilities.
 
-## Features
+## Key features
 
-- 🏢 **Multi-tenant Architecture**: Support for multiple organizations and agents
-- 🔐 **Authentication & Authorization**: JWT-based authentication with role-based access
-- 👑 **Role Hierarchy**: `system_admin` can manage all tenants and agents, `admin` manages a single tenant, and regular `user` accounts access assigned agents
-- 🤖 **Multiple LLM Providers**: OpenAI, Anthropic, and Google Vertex AI support
-- 📊 **Analytics Dashboard**: Comprehensive usage analytics and reporting
-- 🎨 **Customizable Widget**: Embeddable chat widget with dark mode, voice input, and file attachments
-- 📁 **Multiple Data Sources**: Ingest from websites, Google Drive, and local files
-- 🖥️ **Admin Interface**: Web-based administration panel
-- 🚀 **CLI Tools**: Rich terminal interface for management
+- 🏢 **Multi-tenant RAG** – Separate configs, vector stores, uploads, and analytics for every tenant/agent pair.
+- 🔐 **Authentication** – Username/password JWTs with hashed credentials plus optional Azure AD token validation.
+- 👑 **Roles** – `system_admin`, `admin`, and `user` roles with tenant scoping and agent assignment.
+- 🤖 **Multiple LLMs** – OpenAI by default, with Anthropic and Vertex AI hooks for chat.
+- 🧠 **Embeddings** – Pluggable embedding providers (OpenAI, Anthropic, Vertex AI, or local Hugging Face) persisted in FAISS.
+- 📂 **Flexible ingestion** – Process local files, Google Drive folders, or sitemap URLs; OCR usage is tracked automatically.
+- 🎛️ **Admin utilities** – Rich-powered CLI dashboard, user management, and ingestion helpers.
+- 🧩 **Embeddable widget** – Configurable chat widget with dark mode, voice input, file attachments, and source citations.
+- 📊 **Analytics** – Chat, LLM, file, and error logs stored in SQLite for reporting.
 
-## Project Structure
+## Repository layout
 
 ```
-rag_chatbot/
-├── __init__.py             # Package initialization
-├── main.py                 # FastAPI app entry point
-├── auth.py                 # Authentication and user management
-├── models.py               # Pydantic models and schemas
-├── config.py               # Configuration management
-├── database.py             # Database operations
-├── vectorstore.py          # Vector store and RAG functionality
-├── llm.py                  # LLM provider integrations
-├── ingestion.py            # Document ingestion and processing
-├── analytics.py            # Analytics and reporting
-├── widget.py               # Widget generation
-├── cli.py                  # CLI interface
-├── routers/                # API route handlers
-│   ├── auth_routes.py      # Authentication endpoints
-│   ├── chat_routes.py      # Chat and RAG endpoints
-│   ├── config_routes.py    # Configuration endpoints
-│   ├── admin_routes.py     # Admin interface endpoints
-│   ├── analytics_routes.py # Analytics endpoints
-│   └── ingest_routes.py    # Ingestion endpoints
-├── utils/                  # Utility modules
-│   ├── google_drive.py     # Google Drive utilities
-│   ├── web_scraper.py      # Web scraping utilities
-│   └── file_processors.py  # File processing utilities
-└── static/                 # Static files
-    └── admin.html          # Admin interface
+cg_bot/
+├── main.py              # FastAPI application factory and router wiring
+├── cli.py               # Rich-based CLI (serve, dashboard, ingest, user management)
+├── auth.py              # JWT + Azure AD auth flows and user store
+├── config.py            # Paths, defaults, and tenant/agent configuration helpers
+├── database.py          # SQLite schema and logging helpers
+├── llm.py               # LLM provider selection (OpenAI, Anthropic, Vertex AI)
+├── embedding.py         # Embedding model helpers and logging
+├── vectorstore.py       # Chunking utilities and FAISS persistence
+├── ingestion.py         # Ingestion pipeline for files, Drive, and sitemaps
+├── widget.py            # Chat widget JavaScript generator
+├── analytics.py         # Basic usage analytics helpers
+├── routers/             # FastAPI routers (auth, chat, config, admin, analytics, ingest, users)
+├── utils/               # Google Drive, sitemap scraping, and file processing helpers
+├── static/              # Admin HTML and other static assets served by FastAPI
+├── docs/                # Supplementary documentation (Entra, background jobs)
+├── configs/             # Runtime tenant/agent configs (created on demand)
+├── vector_store/        # FAISS indexes (created on demand)
+├── uploads/             # Uploaded files tracked per tenant/agent
+└── users.json           # User store (created on first run)
 ```
 
-## Installation
+See `project-structure.txt` for a more detailed walkthrough of the codebase.
 
-1. Clone the repository:
+## Prerequisites
+
+- Python 3.11+
+- Optional: Node 18+ if you plan to run the sample SPA in `spa/`
+- API keys for the LLM and embedding providers you plan to use (OpenAI, Anthropic, Vertex AI)
+
+## Setup
+
 ```bash
 git clone <repository-url>
-cd rag_chatbot
-```
-
-2. Create a virtual environment:
-```bash
+cd cg_bot
 python -m venv venv
 source venv/bin/activate  # On Windows: venv\Scripts\activate
-```
-
-3. Install dependencies:
-```bash
 pip install -r requirements.txt
 ```
 
-4. Set up environment variables:
+### Environment variables
+
+| Variable | Purpose |
+| --- | --- |
+| `OPENAI_API_KEY` | Required for OpenAI chat + embeddings |
+| `ANTHROPIC_API_KEY` | Required when using Anthropic chat/embeddings |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Service account JSON for Drive + Vertex AI |
+| `JWT_SECRET_KEY` | Overrides the default JWT signing secret |
+| `RAG_CHATBOT_HOME` | Root directory for configs, uploads, vector stores, and the SQLite DB |
+| `AAD_TENANT_ID`, `AAD_CLIENT_ID`, `AAD_JWKS_PATH` | Enable optional Azure AD JWT validation |
+
+Unset variables simply disable the corresponding provider or feature.
+
+## Running the API
+
+Start the FastAPI server with the CLI (from the repository root):
+
 ```bash
-export OPENAI_API_KEY="your-openai-api-key"
-export JWT_SECRET_KEY="your-secret-key"
-export GOOGLE_APPLICATION_CREDENTIALS="path/to/google-credentials.json"  # Optional
+python cli.py serve --reload
 ```
 
-## Quick Start
+The CLI sets up module paths automatically; no packaging step is required. Once running:
 
-### 1. Start the Server
+- API docs: http://localhost:8000/docs
+- Admin page: http://localhost:8000/admin.html
+- Widget script: http://localhost:8000/widget.js?tenant=public&agent=default
+
+### Default credentials
+
+- Username: `admin`
+- Password: `admin`
+- Role: `system_admin`
+
+Change these immediately in production—`auth.py` hashes passwords with bcrypt and stores them in `users.json`.
+
+## CLI quick reference
 
 ```bash
-python -m rag_chatbot.cli serve
+# Launch the Rich dashboard
+python cli.py dashboard
+
+# Start the API server
+python cli.py serve --host 0.0.0.0 --port 8000
+
+# Ingest content
+python cli.py ingest TENANT AGENT --file ./docs/guide.pdf --sitemap https://example.com/sitemap.xml
+
+# Create a user
+python cli.py create-user alice S3cret! --tenant public --role admin --agents default
 ```
 
-Or with auto-reload for development:
-```bash
-python -m rag_chatbot.cli serve --reload
-```
+The dashboard view summarizes tenants, vector store presence, users, and ingestion helpers without writing code.
 
-### 2. Access the Interfaces
+## API usage
 
-- **API Documentation**: http://localhost:8000/docs
-- **Admin Interface**: http://localhost:8000/admin.html
-- **Widget Embed**: http://localhost:8000/widget.js
-
-### 3. Default Login
-
-- **Username**: admin
-- **Password**: admin
-- Role: `system_admin` (full access)
-
-⚠️ **Important**: Change the default password immediately after first login!
-
-## Logging
-
-The project uses Python's built-in `logging` module. The FastAPI entrypoint
-(`main.py`) configures basic logging with:
-
-```python
-import logging
-
-logging.basicConfig(level=logging.INFO)
-```
-
-This sends log messages to standard error with the default format. When running
-the server through other scripts, the CLI, or in a Jupyter notebook, call
-`logging.basicConfig` yourself so that log output appears.
-
-### Custom configuration
-
-You can customize log format, level, or handlers by configuring logging early in
-your entrypoint:
-
-```python
-import logging
-import os
-
-logging.basicConfig(
-    level=os.getenv("LOG_LEVEL", "INFO"),
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
-    handlers=[
-        logging.StreamHandler(),
-        # logging.FileHandler("app.log"),  # Uncomment to write logs to a file
-    ],
-)
-```
-
-By default, logs appear in the console. Set `LOG_LEVEL=DEBUG` (or another level)
-to increase or reduce verbosity, or add a `FileHandler` to redirect output to a
-log file for production debugging.
-
-## CLI Commands
-
-### Interactive Dashboard
-```bash
-python -m rag_chatbot.cli dashboard
-```
-
-### Create User
-```bash
-python -m rag_chatbot.cli create-user <username> <password> --tenant <tenant> --role <role> --agents agent1 agent2
-```
-
-### Ingest Content
-```bash
-# From sitemap
-python -m rag_chatbot.cli ingest <tenant> <agent> --sitemap <url>
-
-# From Google Drive
-python -m rag_chatbot.cli ingest <tenant> <agent> --drive <folder-id>
-
-# From local files
-python -m rag_chatbot.cli ingest <tenant> <agent> --file <path1> --file <path2>
-```
-
-## Widget Integration
-
-To embed the chat widget on your website, add this script tag:
-
-```html
-<script src="http://your-server.com/widget.js?tenant=your-tenant&agent=your-agent"></script>
-```
-
-## API Usage
-
-### Authentication
+### Obtain a token
 
 ```python
 import requests
 
-# Login
-response = requests.post("http://localhost:8000/token", 
-    data={"username": "admin", "password": "admin"})
-token = response.json()["access_token"]
-
-# Use token in headers
+resp = requests.post("http://localhost:8000/token", data={"username": "admin", "password": "admin"})
+token = resp.json()["access_token"]
 headers = {"Authorization": f"Bearer {token}"}
 ```
 
-### Chat API
+### Send a chat request
 
 ```python
-# Send chat message
-chat_data = {
+payload = {
     "messages": [
-        {"role": "user", "content": "What is your return policy?"}
+        {"role": "user", "content": "Give me a 2 sentence summary of the refund policy."}
     ]
 }
 
-response = requests.post(
-    "http://localhost:8000/chat?tenant=public&agent=default",
-    json=chat_data,
-    headers=headers
+r = requests.post(
+    "http://localhost:8000/chat",
+    params={"tenant": "public", "agent": "default"},
+    headers=headers,
+    json=payload,
 )
-
-print(response.json())
-# {"reply": "Our return policy...", "sources": [...]}
+print(r.json())  # {"reply": "...", "sources": [{"source": "..."}]}
 ```
 
-## Configuration
+### Widget embedding
 
-Each tenant/agent combination has its own configuration file stored in `configs/<tenant>/<agent>.json`:
+Drop the widget loader onto any page and point it at the tenant/agent you want to expose:
 
-```json
-{
-    "bot_name": "Support Bot",
-    "system_prompt": "You are a helpful customer support assistant.",
-    "primary_color": "#1E88E5",
-    "secondary_color": "#FFFFFF",
-    "avatar_url": "https://example.com/avatar.png",
-    "mode": "inline",
-    "auto_open": false,
-    "llm_provider": "openai",
-    "llm_model": "gpt-4o-mini",
-    "temperature": 0.3,
-    "allowed_domains": ["*"],
-    "enable_voice": true,
-    "enable_files": true,
-    "enable_tts": false,
-    "enable_dark_mode": true,
-    "widget_position": "bottom-right",
-    "widget_size": "medium",
-    "welcome_message": "Hello! How can I help you today?",
-    "placeholder_text": "Please ask your question..."
-}
+```html
+<script src="http://your-server.com/widget.js?tenant=public&agent=default"></script>
 ```
 
-## Security Considerations
+The widget honors each agent's config file (colors, features, welcome text, etc.) and injects citations using the FAISS search results.
 
-1. **Change Default Credentials**: Always change the default admin password
-2. **Use HTTPS**: Deploy with HTTPS in production
-3. **Set JWT Secret**: Use a strong, random JWT secret key
-4. **Domain Restrictions**: Configure `allowed_domains` to restrict widget embedding
-5. **API Keys**: Keep your LLM API keys secure and never commit them
+## Configurations, data, and storage
 
-## Development
+- **Configs** – Stored at `configs/<tenant>/<agent>.json`. Created lazily with sensible defaults via `config.py`.
+- **Vector stores** – FAISS indexes under `vector_store/<tenant>/<agent>/` with `meta.json` describing the embedding provider/model.
+- **Uploads** – Raw uploads live in `uploads/<tenant>/<agent>/` and are tracked in the `uploaded_files` database table.
+- **Database** – `chat_logs.db` (or `RAG_CHATBOT_HOME/chat_logs.db`) holds chat, LLM, upload, and error logs. See `DATABASE_SCHEMA.md` for details.
+- **Users** – `users.json` contains hashed credentials, tenants, roles, and agent assignments.
 
-### Running Tests
-```bash
-pytest tests/
-```
+Set `RAG_CHATBOT_HOME` to an external volume in production so configs, uploads, and the SQLite database are persisted.
 
-### Code Structure Guidelines
+## Ingestion workflow
 
-- **Routers**: All API endpoints are organized in the `routers/` directory
-- **Models**: Pydantic models define the data structures
-- **Utils**: Reusable utilities are in the `utils/` directory
-- **Database**: SQLite for simplicity, but easily replaceable with PostgreSQL
+`ingestion.py` consolidates three sources:
 
-### Adding a New LLM Provider
+- **Local files** – PDFs, DOCX, text, and more processed through `utils/file_processors.py` (with OCR when needed).
+- **Google Drive** – Folder ingestion via `utils/google_drive.py`.
+- **Sitemaps** – URL harvesting with `utils/web_scraper.py`.
 
-1. Add the provider function in `llm.py`:
-```python
-def _get_newprovider_response(messages, model, temperature):
-    # Implementation
-    return {"content": "response", "tokens_out": 100}
-```
+`update_vector_store` chunks text, builds embeddings with the selected provider, logs embedding events, and saves to FAISS. The ingestion function returns an OCR usage map so callers can record which files needed OCR.
 
-2. Update the `get_llm_response` function to include your provider
+## Logging and analytics
 
-### Adding New Document Types
+FastAPI bootstraps `logging.basicConfig(level=logging.INFO)` in `main.py`. Application events are also captured in SQLite tables:
 
-Add a processor function in `utils/file_processors.py`:
-```python
-def _process_newtype(file_path: Path) -> str:
-    # Extract text from the file
-    return extracted_text
-```
+- `chat_logs` – prompts, answers, latency, token counts, and per-chat feedback.
+- `llm_logs` – provider/model metadata for calls and embedding runs.
+- `uploaded_files` – filename, size, OCR flag, and template marker for each upload.
+- `error_logs` – exception traces with tenant/agent context.
 
-## Troubleshooting
+Use `analytics.py` or the CLI dashboard to summarize usage per tenant or agent.
 
-### Common Issues
+## Security considerations
 
-1. **Vector store missing error**
-   - Run ingestion for the tenant/agent first
-   - Check if the `vector_store/<tenant>/<agent>` directory exists
+- Override `JWT_SECRET_KEY` in production and rotate it periodically.
+- Change the default admin password on first boot; `users.json` stores bcrypt hashes only.
+- Restrict widget embedding domains in each agent config (`allowed_domains`).
+- Serve behind HTTPS and lock down API keys and Azure AD credentials with your secrets manager.
+- Audit logs include IP addresses and optional user feedback ratings for monitoring.
 
-2. **Authentication errors**
-   - Ensure JWT token is included in headers
-   - Check if user has access to the requested tenant
+## Development tips
 
-3. **LLM provider errors**
-   - Verify API keys are set correctly
-   - Check provider-specific requirements
-
-4. **File upload errors**
-   - Ensure file types are supported
-   - Check file size limits
-
-## Production Deployment
-
-### Using Docker
-
-Create a `Dockerfile`:
-```dockerfile
-FROM python:3.11-slim
-
-WORKDIR /app
-
-COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
-
-COPY . .
-
-EXPOSE 8000
-
-CMD ["python", "-m", "rag_chatbot.cli", "serve", "--host", "0.0.0.0"]
-```
-
-Build and run:
-```bash
-docker build -t rag-chatbot .
-docker run -p 8000:8000 -e OPENAI_API_KEY=your-key rag-chatbot
-```
-
-### Environment Variables
-
-- `OPENAI_API_KEY`: OpenAI API key
-- `ANTHROPIC_API_KEY`: Anthropic API key (optional)
-- `GOOGLE_APPLICATION_CREDENTIALS`: Path to Google credentials (optional)
-- `JWT_SECRET_KEY`: Secret key for JWT tokens
-
-### Database Migration
-
-For production, consider migrating from SQLite to PostgreSQL:
-
-1. Update `database.py` to use SQLAlchemy
-2. Set `DATABASE_URL` environment variable
-3. Run database migrations
-
-## Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests if applicable
-5. Submit a pull request
-
-## License
-
-[Your License Here]
+- Run the API locally with `python cli.py serve --reload`.
+- Execute the test suite with `pytest` from the repo root.
+- Add new providers by extending `llm.py` or `embedding.py`, and new file types by extending `utils/file_processors.py`.
 
 ## Support
 
-For issues and questions:
-- GitHub Issues: [repository-url]/issues
-- Documentation: [documentation-url]
-## Entra ID MFA Integration
-
-### Azure registration
-1. Register a **SPA** app in Entra and note the **Application (client) ID**.
-   - Enable the *Authorization code* and *Implicit* grants for ID and access tokens.
-   - Set the redirect URI to `http://localhost:5173`.
-2. Register an **API** app and expose an API scope. Note the **Application ID URI**.
-3. In the SPA's **API permissions**, add access to the API scope.
-
-### Conditional Access
-1. Open **Entra ID > Protection > Conditional Access**.
-2. Create a **New policy** > **Cloud apps** > select your SPA's application ID.
-3. Under **Grant**, select **Require multi-factor authentication** and enable the policy.
-   <!-- MFA enforcement happens here, not in code -->
-
-### Local development
-```bash
-cd spa && npm i && npm run dev      # start React + Vite SPA
-cd ../api && npm i && node index.js # start Express API
-```
-
-The default admin credentials remain `admin/admin` for backwards compatibility.
+- Issues: open a ticket in this repository.
+- Additional guides: see the `docs/` directory for Azure AD setup and background ingestion notes.

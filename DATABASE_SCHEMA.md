@@ -1,10 +1,11 @@
 # Database Schema
 
-This project uses a small SQLite database for storing chat interactions. The database file is located at `chat_logs.db` and is initialized by `database.py`.
+The chatbot stores operational data in a lightweight SQLite database (`chat_logs.db`). The path is controlled by `RAG_CHATBOT_HOME` (defaults to the repository root) in `config.py`.
 
-## Table: `chat_logs`
+## `chat_logs`
 
-The `chat_logs` table keeps a record of each user interaction with the chatbot. It is created in `database.py` as shown below:
+Records every chat turn for analytics and auditing.
+
 ```sql
 CREATE TABLE IF NOT EXISTS chat_logs(
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -23,32 +24,20 @@ CREATE TABLE IF NOT EXISTS chat_logs(
 );
 ```
 
-### Fields
-- **id** – Automatically incrementing identifier for each record.
-- **ts** – Timestamp (UTC ISO format) when the interaction occurred.
-- **tenant** – Tenant name that owns the conversation.
-- **agent** – Agent identifier within the tenant.
-- **session_id** – Session identifier used to group conversations.
-- **question** – User’s question text.
-- **answer** – Generated answer text from the LLM.
-- **sources** – JSON-encoded list of document sources returned by the RAG search.
-- **latency** – Time in seconds taken to generate the response.
-- **tokens_in** – Number of tokens sent to the LLM.
-- **tokens_out** – Number of tokens returned by the LLM.
-- **user_feedback** – Optional numeric rating submitted by the user (1–5).
-- **user_ip** – IP address of the user making the request.
+- `ts` – UTC timestamp when the exchange was logged.
+- `tenant` / `agent` – Context that scopes the request.
+- `session_id` – Client-provided session key (also used by the widget).
+- `question` / `answer` – User prompt and model response.
+- `sources` – JSON-encoded citations returned from the vector search.
+- `latency`, `tokens_in`, `tokens_out` – Basic performance metrics.
+- `user_feedback` – Optional numeric rating submitted later via `/feedback/{chat_id}`.
+- `user_ip` – IP address captured for auditing.
 
-### Purpose
-The `chat_logs` table serves multiple roles:
-1. **Audit Trail** &mdash; Provides a historical record of all chats for a tenant and agent.
-2. **Analytics** &mdash; Used by the analytics functions (`analytics.py`) to compute metrics such as total queries, unique sessions, and performance statistics.
-3. **Feedback Tracking** &mdash; The `user_feedback` field is updated through the `/feedback/{chat_id}` endpoint to record user satisfaction.
+The `log_chat` helper in `database.py` inserts rows into this table.
 
-The `database.py` module also provides helper functions to insert new chat records (`log_chat`), update user feedback (`update_feedback`), and obtain basic statistics (`get_chat_stats`).
+## `llm_logs`
 
-## Table: `llm_logs`
-
-The `llm_logs` table captures each request to an LLM provider along with any error message.
+Captures both completion and embedding calls with provider metadata and any error details.
 
 ```sql
 CREATE TABLE IF NOT EXISTS llm_logs(
@@ -58,27 +47,41 @@ CREATE TABLE IF NOT EXISTS llm_logs(
     status TEXT,
     tenant TEXT,
     agent TEXT,
-    model TEXT,
     description TEXT,
     error_message TEXT
 );
 ```
 
-Fields:
+The `model` column is added during upgrades via `_ensure_column`. `log_llm_event` writes to this table from `llm.py` and `embedding.py`.
 
-- **id** – Incrementing identifier for each log entry.
-- **ts** – Timestamp when the request was made.
-- **provider** – The LLM provider name.
-- **status** – Either `success` or `error`.
-- **tenant** – Tenant associated with the call.
-- **agent** – Agent name.
-- **model** – Model name used for the request.
-- **description** – Additional context (file name, user question, etc.).
-- **error_message** – Error text if the request failed.
+## `uploaded_files`
 
-## Table: `error_logs`
+Tracks every uploaded document and whether OCR or template processing was applied.
 
-The `error_logs` table stores internal application errors and the endpoint where they occurred.
+```sql
+CREATE TABLE IF NOT EXISTS uploaded_files(
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    tenant TEXT,
+    agent TEXT,
+    filename TEXT,
+    size INTEGER,
+    uploaded_at TEXT,
+    status TEXT,
+    ocr_used INTEGER DEFAULT 0,
+    template INTEGER DEFAULT 0
+);
+```
+
+- `size` – File size in bytes.
+- `status` – Ingestion lifecycle marker (for example, `in progress` or `ready`).
+- `ocr_used` – Boolean flag indicating if OCR was needed during processing.
+- `template` – Marks template snippets that can be injected into answers.
+
+Functions such as `add_uploaded_file`, `set_file_ocr_used`, and `set_file_template` update these columns.
+
+## `error_logs`
+
+Stores application errors with contextual routing data.
 
 ```sql
 CREATE TABLE IF NOT EXISTS error_logs(
@@ -91,12 +94,12 @@ CREATE TABLE IF NOT EXISTS error_logs(
 );
 ```
 
-Fields:
+`log_error` is called by the global exception handlers in `main.py` to record trace details.
 
-- **id** – Incrementing identifier.
-- **ts** – Timestamp when the error was logged.
-- **endpoint** – API path that triggered the error.
-- **tenant** – Tenant context if provided.
-- **agent** – Agent name if provided.
-- **message** – Error description.
+## Relationships and usage
 
+- Tables share `tenant` and `agent` columns so analytics can be scoped per customer/agent.
+- Upload records map to vector stores on disk at `vector_store/<tenant>/<agent>/`.
+- Feedback is appended to existing `chat_logs` rows without creating new entries.
+
+The schema favors simplicity and easy portability; migrations are handled by ensuring missing columns exist on startup.

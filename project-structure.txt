@@ -1,35 +1,38 @@
-rag_chatbot/
-├── __init__.py
-├── main.py                 # FastAPI app initialization and main entry point
-├── auth.py                 # Authentication and user management
-├── models.py               # Pydantic models and schemas
-├── config.py               # Configuration management
-├── database.py             # Database operations and connections
-├── vectorstore.py          # Vector store operations and RAG functionality
-├── llm.py                  # LLM provider integrations
-├── ingestion.py            # Document ingestion and processing
-├── analytics.py            # Analytics and reporting
-├── widget.py               # Widget generation and serving
-├── cli.py                  # CLI interface with Rich
+cg_bot/
+├── __init__.py              # Package metadata and get_app helper
+├── main.py                  # FastAPI app factory, middleware, router registration
+├── auth.py                  # JWT + Azure AD authentication, user store helpers
+├── config.py                # Paths, defaults, tenant/agent config loading
+├── database.py              # SQLite schema management and logging helpers
+├── llm.py                   # LLM provider routing (OpenAI, Anthropic, Vertex AI)
+├── embedding.py             # Embedding provider selection and logging
+├── vectorstore.py           # Chunking utilities and FAISS persistence/cache
+├── ingestion.py             # Orchestrates ingestion from Drive, sitemap, and local files
+├── analytics.py             # Simple analytics utilities backed by SQLite
+├── widget.py                # Generates embeddable chat widget JavaScript
+├── cli.py                   # Typer + Rich CLI (dashboard, serve, ingest, user management)
 ├── routers/
 │   ├── __init__.py
-│   ├── auth_routes.py      # Authentication endpoints
-│   ├── chat_routes.py      # Chat and RAG endpoints
-│   ├── config_routes.py    # Configuration management endpoints
-│   ├── admin_routes.py     # Admin interface endpoints
-│   ├── analytics_routes.py # Analytics endpoints
-│   └── ingest_routes.py    # Document ingestion endpoints
+│   ├── admin_routes.py      # Admin actions (config updates, file listing)
+│   ├── analytics_routes.py  # Usage and error reporting endpoints
+│   ├── auth_routes.py       # Token issuance and Azure AD token validation
+│   ├── chat_routes.py       # RAG chat endpoint and feedback/history helpers
+│   ├── config_routes.py     # Tenant/agent configuration CRUD
+│   ├── ingest_routes.py     # File upload, delete, and ingestion triggers
+│   └── user_routes.py       # User CRUD operations
 ├── utils/
 │   ├── __init__.py
-│   ├── google_drive.py     # Google Drive utilities
-│   ├── web_scraper.py      # Web scraping and sitemap utilities
-│   └── file_processors.py  # File processing utilities
-├── static/
-│   └── admin.html          # Admin interface HTML
-├── templates/
-│   └── test.html           # Test HTML file
-├── configs/                # Tenant/agent configurations (created at runtime)
-├── vector_store/           # Vector stores (created at runtime)
-├── users.json              # User database (created at runtime)
-├── chat_logs.db            # SQLite database (created at runtime)
-└── requirements.txt        # Python dependencies
+│   ├── file_processors.py   # Text extraction + OCR detection for various file types
+│   ├── google_drive.py      # Drive listing and download helpers
+│   └── web_scraper.py       # Sitemap parsing and page download helpers
+├── static/                  # Admin HTML and widget assets served by FastAPI
+├── docs/                    # Additional guides (Azure AD setup, background ingest)
+├── configs/                 # Runtime tenant/agent configs (created lazily)
+├── uploads/                 # Uploaded files grouped by tenant/agent
+├── vector_store/            # FAISS indexes per tenant/agent with meta.json
+├── users.json               # Local user database (created on first run)
+├── chat_logs.db             # SQLite database (created on first run)
+├── login-app/               # Sample Express API for Entra login testing
+├── spa/                     # Sample React/Vite SPA for the Entra login flow
+├── requirements.txt         # Python dependencies
+└── start.sh                 # Convenience bootstrap script for local runs
