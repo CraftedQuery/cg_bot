@@ -62,6 +62,19 @@ class ConfigUpdateRequest(BaseModel):
     local_only: bool | None = None
 
 
+class StageLLMConfig(BaseModel):
+    """Configuration for an individual LLM stage."""
+
+    enabled: bool | None = None
+    provider: str | None = None
+    model: str | None = None
+    api_key: str | None = None
+    endpoint: str | None = None
+    system_prompt: str | None = None
+    max_tokens: int | None = None
+    temperature: float | None = None
+
+
 class EnhancedConfigUpdateRequest(ConfigUpdateRequest):
     """Enhanced configuration model with widget parameters"""
 
@@ -73,3 +86,6 @@ class EnhancedConfigUpdateRequest(ConfigUpdateRequest):
     widget_size: str | None = None
     welcome_message: str | None = None
     placeholder_text: str | None = None
+    question_evaluator: StageLLMConfig | None = None
+    main_rag: StageLLMConfig | None = None
+    answer_evaluator: StageLLMConfig | None = None

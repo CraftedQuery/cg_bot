@@ -34,7 +34,9 @@ def init_database():
                 tokens_in INTEGER,
                 tokens_out INTEGER,
                 user_feedback INTEGER,
-                user_ip TEXT
+                user_ip TEXT,
+                question_evaluation_id INTEGER,
+                answer_evaluation_id INTEGER
             )
         """)
         con.execute("""
@@ -72,6 +74,46 @@ def init_database():
         _ensure_column(con, "llm_logs", "error_message TEXT")
         _ensure_column(con, "uploaded_files", "ocr_used INTEGER DEFAULT 0")
         _ensure_column(con, "uploaded_files", "template INTEGER DEFAULT 0")
+        _ensure_column(con, "chat_logs", "question_evaluation_id INTEGER")
+        _ensure_column(con, "chat_logs", "answer_evaluation_id INTEGER")
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS question_evaluation_logs(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT,
+                tenant TEXT,
+                agent TEXT,
+                session_id TEXT,
+                conversation_id INTEGER,
+                original_question TEXT,
+                evaluation_result TEXT,
+                provider TEXT,
+                model TEXT,
+                tokens_used INTEGER,
+                latency_ms REAL,
+                error TEXT
+            )
+            """
+        )
+        con.execute(
+            """
+            CREATE TABLE IF NOT EXISTS answer_evaluation_logs(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ts TEXT,
+                tenant TEXT,
+                agent TEXT,
+                session_id TEXT,
+                conversation_id INTEGER,
+                original_answer TEXT,
+                evaluation_result TEXT,
+                provider TEXT,
+                model TEXT,
+                tokens_used INTEGER,
+                latency_ms REAL,
+                error TEXT
+            )
+            """
+        )
         con.execute(
             """
             CREATE TABLE IF NOT EXISTS error_logs(
@@ -107,17 +149,21 @@ def log_chat(
     latency: float,
     tokens_in: int,
     tokens_out: int,
-    user_ip: str
-):
-    """Log a chat interaction"""
+    user_ip: str,
+    *,
+    question_evaluation_id: int | None = None,
+    answer_evaluation_id: int | None = None,
+) -> int:
+    """Log a chat interaction and return the chat record ID."""
     from datetime import datetime, timezone
-    
+
     with get_db() as con:
-        con.execute(
+        cur = con.execute(
             """INSERT INTO chat_logs
-               (ts, tenant, agent, session_id, question, answer, sources, 
-                latency, tokens_in, tokens_out, user_ip)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               (ts, tenant, agent, session_id, question, answer, sources,
+                latency, tokens_in, tokens_out, user_ip, question_evaluation_id,
+                answer_evaluation_id)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 datetime.now(timezone.utc).isoformat(),
                 tenant,
@@ -129,10 +175,13 @@ def log_chat(
                 latency,
                 tokens_in,
                 tokens_out,
-                user_ip
+                user_ip,
+                question_evaluation_id,
+                answer_evaluation_id,
             )
         )
         con.commit()
+        return cur.lastrowid
 
 
 def log_llm_event(
@@ -164,6 +213,111 @@ def log_llm_event(
                 error_message,
             )
         )
+        con.commit()
+
+
+def log_question_evaluation(
+    *,
+    tenant: str,
+    agent: str,
+    session_id: str,
+    conversation_id: int | None,
+    original_question: str,
+    evaluation_result: str,
+    provider: str | None,
+    model: str | None,
+    tokens_used: int | None,
+    latency_ms: float | None,
+    error: str | None,
+) -> int:
+    """Record a question evaluation stage result and return its ID."""
+    from datetime import datetime, timezone
+
+    with get_db() as con:
+        cur = con.execute(
+            """INSERT INTO question_evaluation_logs
+               (ts, tenant, agent, session_id, conversation_id, original_question, evaluation_result,
+                provider, model, tokens_used, latency_ms, error)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                datetime.now(timezone.utc).isoformat(),
+                tenant,
+                agent,
+                session_id,
+                conversation_id,
+                original_question,
+                evaluation_result,
+                provider,
+                model,
+                tokens_used,
+                latency_ms,
+                error,
+            ),
+        )
+        con.commit()
+        return cur.lastrowid
+
+
+def log_answer_evaluation(
+    *,
+    tenant: str,
+    agent: str,
+    session_id: str,
+    conversation_id: int | None,
+    original_answer: str,
+    evaluation_result: str,
+    provider: str | None,
+    model: str | None,
+    tokens_used: int | None,
+    latency_ms: float | None,
+    error: str | None,
+) -> int:
+    """Record an answer evaluation stage result and return its ID."""
+    from datetime import datetime, timezone
+
+    with get_db() as con:
+        cur = con.execute(
+            """INSERT INTO answer_evaluation_logs
+               (ts, tenant, agent, session_id, conversation_id, original_answer, evaluation_result,
+                provider, model, tokens_used, latency_ms, error)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+            (
+                datetime.now(timezone.utc).isoformat(),
+                tenant,
+                agent,
+                session_id,
+                conversation_id,
+                original_answer,
+                evaluation_result,
+                provider,
+                model,
+                tokens_used,
+                latency_ms,
+                error,
+            ),
+        )
+        con.commit()
+        return cur.lastrowid
+
+
+def link_stage_conversation(
+    chat_id: int,
+    question_eval_id: int | None,
+    answer_eval_id: int | None,
+) -> None:
+    """Link evaluation logs to the main chat record."""
+
+    with get_db() as con:
+        if question_eval_id is not None:
+            con.execute(
+                "UPDATE question_evaluation_logs SET conversation_id = ? WHERE id = ?",
+                (chat_id, question_eval_id),
+            )
+        if answer_eval_id is not None:
+            con.execute(
+                "UPDATE answer_evaluation_logs SET conversation_id = ? WHERE id = ?",
+                (chat_id, answer_eval_id),
+            )
         con.commit()
 
 

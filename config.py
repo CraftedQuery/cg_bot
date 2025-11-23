@@ -37,6 +37,68 @@ def cfg_path(tenant: str, agent: str) -> Path:
     return BASE_CONFIG_DIR / tenant / f"{agent}.json"
 
 
+def _default_stage_config(
+    *,
+    enabled: bool = False,
+    provider: str = "openai",
+    model: str = "gpt-4o-mini",
+    api_key: str = "",
+    endpoint: str = "",
+    system_prompt: str = "",
+    max_tokens: int | None = 500,
+    temperature: float = 0.3,
+) -> Dict[str, Any]:
+    """Return a default stage configuration dictionary."""
+
+    return {
+        "enabled": enabled,
+        "provider": provider,
+        "model": model,
+        "api_key": api_key,
+        "endpoint": endpoint,
+        "system_prompt": system_prompt,
+        "max_tokens": max_tokens,
+        "temperature": temperature,
+    }
+
+
+def _apply_stage_defaults(stage_cfg: Dict[str, Any], defaults: Dict[str, Any]) -> Dict[str, Any]:
+    """Merge defaults into a stage configuration without overwriting existing values."""
+
+    for key, value in defaults.items():
+        stage_cfg.setdefault(key, value)
+    return stage_cfg
+
+
+def _ensure_stage_defaults(cfg: Dict[str, Any]) -> Dict[str, Any]:
+    """Ensure new stage configuration blocks exist for backward compatibility."""
+
+    base_provider = cfg.get("llm_provider", "openai")
+    base_model = cfg.get("llm_model", "gpt-4o-mini")
+    base_temp = cfg.get("temperature", 0.3)
+    system_prompt = cfg.get("system_prompt", "You are a helpful assistant.")
+
+    cfg["main_rag"] = _apply_stage_defaults(
+        cfg.get("main_rag", {}),
+        _default_stage_config(
+            enabled=True,
+            provider=base_provider,
+            model=base_model,
+            temperature=base_temp,
+            system_prompt=system_prompt,
+        ),
+    )
+    cfg["question_evaluator"] = _apply_stage_defaults(
+        cfg.get("question_evaluator", {}),
+        _default_stage_config(enabled=False),
+    )
+    cfg["answer_evaluator"] = _apply_stage_defaults(
+        cfg.get("answer_evaluator", {}),
+        _default_stage_config(enabled=False),
+    )
+    return cfg
+
+
 def store_path(tenant: str, agent: str) -> Path:
     """Get vector store path for a tenant/agent"""
     return BASE_STORE_DIR / tenant / agent
@@ -54,7 +116,8 @@ def load_config(tenant: str, agent: str) -> Dict[str, Any]:
         cfg = json.loads(p.read_text())
         if "local_only" not in cfg:
             cfg["local_only"] = True
-            p.write_text(json.dumps(cfg, indent=2))
+        cfg = _ensure_stage_defaults(cfg)
+        p.write_text(json.dumps(cfg, indent=2))
         return cfg
 
     # Create default configuration
@@ -82,6 +145,15 @@ def load_config(tenant: str, agent: str) -> Dict[str, Any]:
         "welcome_message": "Hello! How can I help you today?",
         # Placeholder shown in the widget's input box
         "placeholder_text": "Please ask your question...",
+        "question_evaluator": _default_stage_config(enabled=False),
+        "main_rag": _default_stage_config(
+            enabled=True,
+            provider="openai",
+            model="gpt-4o-mini",
+            temperature=0.3,
+            system_prompt="You are a helpful assistant.",
+        ),
+        "answer_evaluator": _default_stage_config(enabled=False),
     }
     p.write_text(json.dumps(cfg, indent=2))
     return cfg
