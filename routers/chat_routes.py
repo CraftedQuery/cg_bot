@@ -2,6 +2,7 @@
 routers/chat_routes.py - Chat and RAG endpoints
 """
 import json
+import logging
 from fastapi import APIRouter, Request, Query, Depends, HTTPException
 
 from ..models import ChatRequest, ChatResponse, User
@@ -9,8 +10,16 @@ from ..auth import get_current_active_user
 from ..config import DEFAULT_TENANT, DEFAULT_AGENT, load_config
 from ..vectorstore import search_documents
 from ..llm import get_llm_response
-from ..database import log_chat, update_feedback, is_template_file
+from ..database import (
+    log_answer_evaluation,
+    log_chat,
+    log_question_evaluation,
+    update_feedback,
+    is_template_file,
+)
 from langdetect import detect, DetectorFactory
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["chat"])
 
@@ -34,10 +43,67 @@ async def chat(
     
     # Get configuration
     cfg = load_config(tenant, agent)
+
+    session_id = request.headers.get("X-Session-Id", "anon")
+
+    stage_configs = {
+        "question_evaluator": cfg.get("question_evaluator", {}),
+        "main_rag": cfg.get("main_rag", {}),
+        "answer_evaluator": cfg.get("answer_evaluator", {}),
+    }
     
     # Get the latest user question
     q = next((m["content"] for m in reversed(req.messages) if m["role"] == "user"), "")
     
+    # Optional question evaluation stage
+    question_eval_id = None
+    if stage_configs["question_evaluator"].get("enabled"):
+        try:
+            qe_cfg = stage_configs["question_evaluator"]
+            qe_messages = []
+            if qe_cfg.get("system_prompt"):
+                qe_messages.append({"role": "system", "content": qe_cfg.get("system_prompt", "")})
+            qe_messages.append({"role": "user", "content": q})
+
+            qe_result = get_llm_response(
+                messages=qe_messages,
+                provider=qe_cfg.get("provider", "openai"),
+                model=qe_cfg.get("model"),
+                temperature=qe_cfg.get("temperature", 0.3),
+                api_key=qe_cfg.get("api_key") or None,
+                endpoint=qe_cfg.get("endpoint") or None,
+                max_tokens=qe_cfg.get("max_tokens"),
+                tenant=tenant,
+                agent=agent,
+                user=current_user.username,
+                question=q,
+                description="question_evaluator",
+            )
+        except Exception as exc:  # Defensive: continue main flow
+            logger.exception("Question evaluation failed")
+            qe_result = {
+                "content": f"Question evaluation failed: {exc}",
+                "tokens_out": None,
+                "latency": None,
+                "error": str(exc),
+                "provider": stage_configs["question_evaluator"].get("provider"),
+                "model": stage_configs["question_evaluator"].get("model"),
+            }
+
+        question_eval_id = log_question_evaluation(
+            tenant=tenant,
+            agent=agent,
+            session_id=session_id,
+            conversation_id=None,
+            original_question=q,
+            evaluation_result=qe_result.get("content", ""),
+            provider=qe_result.get("provider"),
+            model=qe_result.get("model"),
+            tokens_used=qe_result.get("tokens_out"),
+            latency_ms=(qe_result.get("latency") * 1000) if qe_result.get("latency") is not None else None,
+            error=qe_result.get("error"),
+        )
+
     # Search for relevant documents
     search_results = search_documents(tenant, agent, q)
 
@@ -79,31 +145,44 @@ async def chat(
     }
     language = lang_map.get(lang_code.lower(), "English")
 
-    # Create system message with context
-    sys_content = cfg["system_prompt"]
-    # Ensure the assistant responds in the language used by the user
-    sys_content += f"\nPlease respond in {language}."
-    if template_chunks and "template" in q.lower():
-        sys_content += "\n" + "\n".join(template_chunks)
-    if cfg.get("local_only", True):
-        sys_content += "\nUse only the provided Context to answer. Do not search the internet."
-    sys_content += "\nContext:\n" + ctx
-    system_msg = {
-        "role": "system",
-        "content": sys_content
-    }
-    
-    # Get response from LLM
-    llm_result = get_llm_response(
-        messages=[system_msg, *req.messages],
-        provider=cfg.get("llm_provider", "openai"),
-        model=cfg.get("llm_model", "gpt-4o-mini"),
-        temperature=cfg.get("temperature", 0.3),
-        tenant=tenant,
-        agent=agent,
-        user=current_user.username,
-        question=q,
-    )
+    sources = []
+    main_stage_cfg = stage_configs["main_rag"] or {}
+    if not main_stage_cfg.get("enabled", True):
+        llm_result = {
+            "content": "Main RAG bot is disabled for this agent.",
+            "latency": 0,
+            "tokens_in": 0,
+            "tokens_out": 0,
+        }
+    else:
+        sys_content = main_stage_cfg.get("system_prompt") or cfg["system_prompt"]
+        # Ensure the assistant responds in the language used by the user
+        sys_content += f"\nPlease respond in {language}."
+        if template_chunks and "template" in q.lower():
+            sys_content += "\n" + "\n".join(template_chunks)
+        if cfg.get("local_only", True):
+            sys_content += "\nUse only the provided Context to answer. Do not search the internet."
+        sys_content += "\nContext:\n" + ctx
+        system_msg = {
+            "role": "system",
+            "content": sys_content
+        }
+
+        # Get response from LLM
+        llm_result = get_llm_response(
+            messages=[system_msg, *req.messages],
+            provider=main_stage_cfg.get("provider") or cfg.get("llm_provider", "openai"),
+            model=main_stage_cfg.get("model") or cfg.get("llm_model", "gpt-4o-mini"),
+            temperature=main_stage_cfg.get("temperature", cfg.get("temperature", 0.3)),
+            api_key=main_stage_cfg.get("api_key") or None,
+            endpoint=main_stage_cfg.get("endpoint") or None,
+            max_tokens=main_stage_cfg.get("max_tokens"),
+            tenant=tenant,
+            agent=agent,
+            user=current_user.username,
+            question=q,
+            description="main_rag",
+        )
     
     # Extract sources
     sources, seen = [], set()
@@ -119,20 +198,76 @@ async def chat(
                 citation["heading"] = metadata["heading"]
             sources.append(citation)
             seen.add(key)
-    
+
+    # Optional answer evaluation stage
+    answer_eval_id = None
+    if stage_configs["answer_evaluator"].get("enabled"):
+        try:
+            ae_cfg = stage_configs["answer_evaluator"]
+            ae_messages = []
+            if ae_cfg.get("system_prompt"):
+                ae_messages.append({"role": "system", "content": ae_cfg.get("system_prompt", "")})
+            ae_messages.append({"role": "user", "content": llm_result.get("content", "")})
+
+            ae_result = get_llm_response(
+                messages=ae_messages,
+                provider=ae_cfg.get("provider", "openai"),
+                model=ae_cfg.get("model"),
+                temperature=ae_cfg.get("temperature", 0.3),
+                api_key=ae_cfg.get("api_key") or None,
+                endpoint=ae_cfg.get("endpoint") or None,
+                max_tokens=ae_cfg.get("max_tokens"),
+                tenant=tenant,
+                agent=agent,
+                user=current_user.username,
+                question=q,
+                description="answer_evaluator",
+            )
+        except Exception as exc:
+            logger.exception("Answer evaluation failed")
+            ae_result = {
+                "content": f"Answer evaluation failed: {exc}",
+                "tokens_out": None,
+                "latency": None,
+                "error": str(exc),
+                "provider": stage_configs["answer_evaluator"].get("provider"),
+                "model": stage_configs["answer_evaluator"].get("model"),
+            }
+
+        answer_eval_id = log_answer_evaluation(
+            tenant=tenant,
+            agent=agent,
+            session_id=session_id,
+            conversation_id=None,
+            original_answer=llm_result.get("content", ""),
+            evaluation_result=ae_result.get("content", ""),
+            provider=ae_result.get("provider"),
+            model=ae_result.get("model"),
+            tokens_used=ae_result.get("tokens_out"),
+            latency_ms=(ae_result.get("latency") * 1000) if ae_result.get("latency") is not None else None,
+            error=ae_result.get("error"),
+        )
+
     # Log the interaction
-    log_chat(
+    chat_id = log_chat(
         tenant=tenant,
         agent=agent,
-        session_id=request.headers.get("X-Session-Id", "anon"),
+        session_id=session_id,
         question=q,
         answer=llm_result["content"],
         sources=json.dumps(sources),
         latency=llm_result["latency"],
         tokens_in=llm_result["tokens_in"],
         tokens_out=llm_result["tokens_out"],
-        user_ip=request.client.host
+        user_ip=request.client.host,
+        question_evaluation_id=question_eval_id,
+        answer_evaluation_id=answer_eval_id,
     )
+
+    if chat_id:
+        from ..database import link_stage_conversation
+
+        link_stage_conversation(chat_id, question_eval_id, answer_eval_id)
     
     return {
         "reply": llm_result["content"],

@@ -436,6 +436,93 @@
             border-bottom: 2px solid var(--gray-200);
             padding-bottom: 8px;
         }
+
+        .pipeline-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 15px;
+        }
+
+        .pipeline-card {
+            border: 1px solid var(--gray-200);
+            border-radius: 10px;
+            padding: 16px;
+            box-shadow: var(--shadow);
+            position: relative;
+        }
+
+        .stage-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .stage-order {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: var(--white);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 999px;
+            font-size: 12px;
+            background: var(--gray-200);
+            color: var(--gray-800);
+        }
+
+        .status-badge.success { background: #d1f2d9; color: #1b6b3a; }
+        .status-badge.warning { background: #fff3cd; color: #8a6d3b; }
+        .status-badge.muted { background: var(--gray-200); color: var(--gray-600); }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 46px;
+            height: 24px;
+        }
+
+        .toggle-switch input { display: none; }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .2s;
+            border-radius: 24px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .2s;
+            border-radius: 50%;
+        }
+
+        .toggle-switch input:checked + .slider {
+            background-color: #4CAF50;
+        }
+
+        .toggle-switch input:checked + .slider:before {
+            transform: translateX(22px);
+        }
         
         .checkbox-group {
             display: flex;
@@ -978,30 +1065,180 @@
                     
                     <div class="config-section">
                         <h4>AI Configuration</h4>
-                        <div class="form-group">
-                            <label for="llmProvider">LLM Provider</label>
-                            <select id="llmProvider" name="llm_provider">
-                                <option value="openai">OpenAI</option>
-                                <option value="anthropic">Anthropic</option>
-                                <option value="vertexai">Google Vertex AI</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="llmModel">Model</label>
-                            <select id="llmModel" name="llm_model">
-                                <option value="gpt-4o-mini">GPT-4o Mini</option>
-                                <option value="gpt-4o">GPT-4o</option>
-                                <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="temperature">Temperature</label>
-                            <input type="range" id="temperature" name="temperature" min="0" max="1" step="0.1" value="0.3">
-                            <span id="tempValue">0.3</span>
-                        </div>
-                        <div class="checkbox-group">
-                            <input type="checkbox" id="localOnly" name="local_only" checked>
-                            <label for="localOnly">Local Data Only</label>
+                        <p style="color: var(--gray-600); margin-bottom: 12px;">Configure each stage of the three-part evaluation pipeline.</p>
+                        <div class="pipeline-grid">
+                            <div class="pipeline-card">
+                                <div class="stage-header">
+                                    <div class="stage-order">1</div>
+                                    <div>
+                                        <h5>Question Evaluator</h5>
+                                        <small style="color: var(--gray-600);">Pre-process incoming user questions.</small>
+                                    </div>
+                                    <label class="toggle-switch" title="Enable question evaluation">
+                                        <input type="checkbox" id="qeEnabled">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                                    <span class="status-badge" id="qeStatus">Disabled</span>
+                                    <span style="color: var(--gray-600); font-size: 12px;">Step 1</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="qeProvider">AI Provider</label>
+                                    <select id="qeProvider">
+                                        <option value="openai">OpenAI</option>
+                                        <option value="anthropic">Anthropic</option>
+                                        <option value="vertexai">Google Vertex AI</option>
+                                        <option value="custom">Custom</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="qeEndpoint">API Endpoint (for custom)</label>
+                                    <input type="text" id="qeEndpoint" placeholder="https://...">
+                                </div>
+                                <div class="form-group">
+                                    <label for="qeApiKey">API Key</label>
+                                    <input type="password" id="qeApiKey" placeholder="Optional override">
+                                </div>
+                                <div class="form-group">
+                                    <label for="qeModel">Model</label>
+                                    <select id="qeModel"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="qeSystemPrompt">System Prompt</label>
+                                    <textarea id="qeSystemPrompt" rows="3" placeholder="You are a question analyzer..."></textarea>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="qeMaxTokens">Max Tokens</label>
+                                        <input type="number" id="qeMaxTokens" min="1" step="50" placeholder="500">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="qeTemperature">Temperature</label>
+                                        <input type="number" id="qeTemperature" min="0" max="2" step="0.1" value="0.3">
+                                    </div>
+                                </div>
+                                <div style="text-align: right; margin-top: 8px;">
+                                    <button type="button" class="btn btn-outline" onclick="document.getElementById('agentConfigForm').requestSubmit()">Save Question Evaluator</button>
+                                </div>
+                            </div>
+
+                            <div class="pipeline-card">
+                                <div class="stage-header">
+                                    <div class="stage-order">2</div>
+                                    <div>
+                                        <h5>Main RAG Bot</h5>
+                                        <small style="color: var(--gray-600);">Primary chatbot response generator.</small>
+                                    </div>
+                                    <label class="toggle-switch" title="Enable main RAG responses">
+                                        <input type="checkbox" id="mainEnabled">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                                    <span class="status-badge" id="mainStatus">Enabled</span>
+                                    <span style="color: var(--gray-600); font-size: 12px;">Step 2</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="llmProvider">AI Provider</label>
+                                    <select id="llmProvider" name="llm_provider">
+                                        <option value="openai">OpenAI</option>
+                                        <option value="anthropic">Anthropic</option>
+                                        <option value="vertexai">Google Vertex AI</option>
+                                        <option value="custom">Custom</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="mainEndpoint">API Endpoint (for custom)</label>
+                                    <input type="text" id="mainEndpoint" placeholder="https://...">
+                                </div>
+                                <div class="form-group">
+                                    <label for="mainApiKey">API Key</label>
+                                    <input type="password" id="mainApiKey" placeholder="Optional override">
+                                </div>
+                                <div class="form-group">
+                                    <label for="llmModel">Model</label>
+                                    <select id="llmModel" name="llm_model"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="systemPrompt">System Prompt</label>
+                                    <textarea id="mainSystemPrompt" name="main_system_prompt" rows="3" placeholder="You are a helpful assistant."></textarea>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="maxTokens">Max Tokens</label>
+                                        <input type="number" id="maxTokens" min="1" step="50" placeholder="1000">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="temperature">Temperature</label>
+                                        <input type="number" id="temperature" name="temperature" min="0" max="2" step="0.1" value="0.3">
+                                        <span id="tempValue">0.3</span>
+                                    </div>
+                                </div>
+                                <div class="checkbox-group">
+                                    <input type="checkbox" id="localOnly" name="local_only" checked>
+                                    <label for="localOnly">Local Data Only</label>
+                                </div>
+                                <div style="text-align: right; margin-top: 8px;">
+                                    <button type="button" class="btn btn-outline" onclick="document.getElementById('agentConfigForm').requestSubmit()">Save Main Bot</button>
+                                </div>
+                            </div>
+
+                            <div class="pipeline-card">
+                                <div class="stage-header">
+                                    <div class="stage-order">3</div>
+                                    <div>
+                                        <h5>Answer Evaluator</h5>
+                                        <small style="color: var(--gray-600);">Validate responses after generation.</small>
+                                    </div>
+                                    <label class="toggle-switch" title="Enable answer evaluation">
+                                        <input type="checkbox" id="aeEnabled">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                                    <span class="status-badge" id="aeStatus">Disabled</span>
+                                    <span style="color: var(--gray-600); font-size: 12px;">Step 3</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="aeProvider">AI Provider</label>
+                                    <select id="aeProvider">
+                                        <option value="openai">OpenAI</option>
+                                        <option value="anthropic">Anthropic</option>
+                                        <option value="vertexai">Google Vertex AI</option>
+                                        <option value="custom">Custom</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="aeEndpoint">API Endpoint (for custom)</label>
+                                    <input type="text" id="aeEndpoint" placeholder="https://...">
+                                </div>
+                                <div class="form-group">
+                                    <label for="aeApiKey">API Key</label>
+                                    <input type="password" id="aeApiKey" placeholder="Optional override">
+                                </div>
+                                <div class="form-group">
+                                    <label for="aeModel">Model</label>
+                                    <select id="aeModel"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="aeSystemPrompt">System Prompt</label>
+                                    <textarea id="aeSystemPrompt" rows="3" placeholder="You are an answer evaluator..."></textarea>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="aeMaxTokens">Max Tokens</label>
+                                        <input type="number" id="aeMaxTokens" min="1" step="50" placeholder="500">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="aeTemperature">Temperature</label>
+                                        <input type="number" id="aeTemperature" min="0" max="2" step="0.1" value="0.3">
+                                    </div>
+                                </div>
+                                <div style="text-align: right; margin-top: 8px;">
+                                    <button type="button" class="btn btn-outline" onclick="document.getElementById('agentConfigForm').requestSubmit()">Save Answer Evaluator</button>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     
@@ -1222,9 +1459,35 @@
             });
 
             document.getElementById('llmProvider').addEventListener('change', function() {
-                loadModels(this.value, null);
+                loadModels(this.value, null, 'llmModel');
+                updateStageStatus('main');
             });
-            
+
+            const qeProvider = document.getElementById('qeProvider');
+            if (qeProvider) {
+                qeProvider.addEventListener('change', function() {
+                    loadModels(this.value, null, 'qeModel');
+                    updateStageStatus('qe');
+                });
+            }
+            const aeProvider = document.getElementById('aeProvider');
+            if (aeProvider) {
+                aeProvider.addEventListener('change', function() {
+                    loadModels(this.value, null, 'aeModel');
+                    updateStageStatus('ae');
+                });
+            }
+
+            ['qeEnabled', 'aeEnabled', 'mainEnabled'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) {
+                    el.addEventListener('change', () => {
+                        const prefix = id.replace('Enabled', '');
+                        updateStageStatus(prefix || 'main');
+                    });
+                }
+            });
+
             // Temperature slider
             document.getElementById('temperature').addEventListener('input', function() {
                 document.getElementById('tempValue').textContent = this.value;
@@ -1758,8 +2021,9 @@
             `;
         }
 
-        async function loadModels(provider, currentModel) {
-            const select = document.getElementById('llmModel');
+        async function loadModels(provider, currentModel, selectId = 'llmModel') {
+            const select = document.getElementById(selectId);
+            if (!select) return;
             select.innerHTML = '<option>Loading...</option>';
             let models = [];
             try {
@@ -1790,6 +2054,30 @@
                 }
                 select.value = currentModel;
             }
+        }
+
+        function updateStageStatus(prefix) {
+            const enabledEl = document.getElementById(`${prefix}Enabled`);
+            const badge = document.getElementById(`${prefix}Status`);
+            if (!enabledEl || !badge) return;
+
+            if (!enabledEl.checked) {
+                badge.textContent = 'Disabled';
+                badge.className = 'status-badge muted';
+                return;
+            }
+
+            const providerEl = document.getElementById(prefix === 'main' ? 'llmProvider' : `${prefix}Provider`);
+            const modelEl = document.getElementById(prefix === 'main' ? 'llmModel' : `${prefix}Model`);
+            const endpointEl = document.getElementById(`${prefix}Endpoint`);
+
+            const provider = providerEl ? providerEl.value : '';
+            const model = modelEl ? modelEl.value : '';
+            const needsEndpoint = provider === 'custom';
+            const complete = provider && model && (!needsEndpoint || (endpointEl && endpointEl.value));
+
+            badge.textContent = complete ? 'Ready' : 'Incomplete';
+            badge.className = `status-badge ${complete ? 'success' : 'warning'}`;
         }
 
         // Modal functions
@@ -1904,27 +2192,100 @@
             document.getElementById('secondaryColor').value = config.secondary_color || '#FFFFFF';
             document.getElementById('widgetMode').value = config.mode || 'inline';
             document.getElementById('autoOpen').checked = config.auto_open || false;
-            document.getElementById('llmProvider').value = config.llm_provider || 'openai';
-            await loadModels(document.getElementById('llmProvider').value, config.llm_model || 'gpt-4o-mini');
-            document.getElementById('temperature').value = config.temperature || 0.3;
-            document.getElementById('tempValue').textContent = config.temperature || 0.3;
+            const mainCfg = config.main_rag || {};
+            document.getElementById('mainEnabled').checked = mainCfg.enabled !== false;
+            document.getElementById('llmProvider').value = mainCfg.provider || config.llm_provider || 'openai';
+            await loadModels(document.getElementById('llmProvider').value, mainCfg.model || config.llm_model || 'gpt-4o-mini', 'llmModel');
+            document.getElementById('llmModel').value = mainCfg.model || config.llm_model || '';
+            document.getElementById('mainEndpoint').value = mainCfg.endpoint || '';
+            document.getElementById('mainApiKey').value = mainCfg.api_key || '';
+            document.getElementById('mainSystemPrompt').value = mainCfg.system_prompt || config.system_prompt || '';
+            document.getElementById('maxTokens').value = mainCfg.max_tokens ?? '';
+            document.getElementById('temperature').value = mainCfg.temperature ?? config.temperature ?? 0.3;
+            document.getElementById('tempValue').textContent = document.getElementById('temperature').value;
             document.getElementById('localOnly').checked = config.local_only !== false;
+            const qeCfg = config.question_evaluator || {};
+            document.getElementById('qeEnabled').checked = qeCfg.enabled || false;
+            document.getElementById('qeProvider').value = qeCfg.provider || 'openai';
+            await loadModels(document.getElementById('qeProvider').value, qeCfg.model || '', 'qeModel');
+            document.getElementById('qeModel').value = qeCfg.model || '';
+            document.getElementById('qeEndpoint').value = qeCfg.endpoint || '';
+            document.getElementById('qeApiKey').value = qeCfg.api_key || '';
+            document.getElementById('qeSystemPrompt').value = qeCfg.system_prompt || '';
+            document.getElementById('qeMaxTokens').value = qeCfg.max_tokens ?? '';
+            document.getElementById('qeTemperature').value = qeCfg.temperature ?? 0.3;
+
+            const aeCfg = config.answer_evaluator || {};
+            document.getElementById('aeEnabled').checked = aeCfg.enabled || false;
+            document.getElementById('aeProvider').value = aeCfg.provider || 'openai';
+            await loadModels(document.getElementById('aeProvider').value, aeCfg.model || '', 'aeModel');
+            document.getElementById('aeModel').value = aeCfg.model || '';
+            document.getElementById('aeEndpoint').value = aeCfg.endpoint || '';
+            document.getElementById('aeApiKey').value = aeCfg.api_key || '';
+            document.getElementById('aeSystemPrompt').value = aeCfg.system_prompt || '';
+            document.getElementById('aeMaxTokens').value = aeCfg.max_tokens ?? '';
+            document.getElementById('aeTemperature').value = aeCfg.temperature ?? 0.3;
             document.getElementById('enableVoice').checked = config.enable_voice !== false;
             document.getElementById('enableFiles').checked = config.enable_files !== false;
             document.getElementById('enableTTS').checked = config.enable_tts || false;
             document.getElementById('enableDarkMode').checked = config.enable_dark_mode !== false;
-            
+
             const domains = Array.isArray(config.allowed_domains) ? config.allowed_domains.join('\n') : '*';
             document.getElementById('allowedDomains').value = domains;
+            updateStageStatus('main');
+            updateStageStatus('qe');
+            updateStageStatus('ae');
         }
 
         async function handleSaveAgentConfig(e) {
             e.preventDefault();
-            
+
             const formData = new FormData(e.target);
             const tenant = formData.get('tenant');
             const agent = formData.get('agent');
-            
+
+            const parseIntOrNull = (val) => {
+                const parsed = parseInt(val, 10);
+                return isNaN(parsed) ? null : parsed;
+            };
+            const parseFloatOrDefault = (val, fallback) => {
+                const parsed = parseFloat(val);
+                return isNaN(parsed) ? fallback : parsed;
+            };
+
+            const mainStage = {
+                enabled: document.getElementById('mainEnabled').checked,
+                provider: document.getElementById('llmProvider').value,
+                endpoint: (document.getElementById('mainEndpoint').value || '').trim(),
+                api_key: document.getElementById('mainApiKey').value,
+                model: document.getElementById('llmModel').value,
+                system_prompt: document.getElementById('mainSystemPrompt').value || formData.get('system_prompt'),
+                max_tokens: parseIntOrNull(document.getElementById('maxTokens').value),
+                temperature: parseFloatOrDefault(document.getElementById('temperature').value, 0.3),
+            };
+
+            const questionStage = {
+                enabled: document.getElementById('qeEnabled').checked,
+                provider: document.getElementById('qeProvider').value,
+                endpoint: (document.getElementById('qeEndpoint').value || '').trim(),
+                api_key: document.getElementById('qeApiKey').value,
+                model: document.getElementById('qeModel').value,
+                system_prompt: document.getElementById('qeSystemPrompt').value,
+                max_tokens: parseIntOrNull(document.getElementById('qeMaxTokens').value),
+                temperature: parseFloatOrDefault(document.getElementById('qeTemperature').value, 0.3),
+            };
+
+            const answerStage = {
+                enabled: document.getElementById('aeEnabled').checked,
+                provider: document.getElementById('aeProvider').value,
+                endpoint: (document.getElementById('aeEndpoint').value || '').trim(),
+                api_key: document.getElementById('aeApiKey').value,
+                model: document.getElementById('aeModel').value,
+                system_prompt: document.getElementById('aeSystemPrompt').value,
+                max_tokens: parseIntOrNull(document.getElementById('aeMaxTokens').value),
+                temperature: parseFloatOrDefault(document.getElementById('aeTemperature').value, 0.3),
+            };
+
             const configData = {
                 bot_name: formData.get('bot_name'),
                 system_prompt: formData.get('system_prompt'),
@@ -1933,16 +2294,19 @@
                 secondary_color: formData.get('secondary_color'),
                 mode: formData.get('mode'),
                 auto_open: formData.has('auto_open'),
-                llm_provider: formData.get('llm_provider'),
-                llm_model: formData.get('llm_model'),
-                temperature: parseFloat(formData.get('temperature')),
+                llm_provider: mainStage.provider,
+                llm_model: mainStage.model,
+                temperature: mainStage.temperature,
                 local_only: formData.has('local_only'),
                 enable_voice: formData.has('enable_voice'),
                 enable_files: formData.has('enable_files'),
                 enable_tts: formData.has('enable_tts'),
                 enable_dark_mode: formData.has('enable_dark_mode'),
-                allowed_domains: formData.get('allowed_domains').split('\n').map(d => d.trim()).filter(d => d),
-                placeholder_text: formData.get('placeholder_text') || 'Please ask your question...'
+                allowed_domains: (formData.get('allowed_domains') || '').split('\n').map(d => d.trim()).filter(d => d),
+                placeholder_text: formData.get('placeholder_text') || 'Please ask your question...',
+                question_evaluator: questionStage,
+                main_rag: mainStage,
+                answer_evaluator: answerStage,
             };
 
             try {

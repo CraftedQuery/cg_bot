@@ -101,7 +101,8 @@ async def get_config(
     
     # Remove sensitive or internal configuration
     public_cfg = {k: v for k, v in cfg.items() if k not in [
-        "llm_provider", "llm_model", "temperature", "allowed_domains"
+        "llm_provider", "llm_model", "temperature", "allowed_domains",
+        "question_evaluator", "main_rag", "answer_evaluator",
     ]}
     
     return public_cfg
