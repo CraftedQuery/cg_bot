@@ -1,63 +1,46 @@
-# Database Tables and Storage Layout
+# Storage Layout
 
-This document summarizes the storage layout used by the multi-tenant RAG Chatbot.
-It includes the SQLite schema, locations of configuration files, vector stores
-and user records.
+This project keeps its runtime state in a few predictable locations. Paths are resolved relative to `RAG_CHATBOT_HOME` (defaults to the repository root) in `config.py` so you can mount an external volume in production.
 
-## Database
+## SQLite database
 
-The application logs data in a SQLite database at
-`chat_logs.db`. The schema is created in `database.py` and includes tables
-such as `chat_logs`, `llm_logs`, `uploaded_files`, and `error_logs`. The
-`chat_logs` table stores individual chat interactions:
+- **File**: `chat_logs.db`
+- **Location**: `${RAG_CHATBOT_HOME:-.}/chat_logs.db`
+- **Tables**: `chat_logs`, `llm_logs`, `uploaded_files`, and `error_logs` (see `DATABASE_SCHEMA.md`)
 
-| Column        | Type    | Description                                     |
-|---------------|---------|-------------------------------------------------|
-| `id`          | INTEGER | Primary key                                     |
-| `ts`          | TEXT    | UTC timestamp of the interaction                |
-| `tenant`      | TEXT    | Tenant identifier                               |
-| `agent`       | TEXT    | Agent name within the tenant                    |
-| `session_id`  | TEXT    | Session identifier                              |
-| `question`    | TEXT    | User question                                   |
-| `answer`      | TEXT    | Assistant reply                                 |
-| `sources`     | TEXT    | JSON encoded citation list                      |
-| `latency`     | REAL    | Response latency in seconds                     |
-| `tokens_in`   | INTEGER | Number of input tokens                          |
-| `tokens_out`  | INTEGER | Number of output tokens                         |
-| `user_feedback` | INTEGER | Optional thumbs up/down feedback              |
-| `user_ip`     | TEXT    | Request IP address for auditing                 |
+## Tenant and agent configuration
 
-The `error_logs` table captures server-side errors with columns for timestamp,
-endpoint, tenant, agent, and message.
+- **Directory**: `${RAG_CHATBOT_HOME:-.}/configs/`
+- **Layout**: `configs/<tenant>/<agent>.json`
+- **Managed by**: `config.py`
 
-## Configuration Files
+Configs are created lazily with defaults (colors, prompts, model settings, widget options) the first time an agent is requested.
 
-Each tenant/agent pair stores its configuration as JSON under
-`configs/<tenant>/<agent>.json`. When a configuration file does not exist,
-`config.py` generates one with default values. Example settings include
-`bot_name`, `system_prompt`, colour values, LLM provider/model and widget
-options. These files are created at runtime so the `configs/` directory may be
-empty when the application is first installed.
+## Vector stores
 
-## Vector Stores
+- **Directory**: `${RAG_CHATBOT_HOME:-.}/vector_store/`
+- **Layout**: `vector_store/<tenant>/<agent>/`
+- **Contents**: FAISS index files plus `meta.json` describing the embedding provider/model
+- **Managed by**: `vectorstore.py` via `create_vector_store`/`update_vector_store`
 
-Document embeddings for every tenant/agent live under
-`vector_store/<tenant>/<agent>/`. The vector stores are built using FAISS and
-are loaded via `vectorstore.py`. If the directory for a tenant/agent does not
-exist an HTTP 404 error is raised until ingestion is performed.
+If a store is missing, `/chat` returns a 404 prompting you to run ingestion.
 
-## Users
+## Uploads
 
-User accounts are stored in the JSON file `users.json` in the project root. The
-default file contains an `admin` account with the role `system_admin`.
-`auth.py` reads and writes this file when users are created or updated. Each
-record stores the username, tenant, role, assigned agents, preferred language
-and a bcrypt-hashed password.
+- **Directory**: `${RAG_CHATBOT_HOME:-.}/uploads/`
+- **Layout**: `uploads/<tenant>/<agent>/`
+- **Metadata**: Tracked in the `uploaded_files` table with OCR/template flags
 
-## Tenants and Agents
+## Users and credentials
 
-Tenants logically group agents, vector stores and configuration files. The
-`DEFAULT_TENANT` and `DEFAULT_AGENT` constants in `config.py` define the fallback
-names (`public` and `default`). Admin users may manage multiple tenants and
-agents via the API or CLI.
+- **File**: `${RAG_CHATBOT_HOME:-.}/users.json`
+- **Managed by**: `auth.py`
 
+The file is created automatically with a default `admin` user (role `system_admin`) and bcrypt-hashed password. Azure AD settings are loaded from environment variables (`AAD_TENANT_ID`, `AAD_CLIENT_ID`, `AAD_JWKS_PATH`).
+
+## Derived data
+
+- **Logs**: Cumulative records stored in SQLite tables (`chat_logs`, `llm_logs`, `error_logs`).
+- **Analytics**: Aggregated at runtime via `analytics.py` or the CLI dashboard; no additional storage is used.
+
+All of these locations are safe to back up or mount externally; clearing a tenant/agent's data involves removing its config, upload directory, vector store, and associated rows in the SQLite tables.

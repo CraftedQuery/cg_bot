@@ -1,10 +1,10 @@
 # Microsoft Entra Integration Guide
 
-This guide explains how to configure Microsoft Entra ID so users can sign in with their Microsoft accounts and how tenants can integrate with the Crafted Query application.
+This guide explains how to connect the chatbot stack to Microsoft Entra ID (Azure AD) so tenants can sign in with their own identities. The repository includes a sample React SPA (`spa/`) and Express API (`login-app/`) you can use during testing, while the FastAPI backend can validate Entra-issued JWTs directly.
 
-## 1. Register Applications in Entra
+## 1. Register applications in Entra
 
-Follow the steps below on the tenant that will host the Crafted Query instance.
+Perform these steps in the tenant that will host the chatbot:
 
 1. **Create a SPA application** and record its **Application (client) ID**.
    - Enable the *Authorization code* and *Implicit* grants for ID and access tokens.
@@ -12,11 +12,11 @@ Follow the steps below on the tenant that will host the Crafted Query instance.
 2. **Create an API application** and expose a custom API scope. Note the **Application ID URI**.
 3. In the SPA application's **API permissions**, grant access to the API scope you created.
 
-These steps mirror the "Azure registration" instructions found in the project README.
+The SPA uses MSAL to acquire ID/access tokens, and the backend validates them against the published JWKS.
 
 ## 2. Enforce MFA via Conditional Access
 
-To require multi‑factor authentication for the SPA:
+To require multi-factor authentication for the SPA:
 
 1. Navigate to **Entra ID → Protection → Conditional Access**.
 2. Create a **New policy** and select the SPA's application ID under **Cloud apps**.
@@ -24,9 +24,9 @@ To require multi‑factor authentication for the SPA:
 
 MFA enforcement occurs through Conditional Access, not in the application code.
 
-## 3. Configure Environment Variables
+## 3. Configure environment variables
 
-Both the SPA and API read their Entra IDs from `.env` files:
+Both the SPA/API demo and the FastAPI service read their Entra identifiers from environment variables:
 
 **`spa/.env`**
 ```env
@@ -36,36 +36,44 @@ VITE_AUTHORITY=https://login.microsoftonline.com
 VITE_REDIRECT_URI=http://localhost:5173
 API_BASE=http://localhost:3001
 ```
-**`api/.env`**
+
+**`login-app/.env` (Express demo API)**
 ```env
 CLIENT_ID=YOUR_CLIENT_ID
 TENANT_ID=YOUR_TENANT_ID
 AUTHORITY=https://login.microsoftonline.com
 ```
-Replace the placeholders above with the values from your Entra applications.
 
-## 4. Local Development
-
-Start the front‑end and API using the commands from the README:
-
+**FastAPI backend**
 ```bash
-cd spa && npm i && npm run dev      # start React + Vite SPA
-cd ../api && npm i && node index.js # start Express API
+export AAD_TENANT_ID=YOUR_TENANT_ID
+export AAD_CLIENT_ID=YOUR_CLIENT_ID
+export AAD_JWKS_PATH=/path/to/azure-ad-jwks.json
 ```
 
-When you sign in through the SPA, MSAL obtains an ID token from Entra ID. The Express API validates the token via `microsoft-identity-express` before returning user information from the `/me` endpoint.
+The backend reads the JWKS from `AAD_JWKS_PATH` and accepts Entra-issued JWTs via `authenticate_aad_token`.
 
-## 5. Client Integration Steps
+## 4. Local development
 
-Tenants that wish to use Crafted Query with their own Entra ID should:
+Start the front end and demo API using the commands below:
 
-1. Register their own SPA and API applications in their tenant, following the same steps as above.
-2. Provide the resulting client IDs and tenant ID to the Crafted Query administrators so the `.env` files can be updated per tenant.
-3. Embed the chat widget on their site with the desired tenant and agent parameters:
+```bash
+cd spa && npm install && npm run dev      # start React + Vite SPA
+cd ../login-app && npm install && node index.js # start Express API
+```
+
+Run the chatbot API separately with `python cli.py serve --reload` so the widget and MSAL callbacks can reach it at `http://localhost:8000`.
+
+## 5. Client integration steps
+
+Tenants that want to bring their own Entra tenant should:
+
+1. Register their own SPA and API applications (repeat Step 1 with their tenant IDs).
+2. Share the client ID and tenant ID so you can set the FastAPI environment variables per tenant.
+3. Embed the chat widget on their site with the desired tenant/agent parameters:
    ```html
-   <script src="http://your-server.com/widget.js?tenant=your-tenant&agent=your-agent"></script>
+   <script src="http://your-server.com/widget.js?tenant=their-tenant&agent=their-agent"></script>
    ```
 4. Test login and API access to ensure tokens from the client's Entra ID are accepted.
 
-This configuration allows each tenant to control authentication while using the Crafted Query platform.
-
+With this setup, each tenant controls authentication while relying on the shared chatbot infrastructure.

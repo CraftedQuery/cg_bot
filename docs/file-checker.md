@@ -1,141 +1,67 @@
 # File Checker and Embedding Background Process
 
-This document describes how the file checking and embedding workflow operates in this project, and how to keep it running continuously.
+This document explains how ingestion and embedding work in the chatbot and how you can run the workflow continuously in the background.
 
-## 1. Overview
+## 1. Core components
 
-- **`ingestion.py`** orchestrates the ingestion pipeline.
-- **`utils/file_processors.py`** extracts text from uploaded files.
-- **`vectorstore.py`** creates and stores embeddings in a FAISS index.
+- **`ingestion.py`** – Entry point that coordinates sources (Google Drive, sitemap URLs, local files), tracks OCR usage, and calls the vector store layer.
+- **`utils/file_processors.py`** – Extracts text from PDFs, DOCX, Markdown, plain text, and images (with OCR when needed) while returning per-chunk metadata.
+- **`vectorstore.py`** – Chunks text, builds embeddings via `embedding.py`, and writes FAISS indexes alongside a `meta.json` that records the provider/model.
 
-The ingestion pipeline accepts files from Google Drive, local paths or a sitemap and builds embeddings for a specific tenant/agent pair.
+## 2. Ingestion flow
 
-## 2. Ingestion Flow
-
-The `ingest` function collects text chunks from the specified sources and saves them to the vector store. Core logic:
+High-level logic from `ingestion.py`:
 
 ```python
-# ingestion.py
+ocr_info = {}
+texts, metadatas = [], []
 
-def ingest(
-    tenant: str,
-    agent: str,
-    sitemap: Optional[str] = None,
-    drive: Optional[str] = None,
-    files: Optional[List[Path]] = None,
-    console: Optional[Console] = None,
-):
-    """Ingest content from various sources into the vector store."""
-    texts, metadatas = [], []
+# Google Drive
+texts_drive, metas_drive, drive_ocr = _ingest_from_drive(folder_id, console)
+texts.extend(texts_drive); metadatas.extend(metas_drive); ocr_info.update(drive_ocr)
 
-    if console:
-        console.print(Panel.fit(
-            f"Starting ingestion for tenant [bold]{tenant}[/bold], agent [bold]{agent}[/bold]"
-        ))
+# Local files
+texts_files, metas_files, file_ocr = _ingest_from_files(files, tenant, agent, embedding_provider, console)
+texts.extend(texts_files); metadatas.extend(metas_files); ocr_info.update(file_ocr)
 
-    if drive:
-        texts_drive, metas_drive = _ingest_from_drive(drive, console)
-        texts.extend(texts_drive)
-        metadatas.extend(metas_drive)
+# Sitemaps
+texts_sitemap, metas_sitemap = _ingest_from_sitemap(sitemap_url, console)
+texts.extend(texts_sitemap); metadatas.extend(metas_sitemap)
 
-    if files:
-        texts_files, metas_files = _ingest_from_files(files, console)
-        texts.extend(texts_files)
-        metadatas.extend(metas_files)
-
-    if sitemap:
-        texts_sitemap, metas_sitemap = _ingest_from_sitemap(sitemap, console)
-        texts.extend(texts_sitemap)
-        metadatas.extend(metas_sitemap)
-
-    if not texts:
-        msg = "Nothing to ingest"
-        if console:
-            console.print(f"[yellow]{msg}[/yellow]")
-        else:
-            print(msg)
-        return
-
-    if console:
-        console.print(f"Processing [bold]{len(texts)}[/bold] text chunks into vector store...")
-
-    create_vector_store(tenant, agent, texts, metadatas)
-
-    msg = f"Vector store created/updated successfully"
-    if console:
-        console.print(f"[green]{msg}[/green]")
-    else:
-        print(msg)
+update_vector_store(tenant, agent, texts, metadatas, provider=embedding_provider, model=embedding_model)
 ```
 
-The actual embedding happens inside `create_vector_store`:
+The function returns `ocr_info` so callers can mark which files required OCR when updating the `uploaded_files` table.
 
-```python
-# vectorstore.py
+## 3. Running continuously
 
-def create_vector_store(
-    tenant: str,
-    agent: str,
-    texts: List[str],
-    metadatas: List[Dict]
-) -> bool:
-    """Create a new vector store from texts and metadata"""
-    _require_deps()
-    try:
-        path = store_path(tenant, agent)
-        path.mkdir(parents=True, exist_ok=True)
-
-        emb = OpenAIEmbeddings()
-        vec_store = FAISS.from_texts(texts, emb, metadatas=metadatas)
-        vec_store.save_local(str(path))
-
-        clear_cache(tenant, agent)
-        return True
-    except Exception as e:
-        raise HTTPException(500, f"Failed to create vector store: {str(e)}")
-```
-
-Files are broken into chunks before embedding:
-
-```python
-# utils/file_processors.py
-
-# Import here to avoid circular dependency
-from ..utils.file_processors import _chunk_text_with_lines
-
-# Chunk the text with line metadata
-chunks, metadatas = _chunk_text_with_lines(raw_text)
-for m in metadatas:
-    m["source"] = filename
-```
-
-## 3. Background File Checker
-
-To automate ingestion you can run a small loop that checks for new jobs every minute:
+To process uploads in the background, wrap `ingest` in a simple loop or queue worker:
 
 ```python
 import time
-from rag_chatbot.ingestion import ingest
+from pathlib import Path
+from ingestion import ingest
 
 while True:
-    job = fetch_next_job()  # implement your own queue or folder watcher
-    if job:
-        ingest(job.tenant, job.agent, files=job.files)
-    time.sleep(60)  # wait one minute
+    # Replace this with your queue or filesystem watcher
+    jobs = discover_pending_jobs()  # returns [{tenant, agent, files, drive, sitemap}]
+    for job in jobs:
+        ingest(
+            job["tenant"],
+            job["agent"],
+            files=[Path(p) for p in job.get("files", [])],
+            drive=job.get("drive"),
+            sitemap=job.get("sitemap"),
+        )
+    time.sleep(60)
 ```
 
-Replace `fetch_next_job()` with logic that discovers pending uploads (for example by reading a directory or polling a database).
+Pair this worker with `add_uploaded_file` and `set_file_ocr_used` from `database.py` if you want to record progress and OCR usage in the SQLite tables. Running it under `nohup`, `systemd`, or a container entrypoint keeps ingestion alive after deployment.
 
-## 4. Running in the Background
+## 4. Monitoring and recovery
 
-Save the checker as `file_checker.py` and start it as a daemon:
+- Use the CLI dashboard (`python cli.py dashboard`) to check vector store presence and interaction counts.
+- Review `llm_logs` for embedding provider errors and `error_logs` for ingestion failures.
+- Clearing a tenant/agent involves deleting its vector store directory and calling `delete_agent_data` in `database.py`.
 
-```bash
-nohup python file_checker.py &
-```
-
-Alternatively create a `systemd` service or a cron job to ensure the script runs on boot. Make sure the necessary environment variables (such as API keys) are available to the process.
-
-## 5. Monitoring
-
-Redirect stdout and stderr to a log file when running in the background. Reviewing these logs helps diagnose any ingestion or embedding failures.
+These practices help keep embeddings current while providing auditability across tenants.
