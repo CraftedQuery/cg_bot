@@ -275,7 +275,7 @@ def log_question_evaluation(
                 provider, model, tokens_used, latency_ms, error, username, evaluation_details, flags,
                 prompt, full_response, criteria_scores, evaluation_status, reason, suggested_question,
                 user_choice, proceeded, final_question, proceed_recommendation)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 datetime.now(timezone.utc).isoformat(),
                 tenant,
