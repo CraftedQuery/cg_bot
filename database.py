@@ -260,7 +260,7 @@ def log_question_evaluation(
                (ts, tenant, agent, session_id, conversation_id, original_question, evaluation_result,
                 provider, model, tokens_used, latency_ms, error, username, evaluation_details, flags,
                 prompt, full_response, criteria_scores)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 datetime.now(timezone.utc).isoformat(),
                 tenant,
