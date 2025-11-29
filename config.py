@@ -18,6 +18,25 @@ BASE_UPLOAD_DIR = BASE_DIR / "uploads"
 DEFAULT_TENANT = "public"
 DEFAULT_AGENT = "default"
 
+# Default question evaluator prompt to keep the stage strictly focused on validation
+DEFAULT_QUESTION_EVALUATOR_PROMPT = """
+You are evaluating questions for a municipal government chatbot. Do NOT answer the question. Only evaluate if it's appropriate.
+
+Evaluate based on:
+- Is it within scope (city services, policies, procedures, public information)?
+- Does it request restricted information (confidential, PII, privileged)?
+- Does it ask for services outside our authority (legal advice, medical advice, official decisions)?
+- Is it clear and specific enough to answer?
+
+Respond ONLY with JSON in one of these formats:
+
+Pass: {"status": "pass", "proceed": true}
+
+Reject: {"status": "reject", "proceed": false, "reason": "specific explanation"}
+
+Suggest: {"status": "suggest", "proceed": false, "original_question": "user's question", "suggested_question": "improved version", "reason": "why this is better"}
+"""
+
 # Database path
 DB_PATH = BASE_DIR / "chat_logs.db"
 
@@ -90,7 +109,13 @@ def _ensure_stage_defaults(cfg: Dict[str, Any]) -> Dict[str, Any]:
     )
     cfg["question_evaluator"] = _apply_stage_defaults(
         cfg.get("question_evaluator", {}),
-        _default_stage_config(enabled=False),
+        _default_stage_config(
+            enabled=False,
+            system_prompt=DEFAULT_QUESTION_EVALUATOR_PROMPT,
+            model=base_model,
+            provider=base_provider,
+            temperature=0,
+        ),
     )
     cfg["answer_evaluator"] = _apply_stage_defaults(
         cfg.get("answer_evaluator", {}),
@@ -145,7 +170,13 @@ def load_config(tenant: str, agent: str) -> Dict[str, Any]:
         "welcome_message": "Hello! How can I help you today?",
         # Placeholder shown in the widget's input box
         "placeholder_text": "Please ask your question...",
-        "question_evaluator": _default_stage_config(enabled=False),
+        "question_evaluator": _default_stage_config(
+            enabled=False,
+            provider="openai",
+            model="gpt-4o-mini",
+            temperature=0,
+            system_prompt=DEFAULT_QUESTION_EVALUATOR_PROMPT,
+        ),
         "main_rag": _default_stage_config(
             enabled=True,
             provider="openai",

@@ -101,6 +101,13 @@ def init_database():
         _ensure_column(con, "question_evaluation_logs", "prompt TEXT")
         _ensure_column(con, "question_evaluation_logs", "full_response TEXT")
         _ensure_column(con, "question_evaluation_logs", "criteria_scores TEXT")
+        _ensure_column(con, "question_evaluation_logs", "evaluation_status TEXT")
+        _ensure_column(con, "question_evaluation_logs", "reason TEXT")
+        _ensure_column(con, "question_evaluation_logs", "suggested_question TEXT")
+        _ensure_column(con, "question_evaluation_logs", "user_choice TEXT")
+        _ensure_column(con, "question_evaluation_logs", "proceeded INTEGER")
+        _ensure_column(con, "question_evaluation_logs", "final_question TEXT")
+        _ensure_column(con, "question_evaluation_logs", "proceed_recommendation INTEGER")
         con.execute(
             """
             CREATE TABLE IF NOT EXISTS answer_evaluation_logs(
@@ -250,6 +257,13 @@ def log_question_evaluation(
     prompt: str | None = None,
     full_response: str | None = None,
     criteria_scores: str | None = None,
+    evaluation_status: str | None = None,
+    reason: str | None = None,
+    suggested_question: str | None = None,
+    proceeded: bool | None = None,
+    user_choice: str | None = None,
+    final_question: str | None = None,
+    proceed_recommendation: bool | None = None,
 ) -> int:
     """Record a question evaluation stage result and return its ID."""
     from datetime import datetime, timezone
@@ -259,8 +273,9 @@ def log_question_evaluation(
             """INSERT INTO question_evaluation_logs
                (ts, tenant, agent, session_id, conversation_id, original_question, evaluation_result,
                 provider, model, tokens_used, latency_ms, error, username, evaluation_details, flags,
-                prompt, full_response, criteria_scores)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                prompt, full_response, criteria_scores, evaluation_status, reason, suggested_question,
+                user_choice, proceeded, final_question, proceed_recommendation)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 datetime.now(timezone.utc).isoformat(),
                 tenant,
@@ -280,10 +295,52 @@ def log_question_evaluation(
                 prompt,
                 full_response,
                 criteria_scores,
+                evaluation_status,
+                reason,
+                suggested_question,
+                user_choice,
+                int(proceeded) if proceeded is not None else None,
+                final_question,
+                int(proceed_recommendation) if proceed_recommendation is not None else None,
             ),
         )
         con.commit()
         return cur.lastrowid
+
+
+def update_question_evaluation_decision(
+    evaluation_id: int,
+    *,
+    user_choice: str | None = None,
+    proceeded: bool | None = None,
+    final_question: str | None = None,
+) -> None:
+    """Update a question evaluation record with user decision and flow outcome."""
+
+    fields = []
+    params: list = []
+
+    if user_choice is not None:
+        fields.append("user_choice = ?")
+        params.append(user_choice)
+    if proceeded is not None:
+        fields.append("proceeded = ?")
+        params.append(int(proceeded))
+    if final_question is not None:
+        fields.append("final_question = ?")
+        params.append(final_question)
+
+    if not fields:
+        return
+
+    params.append(evaluation_id)
+
+    with get_db() as con:
+        con.execute(
+            f"UPDATE question_evaluation_logs SET {', '.join(fields)} WHERE id = ?",
+            params,
+        )
+        con.commit()
 
 
 def log_answer_evaluation(

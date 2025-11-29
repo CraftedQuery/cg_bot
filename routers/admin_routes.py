@@ -247,7 +247,8 @@ async def get_question_evaluation_logs(
             f"""
             SELECT id, ts, tenant, agent, session_id, conversation_id, original_question, evaluation_result,
                    provider, model, tokens_used, latency_ms, error, username, evaluation_details, flags,
-                   prompt, full_response, criteria_scores
+                   prompt, full_response, criteria_scores, evaluation_status, reason, suggested_question,
+                   user_choice, proceeded, final_question, proceed_recommendation
             FROM question_evaluation_logs
             {where_clause}
             ORDER BY id DESC
@@ -284,6 +285,13 @@ async def get_question_evaluation_logs(
             "prompt": parse_json(r[16]),
             "full_response": r[17],
             "criteria_scores": parse_json(r[18]),
+            "evaluation_status": r[19],
+            "reason": r[20],
+            "suggested_question": r[21],
+            "user_choice": r[22],
+            "proceeded": r[23],
+            "final_question": r[24],
+            "proceed_recommendation": r[25],
         }
         for r in rows
     ]

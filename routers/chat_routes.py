@@ -16,6 +16,7 @@ from ..database import (
     log_question_evaluation,
     update_feedback,
     is_template_file,
+    update_question_evaluation_decision,
 )
 from langdetect import detect, DetectorFactory
 
@@ -55,9 +56,41 @@ async def chat(
     # Get the latest user question
     q = next((m["content"] for m in reversed(req.messages) if m["role"] == "user"), "")
     
+    def _parse_question_evaluation(content: str):
+        """Interpret the evaluator response as structured JSON."""
+
+        default = {
+            "status": "pass",
+            "proceed": True,
+            "reason": None,
+            "suggested_question": None,
+            "original_question": q,
+        }
+
+        try:
+            parsed = json.loads(content)
+            if isinstance(parsed, str):
+                parsed = json.loads(parsed)
+            if not isinstance(parsed, dict):
+                return default
+        except Exception:
+            return default
+
+        status = parsed.get("status", "pass")
+        proceed = bool(parsed.get("proceed", status == "pass"))
+
+        return {
+            "status": status,
+            "proceed": proceed,
+            "reason": parsed.get("reason"),
+            "suggested_question": parsed.get("suggested_question"),
+            "original_question": parsed.get("original_question", q),
+        }
+
     # Optional question evaluation stage
-    question_eval_id = None
-    if stage_configs["question_evaluator"].get("enabled"):
+    question_eval_id = req.question_evaluation_id
+    question_eval_summary: dict | None = None
+    if stage_configs["question_evaluator"].get("enabled") and not req.skip_question_evaluation:
         try:
             qe_cfg = stage_configs["question_evaluator"]
             qe_messages = []
@@ -90,6 +123,7 @@ async def chat(
                 "model": stage_configs["question_evaluator"].get("model"),
             }
 
+        parsed_eval = _parse_question_evaluation(qe_result.get("content", ""))
         qe_scores = qe_result.get("scores") if isinstance(qe_result, dict) else None
         qe_flags = qe_result.get("flags") if isinstance(qe_result, dict) else None
         question_eval_id = log_question_evaluation(
@@ -98,7 +132,7 @@ async def chat(
             session_id=session_id,
             conversation_id=None,
             original_question=q,
-            evaluation_result=qe_result.get("content", ""),
+            evaluation_result=parsed_eval.get("status", "pass"),
             provider=qe_result.get("provider"),
             model=qe_result.get("model"),
             tokens_used=qe_result.get("tokens_out"),
@@ -110,7 +144,47 @@ async def chat(
             prompt=json.dumps(qe_messages, default=str),
             full_response=qe_result.get("content"),
             criteria_scores=json.dumps(qe_scores, default=str) if qe_scores is not None else None,
+            evaluation_status=parsed_eval.get("status"),
+            reason=parsed_eval.get("reason"),
+            suggested_question=parsed_eval.get("suggested_question"),
+            proceeded=parsed_eval.get("proceed"),
+            proceed_recommendation=parsed_eval.get("proceed"),
         )
+
+        question_eval_summary = {
+            **parsed_eval,
+            "question_evaluation_id": question_eval_id,
+        }
+
+        if parsed_eval.get("status") == "reject":
+            return {
+                "reply": parsed_eval.get("reason") or "The question was rejected by the evaluator.",
+                "sources": [],
+                "question_evaluation": question_eval_summary,
+            }
+
+        if parsed_eval.get("status") == "suggest" and not parsed_eval.get("proceed"):
+            return {
+                "reply": "We suggest refining your question for better results.",
+                "sources": [],
+                "question_evaluation": question_eval_summary,
+            }
+
+    elif req.skip_question_evaluation and question_eval_id:
+        update_question_evaluation_decision(
+            question_eval_id,
+            user_choice=req.question_decision,
+            proceeded=True,
+            final_question=q,
+        )
+        question_eval_summary = {
+            "status": req.question_decision or "pass",
+            "proceed": True,
+            "question_evaluation_id": question_eval_id,
+            "original_question": q,
+            "suggested_question": None,
+            "reason": None,
+        }
 
     # Search for relevant documents
     search_results = search_documents(tenant, agent, q)
@@ -285,10 +359,11 @@ async def chat(
         from ..database import link_stage_conversation
 
         link_stage_conversation(chat_id, question_eval_id, answer_eval_id)
-    
+
     return {
         "reply": llm_result["content"],
-        "sources": sources
+        "sources": sources,
+        "question_evaluation": question_eval_summary,
     }
 
 
