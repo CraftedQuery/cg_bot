@@ -53,6 +53,14 @@ def get_llm_response(
             response = _get_custom_response(messages, model, temperature, endpoint=endpoint, api_key=api_key, max_tokens=max_tokens)
         else:
             raise ValueError(f"Unknown LLM provider: {provider}")
+
+        desc_parts = []
+        if description:
+            desc_parts.append(description)
+        if user:
+            desc_parts.append(f"user:{user}")
+        if question:
+            desc_parts.append(f"q:{question}")
         log_llm_event(
             provider,
             "success",
@@ -60,11 +68,18 @@ def get_llm_response(
             tenant=tenant,
             agent=agent,
             model=model,
-            description=description or f"user:{user} q:{question}"
+            description=" ".join(desc_parts) if desc_parts else None,
         )
 
     except Exception as e:
         error_message = str(e)
+        desc_parts = []
+        if description:
+            desc_parts.append(description)
+        if user:
+            desc_parts.append(f"user:{user}")
+        if question:
+            desc_parts.append(f"q:{question}")
         log_llm_event(
             provider,
             "error",
@@ -72,7 +87,7 @@ def get_llm_response(
             tenant=tenant,
             agent=agent,
             model=model,
-            description=description or f"user:{user} q:{question}"
+            description=" ".join(desc_parts) if desc_parts else None,
         )
         logger.exception("LLM request failed")
         response = {

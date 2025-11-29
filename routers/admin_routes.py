@@ -2,12 +2,15 @@
 routers/admin_routes.py - Admin interface endpoints
 """
 
+import json
+from datetime import datetime
 from pathlib import Path
 import os
 from fastapi import APIRouter, HTTPException, Depends
 from fastapi.responses import HTMLResponse
 
 from ..auth import get_admin_user
+from ..database import get_db, log_llm_event
 
 router = APIRouter(tags=["admin"])
 
@@ -106,7 +109,6 @@ async def llm_test():
     """Manually test connectivity to the configured LLM providers"""
     from datetime import datetime, timezone
     from ..llm import _get_openai_response, _get_anthropic_response
-    from ..database import log_llm_event
 
     openai_error = None
     anthropic_error = None
@@ -152,8 +154,6 @@ async def llm_test():
 @router.get("/llm_logs")
 async def get_llm_logs(limit: int = 100):
     """Retrieve recent LLM logs"""
-    from ..database import get_db
-
     with get_db() as con:
         cur = con.execute(
             "SELECT ts, provider, status, tenant, agent, model, description, error_message FROM llm_logs ORDER BY id DESC LIMIT ?",
@@ -190,6 +190,193 @@ async def get_llm_logs(limit: int = 100):
                     "error": error,
                 }
             )
+
+    return {"logs": logs}
+
+
+def _parse_date_filter(date_str: str | None):
+    """Convert a date string to datetime for filtering."""
+    if not date_str:
+        return None
+    try:
+        return datetime.fromisoformat(date_str)
+    except Exception:
+        return None
+
+
+@router.get("/question_evaluation_logs", dependencies=[Depends(get_admin_user)])
+async def get_question_evaluation_logs(
+    limit: int = 200,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    result: str | None = None,
+    user: str | None = None,
+    provider: str | None = None,
+    search: str | None = None,
+):
+    """Return question evaluation pipeline logs with optional filters."""
+
+    start_dt = _parse_date_filter(start_date)
+    end_dt = _parse_date_filter(end_date)
+
+    conditions = []
+    params: list[str | int | float] = []
+    if start_dt:
+        conditions.append("ts >= ?")
+        params.append(start_dt.isoformat())
+    if end_dt:
+        conditions.append("ts <= ?")
+        params.append(end_dt.isoformat())
+    if result:
+        conditions.append("evaluation_result LIKE ?")
+        params.append(f"%{result}%")
+    if user:
+        conditions.append("username = ?")
+        params.append(user)
+    if provider:
+        conditions.append("provider = ?")
+        params.append(provider)
+    if search:
+        conditions.append("(original_question LIKE ? OR evaluation_result LIKE ? OR full_response LIKE ?)")
+        params.extend([f"%{search}%", f"%{search}%", f"%{search}%"])
+
+    where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+    with get_db() as con:
+        cur = con.execute(
+            f"""
+            SELECT id, ts, tenant, agent, session_id, conversation_id, original_question, evaluation_result,
+                   provider, model, tokens_used, latency_ms, error, username, evaluation_details, flags,
+                   prompt, full_response, criteria_scores
+            FROM question_evaluation_logs
+            {where_clause}
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (*params, limit),
+        )
+        rows = cur.fetchall()
+
+    def parse_json(value):
+        try:
+            return json.loads(value) if value else None
+        except Exception:
+            return value
+
+    logs = [
+        {
+            "id": r[0],
+            "ts": r[1],
+            "tenant": r[2],
+            "agent": r[3],
+            "session_id": r[4],
+            "conversation_id": r[5],
+            "original_question": r[6],
+            "evaluation_result": r[7],
+            "provider": r[8],
+            "model": r[9],
+            "tokens_used": r[10],
+            "latency_ms": r[11],
+            "error": r[12],
+            "username": r[13],
+            "evaluation_details": parse_json(r[14]),
+            "flags": parse_json(r[15]),
+            "prompt": parse_json(r[16]),
+            "full_response": r[17],
+            "criteria_scores": parse_json(r[18]),
+        }
+        for r in rows
+    ]
+
+    return {"logs": logs}
+
+
+@router.get("/answer_evaluation_logs", dependencies=[Depends(get_admin_user)])
+async def get_answer_evaluation_logs(
+    limit: int = 200,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    result: str | None = None,
+    user: str | None = None,
+    provider: str | None = None,
+    search: str | None = None,
+):
+    """Return answer evaluation pipeline logs with optional filters."""
+
+    start_dt = _parse_date_filter(start_date)
+    end_dt = _parse_date_filter(end_date)
+
+    conditions = []
+    params: list[str | int | float] = []
+    if start_dt:
+        conditions.append("ts >= ?")
+        params.append(start_dt.isoformat())
+    if end_dt:
+        conditions.append("ts <= ?")
+        params.append(end_dt.isoformat())
+    if result:
+        conditions.append("evaluation_result LIKE ?")
+        params.append(f"%{result}%")
+    if user:
+        conditions.append("username = ?")
+        params.append(user)
+    if provider:
+        conditions.append("provider = ?")
+        params.append(provider)
+    if search:
+        conditions.append("(original_answer LIKE ? OR evaluation_result LIKE ? OR full_response LIKE ? OR issues LIKE ?)")
+        params.extend([f"%{search}%", f"%{search}%", f"%{search}%", f"%{search}%"])
+
+    where_clause = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+
+    with get_db() as con:
+        cur = con.execute(
+            f"""
+            SELECT id, ts, tenant, agent, session_id, conversation_id, original_answer, evaluation_result,
+                   provider, model, tokens_used, latency_ms, error, username, evaluation_details, flags,
+                   issues, recommendations, selected_answer_provider, prompt, full_response, criteria_scores
+            FROM answer_evaluation_logs
+            {where_clause}
+            ORDER BY id DESC
+            LIMIT ?
+            """,
+            (*params, limit),
+        )
+        rows = cur.fetchall()
+
+    def parse_json(value):
+        try:
+            return json.loads(value) if value else None
+        except Exception:
+            return value
+
+    logs = [
+        {
+            "id": r[0],
+            "ts": r[1],
+            "tenant": r[2],
+            "agent": r[3],
+            "session_id": r[4],
+            "conversation_id": r[5],
+            "original_answer": r[6],
+            "evaluation_result": r[7],
+            "provider": r[8],
+            "model": r[9],
+            "tokens_used": r[10],
+            "latency_ms": r[11],
+            "error": r[12],
+            "username": r[13],
+            "evaluation_details": parse_json(r[14]),
+            "flags": parse_json(r[15]),
+            "issues": parse_json(r[16]),
+            "recommendations": parse_json(r[17]),
+            "selected_answer_provider": r[18],
+            "prompt": parse_json(r[19]),
+            "full_response": r[20],
+            "criteria_scores": parse_json(r[21]),
+        }
+        for r in rows
+    ]
 
     return {"logs": logs}
 
