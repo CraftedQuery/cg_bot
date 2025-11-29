@@ -62,9 +62,13 @@ async def chat(
         default = {
             "status": "pass",
             "proceed": True,
+            "evaluation_summary": None,
             "reason": None,
             "suggested_question": None,
             "original_question": q,
+            "criteria_met": None,
+            "criteria_failed": None,
+            "user_message": None,
         }
 
         try:
@@ -82,9 +86,13 @@ async def chat(
         return {
             "status": status,
             "proceed": proceed,
+            "evaluation_summary": parsed.get("evaluation_summary"),
             "reason": parsed.get("reason"),
             "suggested_question": parsed.get("suggested_question"),
             "original_question": parsed.get("original_question", q),
+            "criteria_met": parsed.get("criteria_met"),
+            "criteria_failed": parsed.get("criteria_failed"),
+            "user_message": parsed.get("user_message"),
         }
 
     # Optional question evaluation stage
@@ -145,7 +153,7 @@ async def chat(
             full_response=qe_result.get("content"),
             criteria_scores=json.dumps(qe_scores, default=str) if qe_scores is not None else None,
             evaluation_status=parsed_eval.get("status"),
-            reason=parsed_eval.get("reason"),
+            reason=parsed_eval.get("evaluation_summary") or parsed_eval.get("reason"),
             suggested_question=parsed_eval.get("suggested_question"),
             proceeded=parsed_eval.get("proceed"),
             proceed_recommendation=parsed_eval.get("proceed"),
@@ -158,7 +166,10 @@ async def chat(
 
         if parsed_eval.get("status") == "reject":
             return {
-                "reply": parsed_eval.get("reason") or "The question was rejected by the evaluator.",
+                "reply": parsed_eval.get("user_message")
+                or parsed_eval.get("evaluation_summary")
+                or parsed_eval.get("reason")
+                or "The question was rejected by the evaluator.",
                 "sources": [],
                 "question_evaluation": question_eval_summary,
             }
