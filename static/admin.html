@@ -208,20 +208,26 @@
         }
 
         .sub-tab {
-            padding: 10px 14px;
-            border: 1px solid var(--gray-200);
-            background: var(--white);
-            border-radius: 8px;
+            padding: 12px 16px;
+            border: none;
+            background: transparent;
+            border-radius: var(--btn-radius);
             cursor: pointer;
             font-weight: 600;
+            color: var(--gray-800);
             transition: all 0.2s ease;
+        }
+
+        .sub-tab:hover {
+            background: var(--gray-100);
+            transform: translateY(-1px);
         }
 
         .sub-tab.active {
             background: var(--primary);
             color: var(--white);
-            border-color: var(--primary);
             box-shadow: var(--shadow);
+            transform: translateY(-1px);
         }
 
         .log-toolbar {
@@ -776,9 +782,9 @@
                 <p style="color: var(--gray-600);">Inspect every stage of the three-part evaluation pipeline with unified filters, exports, and drill-downs.</p>
 
                 <div class="sub-tabs" id="logTabs">
-                    <button class="sub-tab active" data-logtab="questionLogs">Question Evaluation Logs</button>
+                    <button class="sub-tab" data-logtab="questionLogs">Question Evaluation Logs</button>
                     <button class="sub-tab" data-logtab="ragLogs">RAG Query Logs</button>
-                    <button class="sub-tab" data-logtab="answerLogs">Answer Evaluation Logs</button>
+                    <button class="sub-tab active" data-logtab="answerLogs">Answer Evaluation Logs</button>
                 </div>
 
                 <div class="log-toolbar">
@@ -819,7 +825,7 @@
 
                 <div class="summary-grid" id="logSummary"></div>
 
-                <div id="questionLogs" class="log-section">
+                <div id="questionLogs" class="log-section hidden">
                     <div class="table-container" id="questionLogTable"></div>
                 </div>
 
@@ -827,7 +833,7 @@
                     <div class="table-container" id="ragLogTable"></div>
                 </div>
 
-                <div id="answerLogs" class="log-section hidden">
+                <div id="answerLogs" class="log-section">
                     <div class="table-container" id="answerLogTable"></div>
                 </div>
 
@@ -1481,7 +1487,7 @@
         let questionEvalLogs = [];
         let ragLogsData = [];
         let answerEvalLogs = [];
-        let activeLogTab = 'questionLogs';
+        let activeLogTab = 'answerLogs';
         let visibleLogs = [];
         function loadStyleDefaults() {
             const rootStyles = getComputedStyle(document.documentElement);
