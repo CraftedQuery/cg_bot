@@ -170,6 +170,16 @@ Set `RAG_CHATBOT_HOME` to an external volume in production so configs, uploads, 
 
 `update_vector_store` chunks text, builds embeddings with the selected provider, logs embedding events, and saves to FAISS. The ingestion function returns an OCR usage map so callers can record which files needed OCR.
 
+## Three-stage chat pipeline
+
+Every agent configuration includes a staged pipeline that can be tuned independently per tenant/agent pair:
+
+1. **Question evaluator (optional)** – Pre-processes the latest user message before retrieval. You can turn it on or off per agent, pick a provider (OpenAI, Anthropic, Vertex AI, or a custom endpoint), supply a dedicated API key/URL, and set model, temperature, token cap, and a stage-specific system prompt. Results are logged through `log_question_evaluation` so you can review how the guardrail behaved during a conversation.
+2. **Main RAG bot** – Always present and enabled by default. This stage gathers vector search results for the tenant/agent, separates template files from normal content, detects the user’s language, and builds a system prompt that enforces local-only answers when `local_only` is set. It then calls the selected model/provider with the configured temperature and token cap, and logs the interaction (latency, token counts, feedback hooks, and citations) via `log_chat`.
+3. **Answer evaluator (optional)** – Runs after a reply is generated. Like the question evaluator, it supports its own provider/model/API key, prompt, and generation settings. Its verdict and telemetry are captured through `log_answer_evaluation`, and the chat log links back to both evaluation stages for auditing.
+
+Stage defaults live in each agent’s config file (`configs/<tenant>/<agent>.json`), and `config.py` backfills missing blocks for older configs. The admin UI exposes toggles, provider/model pickers, API-key overrides, and readiness badges for each stage so you can validate the full pipeline before saving.
+
 ## Logging and analytics
 
 FastAPI bootstraps `logging.basicConfig(level=logging.INFO)` in `main.py`. Application events are also captured in SQLite tables:
@@ -180,6 +190,21 @@ FastAPI bootstraps `logging.basicConfig(level=logging.INFO)` in `main.py`. Appli
 - `error_logs` – exception traces with tenant/agent context.
 
 Use `analytics.py` or the CLI dashboard to summarize usage per tenant or agent.
+
+## Admin console walkthrough
+
+`/admin.html` ships with a built-in login form (JWT-backed) and a tabbed console for day-to-day operations:
+
+- **Dashboard** – Summarizes total tenants, agents, users, and chat volume so you can confirm the instance is populated before drilling into details.
+- **Tenants & Agents** – Lists every tenant with its agents and action buttons to:
+  - Create a tenant (with an initial agent) via the modal dropdown/text input flow.
+  - Add agents to an existing tenant.
+  - Configure an agent’s bot, widget appearance, allowed domains, and the full three-stage pipeline (providers, models, prompts, token/temperature caps, API-key overrides, and ready/incomplete badges for each stage).
+  - Trigger a test chat, upload files into the agent’s vector store, copy the embeddable widget script, or delete the agent.
+- **Users** – Displays a sortable table of usernames, tenant scope, agent assignments, role, file-permission toggle, status, and actions. Modals let you create users (username/password, tenant, role, agents, file permissions) or edit existing users, and non-admin accounts can be deleted when allowed.
+- **Analytics** – Prompts for a tenant selection and then surfaces total queries, unique sessions, average feedback, mean response time, vector store size, and file counts for that tenant.
+- **Settings** – Shows system health/versions from `/health`, runs a live LLM connectivity test, reveals the most recent LLM calls, and exposes recent API error logs. You can also adjust the inactivity timeout in minutes.
+- **Styling** – Lets you adjust the global theme tokens (primary/secondary/danger/warning palette, grayscale steps, text colors, button radius, body font size, header/footer colors, logo URL, and footer links) used across the admin experience.
 
 ## Security considerations
 
