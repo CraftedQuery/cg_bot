@@ -2126,14 +2126,15 @@
             let cards = [];
             const lower = entry => (entry || '').toString().toLowerCase();
             if (type === 'question') {
-                const pass = logs.filter(l => lower(l.evaluation_result).includes('pass')).length;
-                const fail = logs.filter(l => lower(l.evaluation_result).includes('fail')).length;
-                const flagged = logs.filter(l => lower(l.evaluation_result).includes('flag')).length;
+                const statusValue = entry => lower(entry.evaluation_status || entry.evaluation_result);
+                const pass = logs.filter(l => statusValue(l) === 'pass').length;
+                const reject = logs.filter(l => statusValue(l) === 'reject').length;
+                const suggest = logs.filter(l => statusValue(l) === 'suggest').length;
                 cards = [
                     { label: 'Questions Evaluated', value: logs.length },
                     { label: 'Passed', value: pass },
-                    { label: 'Failed', value: fail },
-                    { label: 'Flagged', value: flagged },
+                    { label: 'Suggestions', value: suggest },
+                    { label: 'Rejected', value: reject },
                 ];
             } else if (type === 'answer') {
                 const approved = logs.filter(l => lower(l.evaluation_result).includes('pass') || lower(l.evaluation_result).includes('approve')).length;
@@ -2173,13 +2174,18 @@
                 return;
             }
             const rows = logs.map(log => {
-                const resultClass = (log.evaluation_result || '').toLowerCase().includes('fail') ? 'badge fail' : ((log.evaluation_result || '').toLowerCase().includes('flag') ? 'badge flagged' : 'badge pass');
+                const status = (log.evaluation_status || log.evaluation_result || '').toLowerCase();
+                const resultClass = status === 'reject' ? 'badge fail' : (status === 'suggest' ? 'badge flagged' : 'badge pass');
                 return `
                     <tr class="clickable-row" onclick='showLogDetail("question", ${JSON.stringify(log).replace(/'/g, "&#39;")})'>
                         <td>${new Date(log.ts).toLocaleString()}</td>
                         <td>${escapeHtml(log.username || '')}</td>
                         <td>${escapeHtml(log.original_question || '')}</td>
-                        <td><span class="${resultClass}">${escapeHtml(log.evaluation_result || '')}</span></td>
+                        <td><span class="${resultClass}">${escapeHtml(log.evaluation_status || log.evaluation_result || '')}</span></td>
+                        <td>${escapeHtml(log.reason || '')}</td>
+                        <td>${escapeHtml(log.suggested_question || '')}</td>
+                        <td>${escapeHtml(log.user_choice || '')}</td>
+                        <td>${log.proceeded ? 'Yes' : 'No'}</td>
                         <td>${buildScoresCell(log.criteria_scores)}</td>
                         <td>${escapeHtml(log.flags ? JSON.stringify(log.flags) : '')}</td>
                         <td>${escapeHtml(log.provider || '')}</td>
@@ -2195,7 +2201,11 @@
                             <th>Timestamp</th>
                             <th>User</th>
                             <th>Original Question</th>
-                            <th>Result</th>
+                            <th>Status</th>
+                            <th>Reason</th>
+                            <th>Suggested Question</th>
+                            <th>User Choice</th>
+                            <th>Proceeded to RAG</th>
                             <th>Criteria Scores</th>
                             <th>Flags / Warnings</th>
                             <th>Provider</th>
@@ -2402,6 +2412,11 @@
                 meta = `
                     <p><strong>User:</strong> ${escapeHtml(log.username || '')}</p>
                     <p><strong>Original Question:</strong> ${escapeHtml(log.original_question || '')}</p>
+                    <p><strong>Status:</strong> ${escapeHtml(log.evaluation_status || log.evaluation_result || '')}</p>
+                    <p><strong>Reason:</strong> ${escapeHtml(log.reason || 'N/A')}</p>
+                    <p><strong>Suggested Question:</strong> ${escapeHtml(log.suggested_question || 'N/A')}</p>
+                    <p><strong>User Choice:</strong> ${escapeHtml(log.user_choice || 'N/A')}</p>
+                    <p><strong>Proceeded to RAG:</strong> ${log.proceeded ? 'Yes' : 'No'}</p>
                     <p><strong>Flags:</strong> ${escapeHtml(log.flags ? JSON.stringify(log.flags) : 'None')}</p>
                 `;
             } else if (type === 'answer') {

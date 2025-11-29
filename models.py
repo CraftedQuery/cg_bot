@@ -40,11 +40,15 @@ class AADTokenRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     messages: list[dict[str, Any]]
+    skip_question_evaluation: bool | None = None
+    question_evaluation_id: int | None = None
+    question_decision: str | None = None
 
 
 class ChatResponse(BaseModel):
     reply: str
     sources: list[dict[str, Any]]
+    question_evaluation: dict[str, Any] | None = None
 
 
 class ConfigUpdateRequest(BaseModel):

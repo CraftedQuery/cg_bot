@@ -82,6 +82,12 @@
         #witnessOverlay.hidden{display:none;}
         #witnessOverlay .content{background:var(--white);padding:20px;border-radius:12px;text-align:center;line-height:1.4;}
         #witnessOverlay input{margin-top:8px;padding:8px;width:80%;font-size:14px;}
+        #suggestionDialog{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1100;}
+        #suggestionDialog.hidden{display:none;}
+        #suggestionContent{background:var(--white);padding:24px;border-radius:12px;max-width:640px;width:90%;box-shadow:var(--shadow);}
+        #suggestionContent h3{margin-top:0;}
+        .suggest-block{background:var(--gray-100);padding:12px;border-radius:8px;margin:8px 0;}
+        .suggest-buttons{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
         .hidden{display:none;}
         .btn{display:inline-block;padding:12px 24px;background:var(--primary);color:var(--white);border:none;border-radius:var(--btn-radius);cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;text-align:center;}
         .btn:hover{background:var(--primary-dark);transform:translateY(-1px);}
@@ -146,6 +152,24 @@
                 <input id="witnessName" type="text">
             </div>
         </div>
+        <div id="suggestionDialog" class="hidden">
+            <div id="suggestionContent">
+                <h3>We suggest refining your question</h3>
+                <p id="suggestReason"></p>
+                <div class="suggest-block">
+                    <strong>Original:</strong>
+                    <div id="suggestOriginal"></div>
+                </div>
+                <div class="suggest-block">
+                    <strong>Suggested:</strong>
+                    <div id="suggestedQuestion"></div>
+                </div>
+                <div class="suggest-buttons">
+                    <button class="btn btn-small" id="keepOriginalBtn">Keep Original</button>
+                    <button class="btn btn-small" id="useSuggestedBtn">Use Suggested Question</button>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 <script>
@@ -207,6 +231,7 @@ let chatHistory=[];
 let filteredHistory=[];
 let selectedChat=null;
 const citeNums=Array.from({length:10},(_,i)=>`(${i+1})`);
+let pendingSuggestion=null;
 
 function insertCitations(text,sources){
     if(/\(\d+\)/.test(text)) return text;
@@ -357,15 +382,60 @@ async function loadHistory(){
     }
 }
 
-async function sendMessage(msg){
-    addMessage(msg,'user');
+function showSuggestionModal(qe){
+    pendingSuggestion=qe;
+    document.getElementById('suggestOriginal').textContent=qe.original_question||'';
+    document.getElementById('suggestedQuestion').textContent=qe.suggested_question||'';
+    document.getElementById('suggestReason').textContent=qe.reason||'We adjusted your question for better results.';
+    document.getElementById('suggestionDialog').classList.remove('hidden');
+}
+
+function hideSuggestionModal(){
+    document.getElementById('suggestionDialog').classList.add('hidden');
+}
+
+function handleSuggestionChoice(useSuggested){
+    if(!pendingSuggestion) return;
+    const chosenQuestion = useSuggested && pendingSuggestion.suggested_question ? pendingSuggestion.suggested_question : (pendingSuggestion.original_question || '');
+    const choice = useSuggested ? 'use_suggested' : 'keep_original';
+    if(useSuggested){
+        addMessage(chosenQuestion,'user');
+    }
+    hideSuggestionModal();
+    sendMessage(chosenQuestion,{skipUserMessage:!useSuggested,evaluationContext:{skip:true,id:pendingSuggestion.question_evaluation_id,choice}});
+    pendingSuggestion=null;
+}
+
+async function sendMessage(msg,options={}){
+    const {skipUserMessage=false,evaluationContext=null}=options;
+    if(!skipUserMessage){
+        addMessage(msg,'user');
+    }
+
+    const payload={messages:[{role:'user',content:msg}]};
+    if(evaluationContext?.skip){
+        payload.skip_question_evaluation=true;
+        payload.question_evaluation_id=evaluationContext.id;
+        payload.question_decision=evaluationContext.choice;
+    }
+
     const res=await fetch(`/chat?tenant=${tenant}&agent=${agent}`,{
         method:'POST',
         headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`,'X-Session-Id':sessionId},
-        body:JSON.stringify({messages:[{role:'user',content:msg}]})
+        body:JSON.stringify(payload)
     });
     if(res.ok){
         const data=await res.json();
+        const qe=data.question_evaluation;
+        if(qe && qe.status==='suggest' && !qe.proceed){
+            addMessage(data.reply||'We suggest refining your question.','bot');
+            showSuggestionModal(qe);
+            return;
+        }
+        if(qe && qe.status==='reject'){
+            addMessage(data.reply || (qe.reason ? `Question rejected: ${qe.reason}` : 'The question was rejected.'),'bot');
+            return;
+        }
         addMessage(data.reply,'bot',data.sources||[]);
         await loadHistory();
     }else{
@@ -426,6 +496,9 @@ witnessName.addEventListener('keydown',e=>{
     }
 });
 witnessOverlay.addEventListener('click',e=>{if(e.target===witnessOverlay)witnessOverlay.classList.add('hidden');});
+document.getElementById('keepOriginalBtn').addEventListener('click',()=>handleSuggestionChoice(false));
+document.getElementById('useSuggestedBtn').addEventListener('click',()=>handleSuggestionChoice(true));
+document.getElementById('suggestionDialog').addEventListener('click',e=>{if(e.target.id==='suggestionDialog')hideSuggestionModal();});
 
 loadHistory();
 </script>
