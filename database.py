@@ -95,6 +95,12 @@ def init_database():
             )
             """
         )
+        _ensure_column(con, "question_evaluation_logs", "username TEXT")
+        _ensure_column(con, "question_evaluation_logs", "evaluation_details TEXT")
+        _ensure_column(con, "question_evaluation_logs", "flags TEXT")
+        _ensure_column(con, "question_evaluation_logs", "prompt TEXT")
+        _ensure_column(con, "question_evaluation_logs", "full_response TEXT")
+        _ensure_column(con, "question_evaluation_logs", "criteria_scores TEXT")
         con.execute(
             """
             CREATE TABLE IF NOT EXISTS answer_evaluation_logs(
@@ -114,6 +120,15 @@ def init_database():
             )
             """
         )
+        _ensure_column(con, "answer_evaluation_logs", "username TEXT")
+        _ensure_column(con, "answer_evaluation_logs", "evaluation_details TEXT")
+        _ensure_column(con, "answer_evaluation_logs", "flags TEXT")
+        _ensure_column(con, "answer_evaluation_logs", "issues TEXT")
+        _ensure_column(con, "answer_evaluation_logs", "recommendations TEXT")
+        _ensure_column(con, "answer_evaluation_logs", "selected_answer_provider TEXT")
+        _ensure_column(con, "answer_evaluation_logs", "prompt TEXT")
+        _ensure_column(con, "answer_evaluation_logs", "full_response TEXT")
+        _ensure_column(con, "answer_evaluation_logs", "criteria_scores TEXT")
         con.execute(
             """
             CREATE TABLE IF NOT EXISTS error_logs(
@@ -229,6 +244,12 @@ def log_question_evaluation(
     tokens_used: int | None,
     latency_ms: float | None,
     error: str | None,
+    username: str | None = None,
+    evaluation_details: str | None = None,
+    flags: str | None = None,
+    prompt: str | None = None,
+    full_response: str | None = None,
+    criteria_scores: str | None = None,
 ) -> int:
     """Record a question evaluation stage result and return its ID."""
     from datetime import datetime, timezone
@@ -237,8 +258,9 @@ def log_question_evaluation(
         cur = con.execute(
             """INSERT INTO question_evaluation_logs
                (ts, tenant, agent, session_id, conversation_id, original_question, evaluation_result,
-                provider, model, tokens_used, latency_ms, error)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                provider, model, tokens_used, latency_ms, error, username, evaluation_details, flags,
+                prompt, full_response, criteria_scores)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 datetime.now(timezone.utc).isoformat(),
                 tenant,
@@ -252,6 +274,12 @@ def log_question_evaluation(
                 tokens_used,
                 latency_ms,
                 error,
+                username,
+                evaluation_details,
+                flags,
+                prompt,
+                full_response,
+                criteria_scores,
             ),
         )
         con.commit()
@@ -271,6 +299,15 @@ def log_answer_evaluation(
     tokens_used: int | None,
     latency_ms: float | None,
     error: str | None,
+    username: str | None = None,
+    evaluation_details: str | None = None,
+    flags: str | None = None,
+    issues: str | None = None,
+    recommendations: str | None = None,
+    selected_answer_provider: str | None = None,
+    prompt: str | None = None,
+    full_response: str | None = None,
+    criteria_scores: str | None = None,
 ) -> int:
     """Record an answer evaluation stage result and return its ID."""
     from datetime import datetime, timezone
@@ -279,8 +316,9 @@ def log_answer_evaluation(
         cur = con.execute(
             """INSERT INTO answer_evaluation_logs
                (ts, tenant, agent, session_id, conversation_id, original_answer, evaluation_result,
-                provider, model, tokens_used, latency_ms, error)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
+                provider, model, tokens_used, latency_ms, error, username, evaluation_details, flags,
+                issues, recommendations, selected_answer_provider, prompt, full_response, criteria_scores)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 datetime.now(timezone.utc).isoformat(),
                 tenant,
@@ -294,6 +332,15 @@ def log_answer_evaluation(
                 tokens_used,
                 latency_ms,
                 error,
+                username,
+                evaluation_details,
+                flags,
+                issues,
+                recommendations,
+                selected_answer_provider,
+                prompt,
+                full_response,
+                criteria_scores,
             ),
         )
         con.commit()

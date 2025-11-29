@@ -199,7 +199,68 @@
             background: var(--primary);
             color: var(--white);
         }
-        
+
+        .sub-tabs {
+            display: flex;
+            gap: 8px;
+            margin: 10px 0 15px;
+            flex-wrap: wrap;
+        }
+
+        .sub-tab {
+            padding: 10px 14px;
+            border: 1px solid var(--gray-200);
+            background: var(--white);
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s ease;
+        }
+
+        .sub-tab.active {
+            background: var(--primary);
+            color: var(--white);
+            border-color: var(--primary);
+            box-shadow: var(--shadow);
+        }
+
+        .log-toolbar {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            margin-bottom: 10px;
+        }
+
+        .log-toolbar .form-group {
+            margin-bottom: 0;
+            min-width: 180px;
+        }
+
+        .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 10px;
+            margin: 10px 0 15px;
+        }
+
+        .summary-card {
+            padding: 12px;
+            background: var(--white);
+            border: 1px solid var(--gray-200);
+            border-radius: 10px;
+            box-shadow: var(--shadow);
+        }
+
+        .summary-card .label { color: var(--gray-600); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .summary-card .value { font-size: 18px; font-weight: 700; margin-top: 4px; }
+
+        .clickable-row { cursor: pointer; }
+        .badge { padding: 4px 8px; border-radius: 8px; font-weight: 600; font-size: 12px; }
+        .badge.pass { background: #e6f4ea; color: #137333; }
+        .badge.fail { background: #fdecea; color: #b3261e; }
+        .badge.flagged, .badge.review { background: #fff4e5; color: #b05a00; }
+
         .content-panel {
             background: var(--white);
             border-radius: 12px;
@@ -701,23 +762,77 @@
                     <label>System Status</label>
                     <div id="systemStatus"></div>
                 </div>
-                <div class="form-group">
+                <div class="form-group" style="display:flex; gap:10px; flex-wrap: wrap; align-items:center;">
                     <button id="llmTestBtn" class="btn">Test LLM Connections</button>
-                    <div id="llmTestResult" style="margin-top:8px;"></div>
-                </div>
-                <div class="form-group">
-                    <button id="llmLogsBtn" class="btn">Show LLM Logs</button>
-                    <div id="llmLogs" class="hidden"></div>
-                </div>
-                <div class="form-group">
                     <button id="errorLogsBtn" class="btn">Show Error Log</button>
-                    <div id="errorLogs" class="hidden"></div>
+                    <div id="llmTestResult" style="margin-top:8px;"></div>
                 </div>
                 <div class="form-group">
                     <label for="userTimeout">User Timeout (minutes)</label>
                     <input type="number" id="userTimeout" min="1" value="30" style="width:80px;">
+                </div>
+
+                <h3 style="margin-top: 20px;">Evaluation Pipeline Logs</h3>
+                <p style="color: var(--gray-600);">Inspect every stage of the three-part evaluation pipeline with unified filters, exports, and drill-downs.</p>
+
+                <div class="sub-tabs" id="logTabs">
+                    <button class="sub-tab active" data-logtab="questionLogs">Question Evaluation Logs</button>
+                    <button class="sub-tab" data-logtab="ragLogs">RAG Query Logs</button>
+                    <button class="sub-tab" data-logtab="answerLogs">Answer Evaluation Logs</button>
+                </div>
+
+                <div class="log-toolbar">
+                    <div class="form-group">
+                        <label for="logStartDate">Start Date</label>
+                        <input type="date" id="logStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="logEndDate">End Date</label>
+                        <input type="date" id="logEndDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="logResult">Result</label>
+                        <select id="logResult">
+                            <option value="">All</option>
+                            <option value="pass">Pass</option>
+                            <option value="fail">Fail</option>
+                            <option value="flag">Flagged</option>
+                            <option value="review">Review</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="logUser">User</label>
+                        <input type="text" id="logUser" placeholder="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="logProvider">LLM Provider</label>
+                        <input type="text" id="logProvider" placeholder="openai, anthropic...">
+                    </div>
+                    <div class="form-group" style="min-width: 220px;">
+                        <label for="logSearch">Search</label>
+                        <input type="text" id="logSearch" placeholder="Search question, answer, reasoning...">
+                    </div>
+                    <button id="applyLogFilters" class="btn">Apply Filters</button>
+                    <button id="resetLogFilters" class="btn btn-outline">Reset</button>
+                    <button id="exportLogsBtn" class="btn btn-secondary">Export</button>
+                </div>
+
+                <div class="summary-grid" id="logSummary"></div>
+
+                <div id="questionLogs" class="log-section">
+                    <div class="table-container" id="questionLogTable"></div>
+                </div>
+
+                <div id="ragLogs" class="log-section hidden">
+                    <div class="table-container" id="ragLogTable"></div>
+                </div>
+
+                <div id="answerLogs" class="log-section hidden">
+                    <div class="table-container" id="answerLogTable"></div>
+                </div>
+
+                <div id="errorLogs" class="hidden"></div>
             </div>
-        </div>
             <!-- Styling Panel -->
             <div id="stylingPanel" class="content-panel hidden">
                 <h2>Styling</h2>
@@ -1315,6 +1430,17 @@
         </div>
     </div>
 
+    <!-- Log Detail Modal -->
+    <div id="logDetailModal" class="modal hidden">
+        <div class="modal-content" style="max-width: 900px;">
+            <div class="modal-header">
+                <h3 class="modal-title">Log Details</h3>
+                <button class="close-btn" onclick="closeModal('logDetailModal')">&times;</button>
+            </div>
+            <div id="logDetailBody"></div>
+        </div>
+    </div>
+
     <script>
         // Global variables
         let authToken = localStorage.getItem('rag_auth_token');
@@ -1351,6 +1477,12 @@
             footerLink3Text: "Status",
             footerLink3Url: "https://www.craftedquery.com/status"
         };
+
+        let questionEvalLogs = [];
+        let ragLogsData = [];
+        let answerEvalLogs = [];
+        let activeLogTab = 'questionLogs';
+        let visibleLogs = [];
         function loadStyleDefaults() {
             const rootStyles = getComputedStyle(document.documentElement);
             styleKeys.forEach(key => {
@@ -1441,7 +1573,6 @@
                 showModal('createUserModal');
             });
             document.getElementById('llmTestBtn').addEventListener('click', runLlmTest);
-            document.getElementById('llmLogsBtn').addEventListener('click', loadLlmLogs);
             document.getElementById('errorLogsBtn').addEventListener('click', loadErrorLogs);
 
             // Forms
@@ -1477,6 +1608,13 @@
                     updateStageStatus('ae');
                 });
             }
+
+            document.querySelectorAll('.sub-tab').forEach(tab => {
+                tab.addEventListener('click', () => switchLogTab(tab.dataset.logtab));
+            });
+            document.getElementById('applyLogFilters').addEventListener('click', applyLogFilters);
+            document.getElementById('resetLogFilters').addEventListener('click', resetLogFilters);
+            document.getElementById('exportLogsBtn').addEventListener('click', exportCurrentLogs);
 
             ['qeEnabled', 'aeEnabled', 'mainEnabled'].forEach(id => {
                 const el = document.getElementById(id);
@@ -1657,6 +1795,7 @@
                     break;
                 case 'settings':
                     loadSettings();
+                    applyLogFilters();
                     break;
             }
         }
@@ -1915,59 +2054,400 @@
             }
         }
 
-        async function loadLlmLogs() {
-            const container = document.getElementById('llmLogs');
-            container.classList.remove('hidden');
-            container.innerHTML = 'Loading...';
-            try {
-                const response = await fetch(`${API_BASE}/llm_logs?limit=25`);
-                if (response.ok) {
-                    const data = await response.json();
-                    container.innerHTML = formatLlmLogs(data.logs);
-                } else {
-                    container.innerHTML = 'Failed to load logs';
-                }
-            } catch (error) {
-                console.error('Failed to load logs:', error);
-                container.innerHTML = 'Failed to load logs';
+        function getLogFilters() {
+            return {
+                start_date: document.getElementById('logStartDate').value || '',
+                end_date: document.getElementById('logEndDate').value || '',
+                result: document.getElementById('logResult').value || '',
+                user: document.getElementById('logUser').value || '',
+                provider: document.getElementById('logProvider').value || '',
+                search: document.getElementById('logSearch').value || '',
+            };
+        }
+
+        function switchLogTab(tabName) {
+            activeLogTab = tabName;
+            document.querySelectorAll('.sub-tab').forEach(tab => tab.classList.remove('active'));
+            const selectedTab = document.querySelector(`.sub-tab[data-logtab="${tabName}"]`);
+            if (selectedTab) selectedTab.classList.add('active');
+
+            document.querySelectorAll('.log-section').forEach(sec => sec.classList.add('hidden'));
+            const activeSection = document.getElementById(tabName);
+            if (activeSection) activeSection.classList.remove('hidden');
+
+            applyLogFilters();
+        }
+
+        function resetLogFilters() {
+            document.getElementById('logStartDate').value = '';
+            document.getElementById('logEndDate').value = '';
+            document.getElementById('logResult').value = '';
+            document.getElementById('logUser').value = '';
+            document.getElementById('logProvider').value = '';
+            document.getElementById('logSearch').value = '';
+            applyLogFilters();
+        }
+
+        function applyLogFilters() {
+            if (!authToken && activeLogTab !== 'ragLogs') return;
+            if (activeLogTab === 'questionLogs') {
+                loadQuestionEvaluationLogs();
+            } else if (activeLogTab === 'ragLogs') {
+                loadRagLogs();
+            } else {
+                loadAnswerEvaluationLogs();
             }
         }
 
-        function formatLlmLogs(logs) {
+        function buildScoresCell(scores) {
+            if (!scores) return 'N/A';
+            if (typeof scores === 'string') return scores;
+            return Object.entries(scores).map(([k, v]) => `${k}: ${v}`).join('<br>');
+        }
+
+        function escapeHtml(value) {
+            if (value === null || value === undefined) return '';
+            return value.toString()
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+        }
+
+        function renderSummary(logs, type) {
+            const summary = document.getElementById('logSummary');
+            if (!logs || !logs.length) {
+                summary.innerHTML = '<div class="summary-card"><div class="label">No entries</div><div class="value">0</div></div>';
+                visibleLogs = [];
+                return;
+            }
+
+            let cards = [];
+            const lower = entry => (entry || '').toString().toLowerCase();
+            if (type === 'question') {
+                const pass = logs.filter(l => lower(l.evaluation_result).includes('pass')).length;
+                const fail = logs.filter(l => lower(l.evaluation_result).includes('fail')).length;
+                const flagged = logs.filter(l => lower(l.evaluation_result).includes('flag')).length;
+                cards = [
+                    { label: 'Questions Evaluated', value: logs.length },
+                    { label: 'Passed', value: pass },
+                    { label: 'Failed', value: fail },
+                    { label: 'Flagged', value: flagged },
+                ];
+            } else if (type === 'answer') {
+                const approved = logs.filter(l => lower(l.evaluation_result).includes('pass') || lower(l.evaluation_result).includes('approve')).length;
+                const rejected = logs.filter(l => lower(l.evaluation_result).includes('fail') || lower(l.evaluation_result).includes('reject')).length;
+                const review = logs.filter(l => lower(l.evaluation_result).includes('review')).length;
+                cards = [
+                    { label: 'Answers Evaluated', value: logs.length },
+                    { label: 'Approved', value: approved },
+                    { label: 'Rejected', value: rejected },
+                    { label: 'Needs Review', value: review },
+                ];
+            } else {
+                const success = logs.filter(l => lower(l.status) === 'success').length;
+                const error = logs.filter(l => lower(l.status) === 'error').length;
+                cards = [
+                    { label: 'RAG Queries', value: logs.length },
+                    { label: 'Success', value: success },
+                    { label: 'Errors', value: error },
+                ];
+            }
+
+            summary.innerHTML = cards.map(card => `
+                <div class="summary-card">
+                    <div class="label">${card.label}</div>
+                    <div class="value">${card.value}</div>
+                </div>
+            `).join('');
+
+            visibleLogs = logs;
+        }
+
+        function renderQuestionLogs(logs) {
+            const container = document.getElementById('questionLogTable');
             if (!logs.length) {
-                return '<p>No logs found.</p>';
+                container.innerHTML = '<p>No question evaluations found.</p>';
+                renderSummary([], 'question');
+                return;
+            }
+            const rows = logs.map(log => {
+                const resultClass = (log.evaluation_result || '').toLowerCase().includes('fail') ? 'badge fail' : ((log.evaluation_result || '').toLowerCase().includes('flag') ? 'badge flagged' : 'badge pass');
+                return `
+                    <tr class="clickable-row" onclick='showLogDetail("question", ${JSON.stringify(log).replace(/'/g, "&#39;")})'>
+                        <td>${new Date(log.ts).toLocaleString()}</td>
+                        <td>${escapeHtml(log.username || '')}</td>
+                        <td>${escapeHtml(log.original_question || '')}</td>
+                        <td><span class="${resultClass}">${escapeHtml(log.evaluation_result || '')}</span></td>
+                        <td>${buildScoresCell(log.criteria_scores)}</td>
+                        <td>${escapeHtml(log.flags ? JSON.stringify(log.flags) : '')}</td>
+                        <td>${escapeHtml(log.provider || '')}</td>
+                        <td>${escapeHtml(log.model || '')}</td>
+                        <td>${escapeHtml(log.full_response || log.evaluation_result || '')}</td>
+                    </tr>
+                `;
+            }).join('');
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>User</th>
+                            <th>Original Question</th>
+                            <th>Result</th>
+                            <th>Criteria Scores</th>
+                            <th>Flags / Warnings</th>
+                            <th>Provider</th>
+                            <th>Model</th>
+                            <th>Evaluator Response</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+            renderSummary(logs, 'question');
+        }
+
+        function augmentRagLog(log) {
+            const desc = log.description || '';
+            const userMatch = desc.match(/user:([^\s]+)/);
+            const questionIndex = desc.indexOf('q:');
+            return {
+                ...log,
+                user: userMatch ? userMatch[1] : '',
+                question: questionIndex !== -1 ? desc.substring(questionIndex + 2).trim() : '',
+            };
+        }
+
+        function filterRagLogs(logs) {
+            const filters = getLogFilters();
+            return logs.filter(log => {
+                if (filters.start_date && new Date(log.ts) < new Date(filters.start_date)) return false;
+                if (filters.end_date && new Date(log.ts) > new Date(filters.end_date)) return false;
+                if (filters.user && (!log.user || !log.user.toLowerCase().includes(filters.user.toLowerCase()))) return false;
+                if (filters.provider && (!log.provider || !log.provider.toLowerCase().includes(filters.provider.toLowerCase()))) return false;
+                if (filters.result) {
+                    const desired = filters.result.toLowerCase();
+                    if (desired === 'pass' && log.status.toLowerCase() !== 'success') return false;
+                    if (desired === 'fail' && log.status.toLowerCase() !== 'error') return false;
+                }
+                if (filters.search) {
+                    const haystack = `${log.question || ''} ${log.description || ''} ${log.answer || ''}`.toLowerCase();
+                    if (!haystack.includes(filters.search.toLowerCase())) return false;
+                }
+                return true;
+            });
+        }
+
+        function renderRagLogs(logs) {
+            const container = document.getElementById('ragLogTable');
+            if (!logs.length) {
+                container.innerHTML = '<p>No RAG queries found.</p>';
+                renderSummary([], 'rag');
+                return;
             }
             const rows = logs.map(log => `
-                <tr>
+                <tr class="clickable-row" onclick='showLogDetail("rag", ${JSON.stringify(log).replace(/'/g, "&#39;")})'>
                     <td>${new Date(log.ts).toLocaleString()}</td>
-                    <td>${log.provider}</td>
-                    <td>${log.status}</td>
-                    <td>${log.tenant || ''}</td>
-                    <td>${log.agent || ''}</td>
-                    <td>${log.model || ''}</td>
-                    <td>${log.description ? log.description : (log.error ? 'error: ' + log.error : '')}</td>
-                    <td>${log.answer || ''}</td>
+                    <td>${escapeHtml(log.user || '')}</td>
+                    <td>${escapeHtml(log.question || '')}</td>
+                    <td>${escapeHtml(log.provider || '')}</td>
+                    <td>${escapeHtml(log.status)}</td>
+                    <td>${escapeHtml(log.model || '')}</td>
+                    <td>${escapeHtml(log.tenant || '')}</td>
+                    <td>${escapeHtml(log.agent || '')}</td>
+                    <td>${escapeHtml(log.description || '')}</td>
+                    <td>${escapeHtml(log.answer || '')}</td>
                 </tr>
             `).join('');
-            return `
-                <div class="table-container">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Timestamp</th>
-                                <th>Provider</th>
-                                <th>Status</th>
-                                <th>Tenant</th>
-                                <th>Agent</th>
-                                <th>Model</th>
-                                <th>Description</th>
-                                <th>Answer</th>
-                            </tr>
-                        </thead>
-                        <tbody>${rows}</tbody>
-                    </table>
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>User</th>
+                            <th>Question</th>
+                            <th>Provider</th>
+                            <th>Status</th>
+                            <th>Model</th>
+                            <th>Tenant</th>
+                            <th>Agent</th>
+                            <th>Description</th>
+                            <th>Answer</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+            renderSummary(logs, 'rag');
+        }
+
+        function renderAnswerLogs(logs) {
+            const container = document.getElementById('answerLogTable');
+            if (!logs.length) {
+                container.innerHTML = '<p>No answer evaluations found.</p>';
+                renderSummary([], 'answer');
+                return;
+            }
+            const rows = logs.map(log => {
+                const resultClass = (log.evaluation_result || '').toLowerCase().includes('fail') ? 'badge fail' : ((log.evaluation_result || '').toLowerCase().includes('review') ? 'badge review' : 'badge pass');
+                return `
+                    <tr class="clickable-row" onclick='showLogDetail("answer", ${JSON.stringify(log).replace(/'/g, "&#39;")})'>
+                        <td>${new Date(log.ts).toLocaleString()}</td>
+                        <td>${escapeHtml(log.conversation_id || log.id || '')}</td>
+                        <td>${escapeHtml(log.original_answer || '')}</td>
+                        <td><span class="${resultClass}">${escapeHtml(log.evaluation_result || '')}</span></td>
+                        <td>${buildScoresCell(log.criteria_scores)}</td>
+                        <td>${escapeHtml(log.issues ? JSON.stringify(log.issues) : '')}</td>
+                        <td>${escapeHtml(log.recommendations ? JSON.stringify(log.recommendations) : '')}</td>
+                        <td>${escapeHtml(log.provider || '')}</td>
+                        <td>${escapeHtml(log.selected_answer_provider || log.model || '')}</td>
+                    </tr>
+                `;
+            }).join('');
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th>
+                            <th>Question ID</th>
+                            <th>Generated Answer</th>
+                            <th>Rating</th>
+                            <th>Criteria Scores</th>
+                            <th>Issues Flagged</th>
+                            <th>Recommendations</th>
+                            <th>Provider</th>
+                            <th>Selected Answer</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+            renderSummary(logs, 'answer');
+        }
+
+        async function loadQuestionEvaluationLogs() {
+            const filters = getLogFilters();
+            const params = new URLSearchParams({ limit: 200 });
+            Object.entries({
+                start_date: filters.start_date,
+                end_date: filters.end_date,
+                result: filters.result,
+                user: filters.user,
+                provider: filters.provider,
+                search: filters.search,
+            }).forEach(([key, val]) => { if (val) params.append(key, val); });
+
+            try {
+                const resp = await fetch(`${API_BASE}/question_evaluation_logs?${params.toString()}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    questionEvalLogs = data.logs || [];
+                    renderQuestionLogs(questionEvalLogs);
+                }
+            } catch (err) {
+                console.error('Failed to load question evaluation logs', err);
+            }
+        }
+
+        async function loadAnswerEvaluationLogs() {
+            const filters = getLogFilters();
+            const params = new URLSearchParams({ limit: 200 });
+            Object.entries({
+                start_date: filters.start_date,
+                end_date: filters.end_date,
+                result: filters.result,
+                user: filters.user,
+                provider: filters.provider,
+                search: filters.search,
+            }).forEach(([key, val]) => { if (val) params.append(key, val); });
+
+            try {
+                const resp = await fetch(`${API_BASE}/answer_evaluation_logs?${params.toString()}`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (resp.ok) {
+                    const data = await resp.json();
+                    answerEvalLogs = data.logs || [];
+                    renderAnswerLogs(answerEvalLogs);
+                }
+            } catch (err) {
+                console.error('Failed to load answer evaluation logs', err);
+            }
+        }
+
+        async function loadRagLogs() {
+            try {
+                const response = await fetch(`${API_BASE}/llm_logs?limit=200`);
+                if (response.ok) {
+                    const data = await response.json();
+                    ragLogsData = (data.logs || []).map(augmentRagLog);
+                    renderRagLogs(filterRagLogs(ragLogsData));
+                }
+            } catch (error) {
+                console.error('Failed to load RAG logs:', error);
+                document.getElementById('ragLogTable').innerHTML = 'Failed to load logs';
+            }
+        }
+
+        function showLogDetail(type, log) {
+            const detail = document.getElementById('logDetailBody');
+            const safePrompt = log.prompt ? `<pre>${escapeHtml(JSON.stringify(log.prompt, null, 2))}</pre>` : '<p>No prompt captured.</p>';
+            const safeResponse = escapeHtml(log.full_response || log.evaluation_result || log.answer || 'No response captured');
+            let meta = '';
+            if (type === 'question') {
+                meta = `
+                    <p><strong>User:</strong> ${escapeHtml(log.username || '')}</p>
+                    <p><strong>Original Question:</strong> ${escapeHtml(log.original_question || '')}</p>
+                    <p><strong>Flags:</strong> ${escapeHtml(log.flags ? JSON.stringify(log.flags) : 'None')}</p>
+                `;
+            } else if (type === 'answer') {
+                meta = `
+                    <p><strong>Question ID:</strong> ${escapeHtml(log.conversation_id || log.id || '')}</p>
+                    <p><strong>Issues:</strong> ${escapeHtml(log.issues ? JSON.stringify(log.issues) : 'None')}</p>
+                    <p><strong>Recommendations:</strong> ${escapeHtml(log.recommendations ? JSON.stringify(log.recommendations) : 'None')}</p>
+                    <p><strong>Selected Answer:</strong> ${escapeHtml(log.selected_answer_provider || log.model || '')}</p>
+                `;
+            } else {
+                meta = `
+                    <p><strong>User:</strong> ${escapeHtml(log.user || '')}</p>
+                    <p><strong>Question:</strong> ${escapeHtml(log.question || '')}</p>
+                    <p><strong>Status:</strong> ${escapeHtml(log.status)}</p>
+                `;
+            }
+
+            detail.innerHTML = `
+                <div style="display:grid; gap:10px;">
+                    <div><strong>Timestamp:</strong> ${new Date(log.ts).toLocaleString()}</div>
+                    <div><strong>Provider:</strong> ${escapeHtml(log.provider || '')}</div>
+                    <div><strong>Model:</strong> ${escapeHtml(log.model || '')}</div>
+                    ${meta}
+                    <div><strong>Criteria Scores:</strong> ${buildScoresCell(log.criteria_scores)}</div>
+                    <div><strong>Prompt:</strong> ${safePrompt}</div>
+                    <div><strong>Full Response:</strong> <pre>${safeResponse}</pre></div>
                 </div>
             `;
+            showModal('logDetailModal');
+        }
+
+        function exportCurrentLogs() {
+            if (!visibleLogs.length) {
+                alert('No logs to export');
+                return;
+            }
+            const headers = Object.keys(visibleLogs[0]);
+            const rows = visibleLogs.map(log => headers.map(h => JSON.stringify(log[h] ?? '')).join(','));
+            const csv = [headers.join(','), ...rows].join('\n');
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `${activeLogTab}_logs.csv`;
+            link.click();
+            URL.revokeObjectURL(url);
         }
 
         async function loadErrorLogs() {

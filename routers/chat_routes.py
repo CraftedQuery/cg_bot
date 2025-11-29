@@ -90,6 +90,8 @@ async def chat(
                 "model": stage_configs["question_evaluator"].get("model"),
             }
 
+        qe_scores = qe_result.get("scores") if isinstance(qe_result, dict) else None
+        qe_flags = qe_result.get("flags") if isinstance(qe_result, dict) else None
         question_eval_id = log_question_evaluation(
             tenant=tenant,
             agent=agent,
@@ -102,6 +104,12 @@ async def chat(
             tokens_used=qe_result.get("tokens_out"),
             latency_ms=(qe_result.get("latency") * 1000) if qe_result.get("latency") is not None else None,
             error=qe_result.get("error"),
+            username=current_user.username,
+            evaluation_details=json.dumps(qe_result, default=str),
+            flags=json.dumps(qe_flags, default=str) if qe_flags is not None else None,
+            prompt=json.dumps(qe_messages, default=str),
+            full_response=qe_result.get("content"),
+            criteria_scores=json.dumps(qe_scores, default=str) if qe_scores is not None else None,
         )
 
     # Search for relevant documents
@@ -246,6 +254,15 @@ async def chat(
             tokens_used=ae_result.get("tokens_out"),
             latency_ms=(ae_result.get("latency") * 1000) if ae_result.get("latency") is not None else None,
             error=ae_result.get("error"),
+            username=current_user.username,
+            evaluation_details=json.dumps(ae_result, default=str),
+            flags=json.dumps(ae_result.get("flags"), default=str) if isinstance(ae_result, dict) and ae_result.get("flags") is not None else None,
+            issues=json.dumps(ae_result.get("issues"), default=str) if isinstance(ae_result, dict) and ae_result.get("issues") is not None else None,
+            recommendations=json.dumps(ae_result.get("recommendations"), default=str) if isinstance(ae_result, dict) and ae_result.get("recommendations") is not None else None,
+            selected_answer_provider=ae_result.get("selected_provider"),
+            prompt=json.dumps(ae_messages, default=str),
+            full_response=ae_result.get("content"),
+            criteria_scores=json.dumps(ae_result.get("scores"), default=str) if isinstance(ae_result, dict) and ae_result.get("scores") is not None else None,
         )
 
     # Log the interaction
