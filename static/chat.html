@@ -49,6 +49,11 @@
         #templatesDropdown div{padding:8px 12px;cursor:pointer;white-space:nowrap;}
         #templatesDropdown div:hover{background:var(--gray-100);}
         #messages{flex:1;overflow-y:auto;padding:15px;}
+        #statusBanner{margin:10px 15px;padding:10px 12px;border-radius:8px;font-weight:600;border:1px solid transparent;}
+        #statusBanner.hidden{display:none;}
+        #statusBanner.success{background:#e8f5e9;color:#1b5e20;border-color:#a5d6a7;}
+        #statusBanner.error{background:#fdecea;color:#b71c1c;border-color:#f5c6cb;}
+        #statusBanner.warning{background:#fff4e5;color:#8a4b0f;border-color:#ffd8b5;}
         .msg{max-width:80%;margin-bottom:12px;padding:10px 14px;border-radius:10px;line-height:1.4;}
         .user{background:var(--primary);color:var(--white);margin-left:auto;}
         .bot{background:var(--gray-200);color:var(--gray-800);margin-right:auto;}
@@ -128,6 +133,7 @@
             <span id="chatTitle">Chat</span>
             <button id="homeBtn" class="btn btn-small">Home</button>
         </div>
+        <div id="statusBanner" class="hidden" aria-live="polite"></div>
         <div id="messages"></div>
         <form id="chatForm">
             <input id="chatInput" type="text" autocomplete="off" placeholder="Please ask your question...">
@@ -249,6 +255,7 @@ const chatTitleEl=document.getElementById('chatTitle');
 const chatList=document.getElementById('chatList');
 const searchInput=document.getElementById('search');
 const chatWindow=document.getElementById('chatWindow');
+const statusBanner=document.getElementById('statusBanner');
 chatTitleEl.textContent=`Chat with ${agent}`;
 
 chatWindow.classList.add('expanded');
@@ -394,6 +401,36 @@ function hideSuggestionModal(){
     document.getElementById('suggestionDialog').classList.add('hidden');
 }
 
+function renderStatusBanner(qe){
+    if(!statusBanner) return;
+    if(!qe){
+        statusBanner.className='hidden';
+        statusBanner.textContent='';
+        return;
+    }
+    const status=(qe.status||'').toString().toLowerCase();
+    const reason=qe.reason||qe.evaluation_summary||qe.user_message||'';
+    let cls='';
+    let text='';
+    if(status==='pass'){
+        cls='success';
+        text='✓ Question passed evaluation';
+    }else if(status==='suggest'){
+        cls='warning';
+        text=reason?`Suggestion: ${reason}`:'Suggestion: Please refine your question.';
+    }else if(status==='rejected' || status==='reject'){
+        cls='error';
+        text=reason?`✗ Question denied - ${reason}`:'✗ Question denied by evaluator';
+    }
+    if(!text){
+        statusBanner.className='hidden';
+        statusBanner.textContent='';
+        return;
+    }
+    statusBanner.textContent=text;
+    statusBanner.className=`${cls} status-banner`.trim();
+}
+
 function handleSuggestionChoice(useSuggested){
     if(!pendingSuggestion) return;
     const chosenQuestion = useSuggested && pendingSuggestion.suggested_question ? pendingSuggestion.suggested_question : (pendingSuggestion.original_question || '');
@@ -412,6 +449,7 @@ async function sendMessage(msg,options={}){
         addMessage(msg,'user');
     }
 
+    renderStatusBanner(null);
     const payload={messages:[{role:'user',content:msg}]};
     if(evaluationContext?.skip){
         payload.skip_question_evaluation=true;
@@ -427,13 +465,17 @@ async function sendMessage(msg,options={}){
     if(res.ok){
         const data=await res.json();
         const qe=data.question_evaluation;
-        if(qe && qe.status==='suggest' && !qe.proceed){
+        renderStatusBanner(qe);
+        const status=(qe?.status||'').toString().toLowerCase();
+        const reason=qe?.reason || qe?.evaluation_summary || '';
+        if(qe && status==='suggest' && !qe.proceed){
             addMessage(data.reply||'We suggest refining your question.','bot');
             showSuggestionModal(qe);
             return;
         }
-        if(qe && qe.status==='reject'){
-            addMessage(data.reply || (qe.reason ? `Question rejected: ${qe.reason}` : 'The question was rejected.'),'bot');
+        if(qe && (status==='rejected' || status==='reject')){
+            const rejectionText=reason?`Question denied: ${reason}`:(data.reply||'The question was rejected.');
+            addMessage(rejectionText,'bot');
             return;
         }
         addMessage(data.reply,'bot',data.sources||[]);
