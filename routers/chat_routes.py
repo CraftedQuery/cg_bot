@@ -3,6 +3,7 @@ routers/chat_routes.py - Chat and RAG endpoints
 """
 import json
 import logging
+from typing import Any
 from fastapi import APIRouter, Request, Query, Depends, HTTPException
 
 from ..models import ChatRequest, ChatResponse, User
@@ -56,11 +57,40 @@ async def chat(
     # Get the latest user question
     q = next((m["content"] for m in reversed(req.messages) if m["role"] == "user"), "")
     
+    def _normalize_status(raw_status: str | None) -> str:
+        """Map evaluator responses into the canonical status set."""
+
+        normalized = (raw_status or "").strip().lower()
+        if normalized in {"reject", "rejected", "deny", "denied", "blocked"}:
+            return "Rejected"
+        if normalized in {"suggest", "suggestion", "revise", "rewrite", "rephrase"}:
+            return "Suggest"
+        return "Pass"
+
+    def _should_proceed(normalized_status: str, proceed_flag: Any) -> bool:
+        """Determine whether to continue the pipeline based on evaluator output."""
+
+        if proceed_flag is None:
+            return normalized_status == "Pass"
+        if isinstance(proceed_flag, str):
+            return proceed_flag.strip().lower() in {
+                "true",
+                "1",
+                "yes",
+                "y",
+                "pass",
+                "allow",
+                "approved",
+                "proceed",
+            }
+        return bool(proceed_flag)
+
     def _parse_question_evaluation(content: str):
         """Interpret the evaluator response as structured JSON."""
 
+        default_status = "Pass"
         default = {
-            "status": "pass",
+            "status": default_status,
             "proceed": True,
             "evaluation_summary": None,
             "reason": None,
@@ -69,6 +99,7 @@ async def chat(
             "criteria_met": None,
             "criteria_failed": None,
             "user_message": None,
+            "raw_status": None,
         }
 
         try:
@@ -80,8 +111,12 @@ async def chat(
         except Exception:
             return default
 
-        status = parsed.get("status", "pass")
-        proceed = bool(parsed.get("proceed", status == "pass"))
+        raw_status = parsed.get("status")
+        status = _normalize_status(raw_status)
+        proceed = _should_proceed(status, parsed.get("proceed"))
+
+        if raw_status and status == "Pass" and raw_status.strip().lower() not in {"pass", "suggest", "reject", "rejected"}:
+            logger.warning("Unexpected question evaluator status '%s'; defaulting to 'Pass'", raw_status)
 
         return {
             "status": status,
@@ -93,6 +128,7 @@ async def chat(
             "criteria_met": parsed.get("criteria_met"),
             "criteria_failed": parsed.get("criteria_failed"),
             "user_message": parsed.get("user_message"),
+            "raw_status": raw_status,
         }
 
     # Optional question evaluation stage
@@ -132,6 +168,7 @@ async def chat(
             }
 
         parsed_eval = _parse_question_evaluation(qe_result.get("content", ""))
+        eval_status = parsed_eval.get("status", "Pass")
         qe_scores = qe_result.get("scores") if isinstance(qe_result, dict) else None
         qe_flags = qe_result.get("flags") if isinstance(qe_result, dict) else None
         question_eval_id = log_question_evaluation(
@@ -140,7 +177,7 @@ async def chat(
             session_id=session_id,
             conversation_id=None,
             original_question=q,
-            evaluation_result=parsed_eval.get("status", "pass"),
+            evaluation_result=eval_status,
             provider=qe_result.get("provider"),
             model=qe_result.get("model"),
             tokens_used=qe_result.get("tokens_out"),
@@ -152,7 +189,7 @@ async def chat(
             prompt=json.dumps(qe_messages, default=str),
             full_response=qe_result.get("content"),
             criteria_scores=json.dumps(qe_scores, default=str) if qe_scores is not None else None,
-            evaluation_status=parsed_eval.get("status"),
+            evaluation_status=eval_status,
             reason=parsed_eval.get("evaluation_summary") or parsed_eval.get("reason"),
             suggested_question=parsed_eval.get("suggested_question"),
             proceeded=parsed_eval.get("proceed"),
@@ -164,7 +201,7 @@ async def chat(
             "question_evaluation_id": question_eval_id,
         }
 
-        if parsed_eval.get("status") == "reject":
+        if eval_status == "Rejected":
             return {
                 "reply": parsed_eval.get("user_message")
                 or parsed_eval.get("evaluation_summary")
@@ -174,7 +211,7 @@ async def chat(
                 "question_evaluation": question_eval_summary,
             }
 
-        if parsed_eval.get("status") == "suggest" and not parsed_eval.get("proceed"):
+        if eval_status == "Suggest" and not parsed_eval.get("proceed"):
             return {
                 "reply": "We suggest refining your question for better results.",
                 "sources": [],
@@ -188,8 +225,9 @@ async def chat(
             proceeded=True,
             final_question=q,
         )
+        decision_status = _normalize_status(req.question_decision or "pass")
         question_eval_summary = {
-            "status": req.question_decision or "pass",
+            "status": decision_status,
             "proceed": True,
             "question_evaluation_id": question_eval_id,
             "original_question": q,

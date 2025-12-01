@@ -2134,7 +2134,7 @@
             if (type === 'question') {
                 const statusValue = entry => lower(entry.evaluation_status || entry.evaluation_result);
                 const pass = logs.filter(l => statusValue(l) === 'pass').length;
-                const reject = logs.filter(l => statusValue(l) === 'reject').length;
+                const reject = logs.filter(l => ['reject', 'rejected'].includes(statusValue(l))).length;
                 const suggest = logs.filter(l => statusValue(l) === 'suggest').length;
                 cards = [
                     { label: 'Questions Evaluated', value: logs.length },
@@ -2181,7 +2181,8 @@
             }
             const rows = logs.map(log => {
                 const status = (log.evaluation_status || log.evaluation_result || '').toLowerCase();
-                const resultClass = status === 'reject' ? 'badge fail' : (status === 'suggest' ? 'badge flagged' : 'badge pass');
+                const isReject = status === 'reject' || status === 'rejected';
+                const resultClass = isReject ? 'badge fail' : (status === 'suggest' ? 'badge flagged' : 'badge pass');
                 return `
                     <tr class="clickable-row" onclick='showLogDetail("question", ${JSON.stringify(log).replace(/'/g, "&#39;")})'>
                         <td>${new Date(log.ts).toLocaleString()}</td>
