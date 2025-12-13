@@ -13,7 +13,8 @@ import json
 try:
     from langchain_openai import OpenAIEmbeddings
     from langchain_community.vectorstores import FAISS
-    from langchain.text_splitter import RecursiveCharacterTextSplitter
+    # LangChain v1+ moved splitters into a separate package.
+    from langchain_text_splitters import RecursiveCharacterTextSplitter
     _IMPORT_ERROR = None
 except ModuleNotFoundError as e:  # pragma: no cover - optional deps missing
     OpenAIEmbeddings = None  # type: ignore
@@ -136,7 +137,12 @@ def retrieve_documents_mmr(
         search_type="mmr",
         search_kwargs={"k": k, "fetch_k": fetch_k, "lambda_mult": lambda_mult},
     )
-    docs = retriever.get_relevant_documents(query)
+    # LangChain retrievers expose `invoke` in newer versions; older versions used
+    # `get_relevant_documents`.
+    if hasattr(retriever, "invoke"):
+        docs = retriever.invoke(query)  # type: ignore[assignment]
+    else:  # pragma: no cover
+        docs = retriever.get_relevant_documents(query)  # type: ignore[attr-defined]
     # Defensive typing: ensure list[Document]
     return [d for d in docs if getattr(d, "page_content", None) is not None]
 

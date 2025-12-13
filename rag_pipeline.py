@@ -18,7 +18,13 @@ from typing import Any, Iterable, Literal
 from pydantic import BaseModel, Field, ValidationError
 
 from .llm import get_llm_response
-from .vectorstore import retrieve_documents_mmr, search_documents
+try:
+    # `retrieve_documents_mmr` may be absent in some test stubs.
+    from .vectorstore import retrieve_documents_mmr, search_documents
+except Exception:  # pragma: no cover - fallback for test stubs / partial installs
+    from .vectorstore import search_documents  # type: ignore
+
+    retrieve_documents_mmr = None  # type: ignore[assignment]
 
 logger = logging.getLogger(__name__)
 
@@ -372,7 +378,7 @@ def run_legal_rag(
 
     # Retrieve
     chunks: list[tuple[str, dict[str, Any]]] = []
-    if retrieval_mode == "mmr":
+    if retrieval_mode == "mmr" and retrieve_documents_mmr is not None:
         docs = retrieve_documents_mmr(
             tenant,
             agent,

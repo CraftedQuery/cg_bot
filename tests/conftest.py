@@ -7,7 +7,13 @@ import pytest
 from fastapi.testclient import TestClient
 
 
-class DummyEmbeddings:
+try:
+    from langchain_core.embeddings import Embeddings
+except Exception:  # pragma: no cover
+    Embeddings = object  # type: ignore
+
+
+class DummyEmbeddings(Embeddings):
     """Deterministic, dependency-free embeddings for tests."""
 
     def embed_documents(self, texts):
@@ -75,6 +81,7 @@ def legal_client(tmp_path, monkeypatch):
 
     # Deterministic embeddings so vectorstore/FAISS can run in CI.
     monkeypatch.setattr(embedding, "get_embedding_model", lambda *a, **k: DummyEmbeddings())
+    monkeypatch.setattr(vectorstore, "get_embedding_model", lambda *a, **k: DummyEmbeddings())
     monkeypatch.setattr(vectorstore, "get_embedding_model", lambda *a, **k: DummyEmbeddings())
 
     app = main.app
