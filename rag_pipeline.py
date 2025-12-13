@@ -343,7 +343,7 @@ def run_legal_rag(
     # HyDE config
     hyde_enabled: bool = True,
     hyde_provider: str = "anthropic",
-    hyde_model: str = "claude-3-5-sonnet-20241022",
+    hyde_model: str = "claude-3-5-sonnet-20240620",
     hyde_temperature: float = 0.2,
     hyde_max_tokens: int | None = 400,
     # Retrieval config

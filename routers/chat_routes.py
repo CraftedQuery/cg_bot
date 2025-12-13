@@ -284,7 +284,7 @@ async def chat(
                 language=language,
                 hyde_enabled=bool(hyde_cfg.get("enabled", True)),
                 hyde_provider=str(hyde_cfg.get("provider", "anthropic")),
-                hyde_model=str(hyde_cfg.get("model", "claude-3-5-sonnet-20241022")),
+                hyde_model=str(hyde_cfg.get("model", "claude-3-5-sonnet-20240620")),
                 hyde_temperature=float(hyde_cfg.get("temperature", 0.2)),
                 hyde_max_tokens=hyde_cfg.get("max_tokens", 400),
                 retrieval_mode=str(retrieval_cfg.get("mode", "mmr")),

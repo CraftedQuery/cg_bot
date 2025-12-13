@@ -128,15 +128,45 @@ def _get_openai_response(
     client = OpenAI(**client_kwargs)
     model = model or "gpt-4o-mini"
 
+    # Newer OpenAI models (gpt-5.x, o-series) require max_completion_tokens instead of max_tokens
+    # Check if model name indicates a newer model that requires max_completion_tokens
+    requires_max_completion_tokens = (
+        model.startswith("gpt-5") or 
+        model.startswith("o1") or
+        model.startswith("o3")
+    )
+    
     try:
-        rsp = client.chat.completions.create(
-            model=model,
-            temperature=temperature,
-            messages=messages,
-            max_tokens=max_tokens,
-        )
+        create_kwargs = {
+            "model": model,
+            "temperature": temperature,
+            "messages": messages,
+        }
+        
+        if max_tokens is not None:
+            if requires_max_completion_tokens:
+                create_kwargs["max_completion_tokens"] = max_tokens
+            else:
+                create_kwargs["max_tokens"] = max_tokens
+        
+        rsp = client.chat.completions.create(**create_kwargs)
     except Exception as e:
-        raise
+        # If we get a BadRequestError about max_tokens, retry with max_completion_tokens
+        if "max_tokens" in str(e) and "max_completion_tokens" in str(e) and not requires_max_completion_tokens:
+            try:
+                create_kwargs = {
+                    "model": model,
+                    "temperature": temperature,
+                    "messages": messages,
+                }
+                if max_tokens is not None:
+                    create_kwargs["max_completion_tokens"] = max_tokens
+                rsp = client.chat.completions.create(**create_kwargs)
+            except Exception as retry_error:
+                # Chain the exceptions so both the original and retry errors are visible
+                raise retry_error from e
+        else:
+            raise
 
     return {
         "content": rsp.choices[0].message.content,

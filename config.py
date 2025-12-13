@@ -162,7 +162,7 @@ def _ensure_stage_defaults(cfg: Dict[str, Any]) -> Dict[str, Any]:
         {
             "enabled": True,
             "provider": "anthropic",
-            "model": "claude-3-5-sonnet-20241022",
+            "model": "claude-3-5-sonnet-20240620",
             "temperature": 0.2,
             "max_tokens": 400,
         },
@@ -240,7 +240,7 @@ def load_config(tenant: str, agent: str) -> Dict[str, Any]:
         "hyde": {
             "enabled": True,
             "provider": "anthropic",
-            "model": "claude-3-5-sonnet-20241022",
+            "model": "claude-3-5-sonnet-20240620",
             "temperature": 0.2,
             "max_tokens": 400,
         },
