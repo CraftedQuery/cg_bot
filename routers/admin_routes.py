@@ -6,7 +6,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 import os
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import HTMLResponse
 
 from ..auth import get_admin_user
@@ -470,3 +470,39 @@ async def get_llm_models(provider: str = "anthropic"):
         return {"provider": provider, "models": names}
 
     raise HTTPException(400, "Unknown provider")
+
+
+@router.post("/admin/update-styles", dependencies=[Depends(get_admin_user)])
+async def update_global_styles(request: Request):
+    """
+    Update the global CSS stylesheet.
+    Requires admin authentication.
+    """
+    try:
+        data = await request.json()
+        css_content = data.get("css", "")
+        
+        if not css_content:
+            raise HTTPException(status_code=400, detail="CSS content is required")
+        
+        # Validate CSS (basic check)
+        if len(css_content) > 1_000_000:  # 1MB limit
+            raise HTTPException(status_code=400, detail="CSS file too large (max 1MB)")
+        
+        # Write to global.css
+        css_path = Path("static/css/global.css")
+        css_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        css_path.write_text(css_content, encoding="utf-8")
+        
+        return {
+            "status": "success",
+            "message": "Global styles updated successfully",
+            "size": len(css_content)
+        }
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Invalid JSON payload")
+    except Exception as e:
+        from ..database import log_error
+        log_error("update_global_styles", None, None, str(e))
+        raise HTTPException(status_code=500, detail=f"Failed to update styles: {str(e)}")
