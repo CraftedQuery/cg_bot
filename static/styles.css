@@ -55,11 +55,9 @@ footer a:hover {
     text-decoration: underline;
 }
 
-/* Headings */
-h1, h2, h3, h4, h5, h6 {
+/* Headings - only apply white color to headings inside .header */
+.header h1, .header h2, .header h3, .header h4, .header h5, .header h6 {
     color: var(--header-text);
-    font-family: 'Spectral', serif;
-    margin-bottom: 0.5em;
 }
 
 /* Generic header container */
@@ -69,6 +67,22 @@ h1, h2, h3, h4, h5, h6 {
     padding: 20px;
     border-radius: 12px;
     box-shadow: var(--shadow);
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.header h1 {
+    color: var(--header-text);
+    font-size: 28px;
+    margin: 0;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
 }
 
 /* Buttons */
