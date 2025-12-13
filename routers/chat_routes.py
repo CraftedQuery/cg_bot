@@ -9,14 +9,13 @@ from fastapi import APIRouter, Request, Query, Depends, HTTPException
 from ..models import ChatRequest, ChatResponse, User
 from ..auth import get_current_active_user
 from ..config import DEFAULT_TENANT, DEFAULT_AGENT, load_config
-from ..vectorstore import search_documents
+from ..rag_pipeline import run_legal_rag
 from ..llm import get_llm_response
 from ..database import (
     log_answer_evaluation,
     log_chat,
     log_question_evaluation,
     update_feedback,
-    is_template_file,
     update_question_evaluation_decision,
 )
 from langdetect import detect, DetectorFactory
@@ -235,22 +234,6 @@ async def chat(
             "reason": None,
         }
 
-    # Search for relevant documents
-    search_results = search_documents(tenant, agent, q)
-
-    # Separate template chunks from case content
-    template_chunks = []
-    doc_chunks = []
-    for content, metadata, score in search_results:
-        src = metadata.get("source")
-        if src and is_template_file(tenant, agent, src):
-            template_chunks.append(content)
-        else:
-            doc_chunks.append((content, metadata, score))
-
-    # Build context from non-template search results
-    ctx = "\n".join(content for content, _, _ in doc_chunks)
-    
     # Detect the language of the user's question
     try:
         DetectorFactory.seed = 0
@@ -276,59 +259,74 @@ async def chat(
     }
     language = lang_map.get(lang_code.lower(), "English")
 
-    sources = []
     main_stage_cfg = stage_configs["main_rag"] or {}
     if not main_stage_cfg.get("enabled", True):
+        rag = {"reply": "Main RAG bot is disabled for this agent.", "sources": [], "evidence": [], "answer_json": None}
         llm_result = {
-            "content": "Main RAG bot is disabled for this agent.",
+            "content": rag["reply"],
             "latency": 0,
             "tokens_in": 0,
             "tokens_out": 0,
+            "error": None,
+            "provider": main_stage_cfg.get("provider") or cfg.get("llm_provider", "openai"),
+            "model": main_stage_cfg.get("model") or cfg.get("llm_model", "gpt-4o-mini"),
         }
     else:
-        sys_content = main_stage_cfg.get("system_prompt") or cfg["system_prompt"]
-        # Ensure the assistant responds in the language used by the user
-        sys_content += f"\nPlease respond in {language}."
-        if template_chunks and "template" in q.lower():
-            sys_content += "\n" + "\n".join(template_chunks)
-        if cfg.get("local_only", True):
-            sys_content += "\nUse only the provided Context to answer. Do not search the internet."
-        sys_content += "\nContext:\n" + ctx
-        system_msg = {
-            "role": "system",
-            "content": sys_content
+        retrieval_cfg = cfg.get("retrieval", {}) if isinstance(cfg.get("retrieval", {}), dict) else {}
+        hyde_cfg = cfg.get("hyde", {}) if isinstance(cfg.get("hyde", {}), dict) else {}
+
+        try:
+            rag_result = run_legal_rag(
+                tenant=tenant,
+                agent=agent,
+                question=q,
+                user=current_user.username,
+                language=language,
+                hyde_enabled=bool(hyde_cfg.get("enabled", True)),
+                hyde_provider=str(hyde_cfg.get("provider", "anthropic")),
+                hyde_model=str(hyde_cfg.get("model", "claude-3-5-sonnet-20241022")),
+                hyde_temperature=float(hyde_cfg.get("temperature", 0.2)),
+                hyde_max_tokens=hyde_cfg.get("max_tokens", 400),
+                retrieval_mode=str(retrieval_cfg.get("mode", "mmr")),
+                mmr_lambda_mult=float(retrieval_cfg.get("lambda_mult", 0.6)),
+                mmr_fetch_k=int(retrieval_cfg.get("fetch_k", 50)),
+                final_k=int(retrieval_cfg.get("k", 8)),
+                answer_provider=main_stage_cfg.get("provider") or cfg.get("llm_provider", "openai"),
+                answer_model=main_stage_cfg.get("model") or cfg.get("llm_model", "gpt-4o-mini"),
+                answer_temperature=float(main_stage_cfg.get("temperature", cfg.get("temperature", 0.3))),
+                answer_max_tokens=main_stage_cfg.get("max_tokens"),
+            )
+        except HTTPException as exc:
+            # Translate missing vector store into a user-friendly message.
+            if exc.status_code == 404 and "Vector store missing" in str(exc.detail):
+                raise HTTPException(
+                    status_code=400,
+                    detail="No documents are available for this matter yet. Please upload files first.",
+                ) from exc
+            raise
+        except Exception as exc:
+            logger.exception("RAG pipeline failed")
+            raise HTTPException(
+                status_code=500,
+                detail="Sorry—something went wrong while generating your answer. Please try again.",
+            ) from exc
+
+        llm_result = {
+            "content": rag_result.reply,
+            "latency": 0,
+            "tokens_in": 0,
+            "tokens_out": 0,
+            "error": None,
+            "provider": main_stage_cfg.get("provider") or cfg.get("llm_provider", "openai"),
+            "model": main_stage_cfg.get("model") or cfg.get("llm_model", "gpt-4o-mini"),
         }
 
-        # Get response from LLM
-        llm_result = get_llm_response(
-            messages=[system_msg, *req.messages],
-            provider=main_stage_cfg.get("provider") or cfg.get("llm_provider", "openai"),
-            model=main_stage_cfg.get("model") or cfg.get("llm_model", "gpt-4o-mini"),
-            temperature=main_stage_cfg.get("temperature", cfg.get("temperature", 0.3)),
-            api_key=main_stage_cfg.get("api_key") or None,
-            endpoint=main_stage_cfg.get("endpoint") or None,
-            max_tokens=main_stage_cfg.get("max_tokens"),
-            tenant=tenant,
-            agent=agent,
-            user=current_user.username,
-            question=q,
-            description="main_rag",
-        )
-    
-    # Extract sources
-    sources, seen = [], set()
-    for _, metadata, _ in doc_chunks:
-        key = (metadata.get("source"), metadata.get("page"), metadata.get("line"))
-        if key[0] and key not in seen:
-            citation = {"source": key[0]}
-            if key[1] is not None:
-                citation["page"] = key[1]
-            if key[2] is not None:
-                citation["line"] = key[2]
-            if metadata.get("heading"):
-                citation["heading"] = metadata["heading"]
-            sources.append(citation)
-            seen.add(key)
+        rag = {
+            "reply": rag_result.reply,
+            "sources": rag_result.sources,
+            "evidence": rag_result.evidence,
+            "answer_json": rag_result.answer_json,
+        }
 
     # Optional answer evaluation stage
     answer_eval_id = None
@@ -395,10 +393,10 @@ async def chat(
         session_id=session_id,
         question=q,
         answer=llm_result["content"],
-        sources=json.dumps(sources),
-        latency=llm_result["latency"],
-        tokens_in=llm_result["tokens_in"],
-        tokens_out=llm_result["tokens_out"],
+        sources=json.dumps(rag.get("sources", [])),
+        latency=llm_result.get("latency") or 0,
+        tokens_in=llm_result.get("tokens_in") or 0,
+        tokens_out=llm_result.get("tokens_out") or 0,
         user_ip=request.client.host,
         question_evaluation_id=question_eval_id,
         answer_evaluation_id=answer_eval_id,
@@ -410,9 +408,11 @@ async def chat(
         link_stage_conversation(chat_id, question_eval_id, answer_eval_id)
 
     return {
-        "reply": llm_result["content"],
-        "sources": sources,
+        "reply": rag.get("reply", llm_result["content"]),
+        "sources": rag.get("sources", []),
         "question_evaluation": question_eval_summary,
+        "evidence": rag.get("evidence", []),
+        "answer_json": rag.get("answer_json"),
     }
 
 

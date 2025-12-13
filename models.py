@@ -45,10 +45,24 @@ class ChatRequest(BaseModel):
     question_decision: str | None = None
 
 
+class EvidenceQuote(BaseModel):
+    """A sidebar-ready evidence quote with page/line metadata."""
+
+    citation_id: str
+    source: str
+    page: int | None = None
+    line_start: int | None = None
+    line_end: int | None = None
+    heading: str | None = None
+    quote: str
+
+
 class ChatResponse(BaseModel):
     reply: str
     sources: list[dict[str, Any]]
     question_evaluation: dict[str, Any] | None = None
+    evidence: list[EvidenceQuote] = Field(default_factory=list)
+    answer_json: dict[str, Any] | None = None
 
 
 class ConfigUpdateRequest(BaseModel):

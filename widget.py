@@ -60,6 +60,15 @@ function insertCitations(text, sources) {{
   }}).join(' ');
 }}
 
+function decorateStructuredCitations(html) {{
+  // Turns: [Source: Page X, Line Y-Z] {cite:C1}  into a clickable chip.
+  const citeRe = /\\[Source:([^\\]]+)\\]\\s*\\{cite:(C\\d+)\\}/g;
+  return html.replace(citeRe, (_m, label, cid) => {{
+    const safeLabel = String(label || '').replace(/\"/g, '&quot;');
+    return `<button class=\"cq-citechip\" data-cite=\"${{cid}}\" title=\"Jump to source\">[Source:${{safeLabel}}]</button>`;
+  }});
+}}
+
 function initWidget() {{
   // Dynamic positioning based on config
   const position = config.widget_position || 'bottom-right';
@@ -194,8 +203,8 @@ function sendMessage() {{
   .then(r => r.json())
   .then(data => {{
     if (features.typing) $('cq-typing').style.display = 'none';
-    addMessage('assistant', data.reply, data.sources);
-    updateSources(data.sources);
+    addMessage('assistant', data.reply, data.sources, data.evidence);
+    updateSources(data.evidence, data.sources);
     
     // Text-to-speech if enabled
     if (features.responseSpeech) {{
@@ -210,9 +219,12 @@ function sendMessage() {{
   }});
 }}
 
-function addMessage(role, content, sources = []) {{
+function addMessage(role, content, sources = [], evidence = []) {{
   if (role === 'assistant' && sources && sources.length) {{
-    content = insertCitations(content, sources);
+    // Backward compatibility: only insert numeric citations if the model didn't emit structured ones.
+    if (!/\\[Source:[^\\]]+\\]\\s*\\{cite:C\\d+\\}/.test(String(content || ''))) {{
+      content = insertCitations(content, sources);
+    }}
   }}
   msgs.push({{ role, content }});
 
@@ -221,6 +233,9 @@ function addMessage(role, content, sources = []) {{
 
   let bubble = `<div class="cq-avatar">${{role === 'user' ? '👤' : '🤖'}}</div>`;
   let html = formatMessage(content);
+  if (role === 'assistant') {{
+    html = decorateStructuredCitations(html);
+  }}
   if (role === 'assistant' && sources && sources.length) {{
     const placed = new Set();
     html = html.replace(/\((\d+)\)/g, (m, n) => {{
@@ -326,20 +341,61 @@ function handleFileAttachment(event) {{
   console.log('Files selected:', files);
 }}
 
-function updateSources(sources) {{
+function updateSources(evidence, sources) {{
   const sourcesDiv = $('cq-sources');
   sourcesDiv.innerHTML = '';
   
+  if (Array.isArray(evidence) && evidence.length > 0) {{
+    const wrap = document.createElement('div');
+    wrap.className = 'cq-evidence-list';
+    evidence.forEach(ev => {{
+      const card = document.createElement('div');
+      card.className = 'cq-evidence-card';
+      card.id = `cq-evidence-${{ev.citation_id}}`;
+      const pl = (ev.page != null)
+        ? `Page ${{ev.page}}${{ev.line_start != null ? `, Line ${{ev.line_start}}${{ev.line_end != null ? `-${{ev.line_end}}` : ''}}` : ''}}`
+        : (ev.line_start != null ? `Line ${{ev.line_start}}${{ev.line_end != null ? `-${{ev.line_end}}` : ''}}` : '');
+      card.innerHTML = `
+        <div class=\"cq-evidence-head\">
+          <div class=\"cq-evidence-title\">${{ev.citation_id}} · ${{ev.source}}</div>
+          <div class=\"cq-evidence-meta\">${{pl || ''}}${{ev.heading ? ` · ${{ev.heading}}` : ''}}</div>
+        </div>
+        <pre class=\"cq-evidence-quote\"></pre>
+      `;
+      card.querySelector('.cq-evidence-quote').textContent = ev.quote || '';
+      wrap.appendChild(card);
+    }});
+    sourcesDiv.appendChild(wrap);
+    return;
+  }}
+
   if (sources && sources.length > 0) {{
     const sourceList = document.createElement('ul');
     sources.forEach(src => {{
       const li = document.createElement('li');
-      li.innerHTML = `<a href="${{src.source}}" target="_blank">${{src.source}}</a>`;
+      li.innerHTML = `<a href=\"${{src.source}}\" target=\"_blank\">${{src.source}}</a>`;
       sourceList.appendChild(li);
     }});
     sourcesDiv.appendChild(sourceList);
   }}
 }}
+
+// Delegate clicks on citation chips to open the sources panel and jump to quote.
+document.addEventListener('click', (e) => {{
+  const t = e.target;
+  const btn = t && t.closest ? t.closest('button.cq-citechip[data-cite]') : null;
+  if (!btn) return;
+  const cid = btn.getAttribute('data-cite');
+  if (!cid) return;
+  const panel = $('cq-settings-panel');
+  panel.style.display = 'block';
+  const node = document.getElementById(`cq-evidence-${{cid}}`);
+  if (node) {{
+    node.scrollIntoView({{behavior:'smooth', block:'start'}});
+    node.classList.add('cq-evidence-hilite');
+    setTimeout(() => node.classList.remove('cq-evidence-hilite'), 2000);
+  }}
+}});
 
 function toggleSettings() {{
   const panel = $('cq-settings-panel');
@@ -725,6 +781,62 @@ def generate_widget_css(config):
     margin-left: 4px;
     font-size: 12px;
     text-decoration: none;
+  }}
+
+  .cq-citechip {{
+    margin-left: 6px;
+    padding: 3px 8px;
+    border-radius: 999px;
+    font-size: 12px;
+    border: 1px solid #e0e0e0;
+    background: rgba(255,255,255,0.9);
+    cursor: pointer;
+  }}
+
+  .cq-dark .cq-citechip {{
+    border-color: #555;
+    background: rgba(64,64,64,0.9);
+    color: white;
+  }}
+
+  .cq-evidence-list {{
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }}
+
+  .cq-evidence-card {{
+    border: 1px solid #e0e0e0;
+    border-radius: 10px;
+    padding: 10px;
+    background: #fff;
+  }}
+
+  .cq-dark .cq-evidence-card {{
+    border-color: #404040;
+    background: #2d2d2d;
+  }}
+
+  .cq-evidence-title {{
+    font-weight: 600;
+    font-size: 12px;
+    margin-bottom: 2px;
+  }}
+
+  .cq-evidence-meta {{
+    font-size: 11px;
+    opacity: 0.75;
+  }}
+
+  .cq-evidence-quote {{
+    margin-top: 8px;
+    white-space: pre-wrap;
+    font-size: 12px;
+    line-height: 1.4;
+  }}
+
+  .cq-evidence-hilite {{
+    outline: 2px solid rgba(25, 118, 210, 0.65);
   }}
 
   .cq-cite-window {{

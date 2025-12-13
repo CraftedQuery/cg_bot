@@ -24,4 +24,4 @@ source venv/bin/activate
 pip install -r requirements.txt
 
 # 3. Start the server
-python -m rag_chatbot.cli serve --reload
+python -m cg_bot.cli serve --reload

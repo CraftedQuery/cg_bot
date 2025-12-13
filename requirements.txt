@@ -15,7 +15,7 @@ langchain>=0.1.0
 langchain-openai>=0.0.5
 langchain-community>=0.0.10
 faiss-cpu>=1.7.4
-openai>=1.0.0
+openai>=1.0.0,<2.0.0
 
 # Optional LLM providers
 anthropic>=0.8.0  # Optional: for Anthropic support
@@ -50,6 +50,8 @@ lxml>=4.9.0
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
 httpx>=0.25.0
+ragas>=0.1.12  # Optional: evaluation harness
+datasets>=2.19.0  # Optional: ragas dataset utilities
 
 # Language detection
 langdetect>=1.0.9

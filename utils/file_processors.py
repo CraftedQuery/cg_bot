@@ -41,6 +41,7 @@ def _chunk_text_with_lines(
             continue
         meta = {
             "line": i + 1,
+            "line_end": min(i + len(chunk_lines), len(lines)),
             "heading": _find_heading(lines, i),
         }
         if page is not None:
