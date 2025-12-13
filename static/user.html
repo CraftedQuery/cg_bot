@@ -7,7 +7,12 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Spectral:wght@400;600;700&display=swap" rel="stylesheet">
-  <!-- Global CSS - Centralized Styles -->
+  <!-- Tailwind CSS - Required for utility classes used throughout the page -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] } } } }
+  </script>
+  <!-- Global CSS - Centralized Styles (overrides and custom styles) -->
   <link rel="stylesheet" href="/static/css/global.css">
   <script src="https://unpkg.com/@azure/msal-browser/dist/msal-browser.min.js"></script>
 </head>

@@ -3746,7 +3746,15 @@
                     const editor = document.getElementById('cssEditor');
                     if (editor) {
                         editor.value = css;
-                        updatePreview();
+                        // Wait for iframe to load before updating preview
+                        const preview = document.getElementById('cssPreview');
+                        if (preview) {
+                            if (preview.contentDocument && preview.contentDocument.readyState === 'complete') {
+                                updatePreview();
+                            } else {
+                                preview.addEventListener('load', updatePreview, { once: true });
+                            }
+                        }
                     }
                 } else {
                     console.error('Failed to load CSS');
@@ -3759,18 +3767,32 @@
         function updatePreview() {
             const css = document.getElementById('cssEditor')?.value || '';
             const preview = document.getElementById('cssPreview');
-            if (preview && preview.contentDocument) {
-                const iframeDoc = preview.contentDocument || preview.contentWindow.document;
-                
-                // Create or update style tag in preview
-                let styleTag = iframeDoc.getElementById('dynamic-css');
-                if (!styleTag) {
-                    styleTag = iframeDoc.createElement('style');
-                    styleTag.id = 'dynamic-css';
-                    iframeDoc.head.appendChild(styleTag);
+            if (!preview) return;
+            
+            // Wait for iframe to be ready
+            const tryUpdate = () => {
+                try {
+                    const iframeDoc = preview.contentDocument || preview.contentWindow?.document;
+                    if (iframeDoc && iframeDoc.readyState === 'complete') {
+                        // Create or update style tag in preview
+                        let styleTag = iframeDoc.getElementById('dynamic-css');
+                        if (!styleTag) {
+                            styleTag = iframeDoc.createElement('style');
+                            styleTag.id = 'dynamic-css';
+                            iframeDoc.head.appendChild(styleTag);
+                        }
+                        styleTag.textContent = css;
+                    } else {
+                        // Iframe not ready, wait a bit and try again
+                        setTimeout(tryUpdate, 100);
+                    }
+                } catch (e) {
+                    // Cross-origin or other error, ignore
+                    console.warn('Could not update preview:', e);
                 }
-                styleTag.textContent = css;
-            }
+            };
+            
+            tryUpdate();
         }
 
         async function saveGlobalCss() {
@@ -3804,8 +3826,21 @@
                         preview.src = preview.src;
                     }
                 } else {
-                    const error = await response.json();
-                    alert('Failed to save styles: ' + (error.detail || 'Unknown error'));
+                    // Try to parse JSON, but handle non-JSON responses gracefully
+                    let errorMessage = 'Unknown error';
+                    try {
+                        const contentType = response.headers.get('content-type');
+                        if (contentType && contentType.includes('application/json')) {
+                            const error = await response.json();
+                            errorMessage = error.detail || error.message || 'Unknown error';
+                        } else {
+                            const text = await response.text();
+                            errorMessage = text || `HTTP ${response.status}: ${response.statusText}`;
+                        }
+                    } catch (parseError) {
+                        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
+                    }
+                    alert('Failed to save styles: ' + errorMessage);
                 }
             } catch (error) {
                 console.error('Error saving CSS:', error);
@@ -3829,7 +3864,15 @@
         // Initialize CSS editor when styling tab is opened
         function initCssEditor() {
             const cssEditor = document.getElementById('cssEditor');
+            const preview = document.getElementById('cssPreview');
             if (cssEditor) {
+                // Set up iframe load listener to update preview when it's ready
+                if (preview) {
+                    preview.addEventListener('load', () => {
+                        // Small delay to ensure iframe document is fully ready
+                        setTimeout(updatePreview, 100);
+                    }, { once: false });
+                }
                 loadGlobalCss();
                 cssEditor.addEventListener('input', updatePreview);
                 const saveBtn = document.getElementById('saveCssBtn');

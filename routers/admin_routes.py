@@ -502,7 +502,10 @@ async def update_global_styles(request: Request):
         }
     except json.JSONDecodeError:
         raise HTTPException(status_code=400, detail="Invalid JSON payload")
+    except HTTPException:
+        # Re-raise HTTPExceptions (validation errors) without modification
+        raise
     except Exception as e:
         from ..database import log_error
-        log_error("update_global_styles", None, None, str(e))
+        log_error("update_global_styles", str(e), tenant=None, agent=None)
         raise HTTPException(status_code=500, detail=f"Failed to update styles: {str(e)}")
