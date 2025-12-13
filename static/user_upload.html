@@ -1,218 +1,171 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Upload Files</title>
-    <link rel="stylesheet" href="/static/styles.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Spectral:wght@400;700&family=Satoshi:wght@400;700&display=swap">
-    <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--gray-100);
-            color: var(--gray-800);
-            line-height:1.6;
-            font-size: var(--body-font-size);
-        }
-        h1, h2, h3, h4, h5, h6 { font-family:'Spectral', serif; }
-        .container { max-width:1400px; margin:0 auto; padding:20px; }
-        .header {
-            background: var(--header-bg);
-            color: var(--header-text);
-            padding:20px;
-            border-radius:12px;
-            box-shadow: var(--shadow);
-            margin-bottom:20px;
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-        }
-        .drop-zone {
-            border:2px dashed var(--primary);
-            border-radius:12px;
-            padding:60px;
-            text-align:center;
-            background: var(--white);
-            cursor:pointer;
-        }
-        .drop-zone.hover { background: var(--gray-200); }
-        .btn {
-            margin-top:20px;
-            padding:12px 24px;
-            background: var(--primary);
-            color: var(--white);
-            border:none;
-            border-radius:var(--btn-radius);
-            cursor:pointer;
-            font-size:14px;
-            font-weight:600;
-            transition:all 0.2s;
-            text-align:center;
-        }
-        .btn:hover { background: var(--primary-dark); transform: translateY(-1px); }
-        .btn-small { padding:6px 12px; font-size:12px; margin-top:0; }
-        table { width:100%; margin-top:20px; border-collapse:collapse; background: var(--white); }
-        th, td { padding:8px; border-bottom:1px solid var(--gray-200); text-align:left; }
-        .hidden { display:none; }
-        #replacePrompt { margin-top:20px; }
-        #replacePrompt button { margin-right:10px; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Upload Files</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] } } } }
+  </script>
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h2>Upload Files</h2>
-            <button id="homeBtn" class="btn btn-small" type="button">Home</button>
-        </div>
-        <div id="dropZone" class="drop-zone">Drag and Drop files here<br>or<br><button id="fileSelect" class="btn" type="button">Click to upload</button></div>
-        <input type="file" id="fileInput" multiple class="hidden" />
-        <div id="result" style="margin-top:20px"></div>
-        <div id="replacePrompt" class="hidden">
-            <span id="replaceMessage"></span><br>
-            <button id="replaceBtn" class="btn" type="button">Replace</button>
-            <button id="abortBtn" class="btn" type="button">Abort</button>
-        </div>
+<body class="h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+  <script>
+    (function initTheme(){
+      const saved = localStorage.getItem('cq_theme') || 'system'
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+      const dark = saved === 'dark' || (saved === 'system' && prefersDark)
+      document.documentElement.classList.toggle('dark', dark)
+    })()
+  </script>
+
+  <header class="sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/50 backdrop-blur">
+    <div class="max-w-4xl mx-auto px-4 h-14 flex items-center justify-between">
+      <div class="min-w-0">
+        <div class="text-xs uppercase tracking-wide text-slate-500">Uploads</div>
+        <div id="title" class="font-semibold truncate">Upload files</div>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="themeBtn" class="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800" title="Toggle theme">🌓</button>
+        <button id="homeBtn" class="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-semibold">Home</button>
+      </div>
     </div>
+  </header>
 
-<script>
-const styleDefaults={
-    primary:"#d71920",
-    primaryDark:"#b2181b",
-    secondary:"#2f2f2f",
-    danger:"#f44336",
-    warning:"#ff9800",
-    headerBg:"#d71920",
-    headerText:"#ffffff",
-    btnRadius:4,
-    footerBg:"#2f2f2f",
-    bodyFontSize:16,
-    logoUrl:"https://www.craftedquery.com/logo.svg",
-    footerLink1Text:"About us",
-    footerLink1Url:"https://www.craftedquery.com/about",
-    footerLink2Text:"Contact us",
-    footerLink2Url:"https://www.craftedquery.com/contact",
-    footerLink3Text:"Status",
-    footerLink3Url:"https://www.craftedquery.com/status"
-};
-function applyCustomStyles(){
-    Object.keys(styleDefaults).forEach(k=>{
-        const v=localStorage.getItem("style_"+k)||styleDefaults[k];
-        if(k==="bodyFontSize"){
-            document.documentElement.style.setProperty("--body-font-size",v+"px");
-        }else if(k==="btnRadius"){
-            document.documentElement.style.setProperty("--btn-radius",v+"px");
-        }else if(!k.startsWith("footerLink") && k!=="logoUrl"){
-            const cssVar="--"+k.replace(/([A-Z])/g,"-$1").toLowerCase();
-            document.documentElement.style.setProperty(cssVar,v);
-        }
-    });
-    const logo=document.getElementById("footerLogo");
-    if(logo) logo.src=localStorage.getItem("style_logoUrl")||styleDefaults.logoUrl;
-    const links=[
-        {id:"footerLink1",text:"footerLink1Text",url:"footerLink1Url"},
-        {id:"footerLink2",text:"footerLink2Text",url:"footerLink2Url"},
-        {id:"footerLink3",text:"footerLink3Text",url:"footerLink3Url"}
-    ];
-    links.forEach(l=>{
-        const a=document.getElementById(l.id);
-        if(a){
-            a.textContent=localStorage.getItem("style_"+l.text)||styleDefaults[l.text];
-            a.href=localStorage.getItem("style_"+l.url)||styleDefaults[l.url];
-        }
-    });
-}
-document.addEventListener("DOMContentLoaded", applyCustomStyles);
-const params = new URLSearchParams(window.location.search);
-const tenant = params.get('tenant');
-const agent = params.get('agent');
-const API_BASE = '';
-const authToken = localStorage.getItem('rag_auth_token');
-let currentUser = null;
+  <main class="max-w-4xl mx-auto px-4 py-6">
+    <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+      <div class="flex items-start justify-between gap-3">
+        <div>
+          <div class="text-sm font-semibold">Add documents to this matter</div>
+          <div class="text-sm text-slate-500 mt-1">PDF, TXT, MD, DOCX supported. PDFs are chunked with page/line tracking for citations.</div>
+        </div>
+      </div>
 
-init();
+      <div id="dropZone" class="mt-4 rounded-2xl border-2 border-dashed border-slate-300 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-950/40 p-8 text-center">
+        <div class="text-sm font-semibold">Drag & drop files here</div>
+        <div class="text-sm text-slate-500 mt-1">or</div>
+        <div class="mt-3">
+          <button id="fileSelect" type="button" class="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold">Choose files</button>
+        </div>
+        <input id="fileInput" type="file" class="hidden" multiple />
+      </div>
 
-async function init(){
-    const res = await fetch(`${API_BASE}/users/me`,{headers:{Authorization:`Bearer ${authToken}`}});
-    if(res.ok){
-        currentUser = await res.json();
-        if(!currentUser.allow_files){
-            document.body.innerHTML = '<p>File access is disabled for your account.</p>';
-            return;
-        }
-    }
-}
+      <div class="mt-4">
+        <div id="result" class="text-sm text-slate-600 dark:text-slate-300"></div>
+        <div id="replacePrompt" class="hidden mt-3 rounded-xl border border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100 p-4">
+          <div class="text-sm font-semibold">File already exists</div>
+          <div id="replaceMessage" class="text-sm mt-1"></div>
+          <div class="mt-3 flex items-center gap-2">
+            <button id="replaceBtn" type="button" class="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-sm font-semibold">Replace</button>
+            <button id="abortBtn" type="button" class="px-3 py-2 rounded-xl border border-amber-200 dark:border-amber-900/40 hover:bg-amber-100 dark:hover:bg-amber-900/20 text-sm font-semibold">Abort</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
 
-const dropZone = document.getElementById('dropZone');
-const fileInput = document.getElementById('fileInput');
-const result = document.getElementById('result');
-const replacePrompt = document.getElementById('replacePrompt');
-const replaceMessage = document.getElementById('replaceMessage');
-const replaceBtn = document.getElementById('replaceBtn');
-const abortBtn = document.getElementById('abortBtn');
-document.getElementById('homeBtn').onclick = () => { window.location.href = '/user.html'; };
-let pendingFiles = null;
+  <script>
+    const params = new URLSearchParams(window.location.search)
+    const tenant = params.get('tenant') || 'public'
+    const agent = params.get('agent') || 'default'
+    const API_BASE = ''
+    const authToken = localStorage.getItem('rag_auth_token')
+    let currentUser = null
 
-replaceBtn.addEventListener('click', async () => {
-    replacePrompt.classList.add('hidden');
-    if(pendingFiles){
-        await uploadFiles(pendingFiles, true);
-        pendingFiles = null;
-    }
-});
+    const el = (id) => document.getElementById(id)
+    el('title').textContent = `Upload files · ${agent}`
 
-abortBtn.addEventListener('click', () => {
-    replacePrompt.classList.add('hidden');
-    pendingFiles = null;
-    result.textContent = 'Upload canceled';
-});
-
-fileInput.addEventListener('change', () => uploadFiles(fileInput.files));
-dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('hover'); });
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('hover'));
-dropZone.addEventListener('drop', e => { e.preventDefault(); dropZone.classList.remove('hover'); uploadFiles(e.dataTransfer.files); });
-document.getElementById('fileSelect').addEventListener('click', () => fileInput.click());
-
-async function uploadFiles(files, replace=false){
-    if(!files.length || (currentUser && !currentUser.allow_files)) return;
-    const fileArr = Array.from(files);
-    const totalFiles = fileArr.length;
-    const totalSize = fileArr.reduce((n,f)=>n+f.size,0);
-    let uploaded = 0;
-
-    for(let i=0; i<fileArr.length; i++){
-        const file = fileArr[i];
-        const url = `${API_BASE}/upload?tenant=${tenant}&agent=${agent}${replace ? '&replace=true' : ''}`;
-        const fd = new FormData();
-        fd.append('files', file);
-
-        result.textContent = `Uploading ${i+1} of ${totalFiles}... (${(uploaded/1048576).toFixed(1)}MB/${(totalSize/1048576).toFixed(1)}MB)`;
-
-        const res = await fetch(url,{ method:'POST', headers:{ 'Authorization':`Bearer ${authToken}` }, body:fd });
-        if(res.status === 409 && !replace){
-            const data = await res.json().catch(()=>({detail:'File exists'}));
-            pendingFiles = fileArr.slice(i);
-            replaceMessage.textContent = data.detail;
-            replacePrompt.classList.remove('hidden');
-            return;
-        }
-        if(!res.ok){
-            const data = await res.json().catch(()=>({detail:'Upload failed'}));
-            result.textContent = data.detail || 'Upload failed';
-            return;
-        }
-        uploaded += file.size;
+    el('homeBtn').onclick = () => { window.location.href = '/user.html' }
+    el('themeBtn').onclick = () => {
+      const isDark = document.documentElement.classList.contains('dark')
+      const next = isDark ? 'light' : 'dark'
+      localStorage.setItem('cq_theme', next)
+      document.documentElement.classList.toggle('dark', next === 'dark')
     }
 
-    result.textContent = `Upload successful (${(uploaded/1048576).toFixed(1)}MB/${(totalSize/1048576).toFixed(1)}MB)`;
-    fileInput.value = '';
-}
-</script>
-<footer>
-    <img id="footerLogo" alt="Crafted Query Logo"> 2025 © Crafted Query. All rights reserved. -
-    <a id="footerLink1" href="https://www.craftedquery.com/about">About us</a> -
-    <a id="footerLink2" href="https://www.craftedquery.com/contact">Contact us</a> -
-    <a id="footerLink3" href="https://www.craftedquery.com/status">Status</a>.
-</footer>
+    async function init(){
+      const res = await fetch(`${API_BASE}/users/me`, {headers:{Authorization:`Bearer ${authToken}`}})
+      if (res.ok){
+        currentUser = await res.json()
+        if (!currentUser.allow_files){
+          document.body.innerHTML = '<div style="padding:24px;font-family:Inter,system-ui">File access is disabled for your account.</div>'
+        }
+      }
+    }
+    init()
+
+    const dropZone = el('dropZone')
+    const fileInput = el('fileInput')
+    const result = el('result')
+    const replacePrompt = el('replacePrompt')
+    const replaceMessage = el('replaceMessage')
+    const replaceBtn = el('replaceBtn')
+    const abortBtn = el('abortBtn')
+
+    let pendingFiles = null
+
+    replaceBtn.addEventListener('click', async () => {
+      replacePrompt.classList.add('hidden')
+      if (pendingFiles){
+        await uploadFiles(pendingFiles, true)
+        pendingFiles = null
+      }
+    })
+
+    abortBtn.addEventListener('click', () => {
+      replacePrompt.classList.add('hidden')
+      pendingFiles = null
+      result.textContent = 'Upload canceled'
+    })
+
+    fileInput.addEventListener('change', () => uploadFiles(fileInput.files))
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('bg-slate-100'); })
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('bg-slate-100'))
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('bg-slate-100')
+      uploadFiles(e.dataTransfer.files)
+    })
+    el('fileSelect').addEventListener('click', () => fileInput.click())
+
+    async function uploadFiles(files, replace=false){
+      if (!files || !files.length || (currentUser && !currentUser.allow_files)) return
+
+      const fileArr = Array.from(files)
+      const totalFiles = fileArr.length
+      const totalSize = fileArr.reduce((n,f)=>n+f.size,0)
+      let uploaded = 0
+
+      for (let i=0; i<fileArr.length; i++){
+        const file = fileArr[i]
+        const url = `${API_BASE}/upload?tenant=${encodeURIComponent(tenant)}&agent=${encodeURIComponent(agent)}${replace ? '&replace=true' : ''}`
+        const fd = new FormData()
+        fd.append('files', file)
+
+        result.textContent = `Uploading ${i+1} of ${totalFiles}… (${(uploaded/1048576).toFixed(1)}MB/${(totalSize/1048576).toFixed(1)}MB)`
+
+        const res = await fetch(url, { method:'POST', headers:{ 'Authorization':`Bearer ${authToken}` }, body: fd })
+        if (res.status === 409 && !replace){
+          const data = await res.json().catch(()=>({detail:'File exists'}))
+          pendingFiles = fileArr.slice(i)
+          replaceMessage.textContent = data.detail
+          replacePrompt.classList.remove('hidden')
+          return
+        }
+        if (!res.ok){
+          const data = await res.json().catch(()=>({detail:'Upload failed'}))
+          result.textContent = data.detail || 'Upload failed'
+          return
+        }
+        uploaded += file.size
+      }
+
+      result.textContent = `Upload successful (${(uploaded/1048576).toFixed(1)}MB/${(totalSize/1048576).toFixed(1)}MB)`
+      fileInput.value = ''
+    }
+  </script>
 </body>
 </html>

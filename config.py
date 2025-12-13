@@ -144,6 +144,29 @@ def _ensure_stage_defaults(cfg: Dict[str, Any]) -> Dict[str, Any]:
         cfg.get("answer_evaluator", {}),
         _default_stage_config(enabled=False),
     )
+
+    # Retrieval defaults (MMR tuned for legal RAG)
+    cfg.setdefault(
+        "retrieval",
+        {
+            "mode": "mmr",
+            "k": 8,
+            "fetch_k": 50,
+            "lambda_mult": 0.6,
+        },
+    )
+
+    # HyDE defaults (Claude 3.5 Sonnet)
+    cfg.setdefault(
+        "hyde",
+        {
+            "enabled": True,
+            "provider": "anthropic",
+            "model": "claude-3-5-sonnet-20241022",
+            "temperature": 0.2,
+            "max_tokens": 400,
+        },
+    )
     return cfg
 
 
@@ -208,6 +231,19 @@ def load_config(tenant: str, agent: str) -> Dict[str, Any]:
             system_prompt="You are a helpful assistant.",
         ),
         "answer_evaluator": _default_stage_config(enabled=False),
+        "retrieval": {
+            "mode": "mmr",
+            "k": 8,
+            "fetch_k": 50,
+            "lambda_mult": 0.6,
+        },
+        "hyde": {
+            "enabled": True,
+            "provider": "anthropic",
+            "model": "claude-3-5-sonnet-20241022",
+            "temperature": 0.2,
+            "max_tokens": 400,
+        },
     }
     p.write_text(json.dumps(cfg, indent=2))
     return cfg

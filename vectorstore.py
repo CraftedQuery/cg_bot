@@ -1,6 +1,8 @@
 """
 vectorstore.py - Vector store operations and RAG functionality
 """
+from __future__ import annotations
+
 from typing import Dict, List, Tuple
 from pathlib import Path
 import os
@@ -105,6 +107,38 @@ def search_documents(
         ))
     
     return results
+
+
+def retrieve_documents_mmr(
+    tenant: str,
+    agent: str,
+    query: str,
+    *,
+    k: int = 8,
+    fetch_k: int = 50,
+    lambda_mult: float = 0.6,
+) -> list["Document"]:
+    """Retrieve documents using MMR re-ranking.
+
+    Notes:
+    - Requires LangChain optional dependencies (same as the vector store).
+    - Uses FAISS' retriever interface.
+    """
+
+    _require_deps()
+    try:
+        from langchain_core.documents import Document  # type: ignore
+    except Exception as e:  # pragma: no cover - optional deps mismatch
+        raise HTTPException(500, f"Missing LangChain core dependency: {e}")
+
+    db = get_vector_store(tenant, agent)
+    retriever = db.as_retriever(
+        search_type="mmr",
+        search_kwargs={"k": k, "fetch_k": fetch_k, "lambda_mult": lambda_mult},
+    )
+    docs = retriever.get_relevant_documents(query)
+    # Defensive typing: ensure list[Document]
+    return [d for d in docs if getattr(d, "page_content", None) is not None]
 
 
 def create_vector_store(

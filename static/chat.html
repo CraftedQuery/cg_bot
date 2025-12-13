@@ -1,554 +1,525 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Chat</title>
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Spectral:wght@400;700&family=Satoshi:wght@400;700&display=swap">
-    <link rel="stylesheet" href="/static/styles.css">
-    <style>
-        html,body{
-            height:100%;
-            margin:0;
-            font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
-            background:var(--gray-100);
-            color:var(--gray-800);
-            border:0.5in solid var(--black);
-            box-sizing:border-box;
-            font-size:var(--body-font-size);
-        }
-        #app{display:flex;height:100%;overflow:hidden;position:relative;}
-        #sidebar{width:260px;background:var(--white);border-right:1px solid var(--gray-200);display:flex;flex-direction:column;transition:transform .3s ease;position:absolute;left:0;top:0;bottom:0;transform:translateX(-100%);z-index:10;}
-        #sidebar.visible{transform:translateX(0);}
-        #sidebar header{display:flex;align-items:center;justify-content:space-between;padding:10px 15px;border-bottom:1px solid var(--gray-200);}
-        #sidebar header h2{font-size:18px;margin:0;}
-        #newChat{background:var(--primary);border:none;color:var(--white);padding:6px 12px;border-radius:var(--btn-radius);cursor:pointer;font-size:14px;}
-        #newChat:hover{background:var(--primary-dark);}
-        #search{margin:10px;padding:8px;border:1px solid var(--gray-200);border-radius:6px;font-size:14px;width:calc(100% - 20px);}
-        #chatList{flex:1;overflow-y:auto;list-style:none;margin:0;padding:0;}
-        #chatList li{padding:10px 15px;border-bottom:1px solid var(--gray-200);cursor:pointer;transition:background .2s;}
-        #chatList li:hover{background:var(--gray-100);}
-        #chatList .title{font-weight:600;}
-        #chatList .preview{font-size:12px;color:var(--gray-700);margin-top:4px;}
-        #chatWindow{flex:1;display:flex;flex-direction:column;max-width:800px;margin:0 auto;background:var(--white);box-shadow:0 0 6px rgba(0,0,0,0.1);border-bottom:2px solid var(--gray-200);transition:transform .3s ease,max-width .3s ease;}
-        #chatWindow.shifted{
-            margin-left:260px;
-            width:calc(100% - 260px);
-            max-width:calc(100% - 260px);
-            transform:none;
-        }
-        #chatWindow.expanded{max-width:none;width:100%;}
-        #chatHeader{display:flex;align-items:center;justify-content:space-between;padding:10px 15px;background:var(--header-bg);color:var(--header-text);}
-        #toggleSidebar{background:none;border:none;color:var(--white);font-size:20px;cursor:pointer;}
-        #headerLeft{display:flex;align-items:center;gap:8px;}
-        #templatesContainer{position:relative;}
-        #templatesBtn{background:var(--primary);color:var(--white);border:none;padding:6px 12px;border-radius:var(--btn-radius);cursor:pointer;font-size:14px;}
-        #templatesBtn:hover{background:var(--primary-dark);}
-        #templatesDropdown{position:absolute;top:100%;left:0;background:var(--white);color:var(--gray-800);border:1px solid var(--gray-200);border-radius:var(--btn-radius);box-shadow:var(--shadow);min-width:180px;display:none;flex-direction:column;z-index:100;}
-        #templatesDropdown.show{display:flex;}
-        #templatesDropdown div{padding:8px 12px;cursor:pointer;white-space:nowrap;}
-        #templatesDropdown div:hover{background:var(--gray-100);}
-        #messages{flex:1;overflow-y:auto;padding:15px;}
-        #statusBanner{margin:10px 15px;padding:10px 12px;border-radius:8px;font-weight:600;border:1px solid transparent;}
-        #statusBanner.hidden{display:none;}
-        #statusBanner.success{background:#e8f5e9;color:#1b5e20;border-color:#a5d6a7;}
-        #statusBanner.error{background:#fdecea;color:#b71c1c;border-color:#f5c6cb;}
-        #statusBanner.warning{background:#fff4e5;color:#8a4b0f;border-color:#ffd8b5;}
-        .msg{max-width:80%;margin-bottom:12px;padding:10px 14px;border-radius:10px;line-height:1.4;}
-        .user{background:var(--primary);color:var(--white);margin-left:auto;}
-        .bot{background:var(--gray-200);color:var(--gray-800);margin-right:auto;}
-        .cite-num{margin-left:4px;font-size:12px;text-decoration:none;}
-        .cite-window{margin-top:4px;font-size:1em;display:flex;flex-direction:row;align-items:center;gap:2px;}
-        .cite-detail{font-style:italic;}
-        .cite-window span{cursor:pointer;user-select:none;}
-        form{display:flex;border-top:1px solid var(--gray-200);align-items:center;}
-        #chatInput{flex:1;padding:32px 16px;border:none;font-size:16px;}
-        #chatInput:focus{outline:none;}
-        #sendBtn{
-            background:var(--primary);
-            color:var(--white);
-            border:none;
-            width:80px;
-            height:40px;
-            border-radius:var(--btn-radius);
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            cursor:pointer;
-            transition:background .2s;
-        }
-        #sendBtn:hover{background:var(--primary-dark);}
-        #guideBtn{width:40px;height:40px;border-radius:50%;background:var(--primary);color:var(--white);border:none;display:flex;align-items:center;justify-content:center;font-size:24px;cursor:pointer;margin-left:8px;margin-right:8px;}
-        #guideBtn:hover{background:var(--primary-dark);}
-        #guideOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;}
-        #guideOverlay.hidden{display:none;}
-        #guideOverlay .content{background:var(--white);padding:30px;border-radius:12px;max-width:600px;width:90%;text-align:center;line-height:1.4;}
-        #witnessOverlay{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;justify-content:center;align-items:center;z-index:1000;}
-        #witnessOverlay.hidden{display:none;}
-        #witnessOverlay .content{background:var(--white);padding:20px;border-radius:12px;text-align:center;line-height:1.4;}
-        #witnessOverlay input{margin-top:8px;padding:8px;width:80%;font-size:14px;}
-        #suggestionDialog{position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);display:flex;align-items:center;justify-content:center;z-index:1100;}
-        #suggestionDialog.hidden{display:none;}
-        #suggestionContent{background:var(--white);padding:24px;border-radius:12px;max-width:640px;width:90%;box-shadow:var(--shadow);}
-        #suggestionContent h3{margin-top:0;}
-        .suggest-block{background:var(--gray-100);padding:12px;border-radius:8px;margin:8px 0;}
-        .suggest-buttons{display:flex;justify-content:flex-end;gap:10px;margin-top:16px;}
-        .hidden{display:none;}
-        .btn{display:inline-block;padding:12px 24px;background:var(--primary);color:var(--white);border:none;border-radius:var(--btn-radius);cursor:pointer;font-size:14px;font-weight:600;transition:all .2s;text-align:center;}
-        .btn:hover{background:var(--primary-dark);transform:translateY(-1px);}
-        .btn-small{padding:6px 12px;font-size:12px;}
-        @media(max-width:768px){
-            #chatWindow{max-width:none;width:100%;}
-            #chatWindow.shifted{
-                margin-left:260px;
-                width:calc(100% - 260px);
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Case Chat</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] },
+          colors: {
+            surface: {
+              50: '#0b1220',
+              100: '#0f172a',
+              200: '#111c33',
             }
+          }
         }
-    </style>
+      }
+    }
+  </script>
+  <style>
+    /* Small, app-specific tweaks */
+    .cq-scrollbar::-webkit-scrollbar{height:10px;width:10px}
+    .cq-scrollbar::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:9999px}
+    .dark .cq-scrollbar::-webkit-scrollbar-thumb{background:#334155}
+    .cq-skel{background:linear-gradient(90deg,rgba(148,163,184,.18),rgba(148,163,184,.34),rgba(148,163,184,.18));background-size:200% 100%;animation:cq-shimmer 1.1s infinite}
+    @keyframes cq-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
+    .cq-hilite{outline:2px solid rgba(59,130,246,.65); background: rgba(59,130,246,.08)}
+  </style>
 </head>
-<body>
-<div id="app">
-    <div id="sidebar">
-        <header>
-            <h2>Chats</h2>
-            <button id="newChat">New Chat</button>
-        </header>
-        <input id="search" type="text" placeholder="Search chats">
-        <ul id="chatList"></ul>
+<body class="h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+  <script>
+    (function initTheme(){
+      const saved = localStorage.getItem('cq_theme') || 'system'
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+      const dark = saved === 'dark' || (saved === 'system' && prefersDark)
+      document.documentElement.classList.toggle('dark', dark)
+    })()
+  </script>
+
+  <div class="h-full flex">
+    <!-- Left rail (mobile drawer) -->
+    <aside id="leftRail" class="hidden md:flex md:w-80 md:flex-col border-r border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/50 backdrop-blur">
+      <div class="p-4 border-b border-slate-200 dark:border-slate-800">
+        <div class="flex items-center justify-between gap-3">
+          <div>
+            <div class="text-xs uppercase tracking-wide text-slate-500">Matter</div>
+            <div id="matterTitle" class="font-semibold truncate">Chat</div>
+          </div>
+          <button id="newChatBtn" class="px-3 py-2 rounded-lg text-sm font-medium bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200">New</button>
+        </div>
+        <div class="mt-3">
+          <input id="historySearch" class="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Search recent questions" />
+        </div>
+      </div>
+      <div class="flex-1 overflow-auto cq-scrollbar p-2" id="historyList"></div>
+      <div class="p-3 border-t border-slate-200 dark:border-slate-800 text-xs text-slate-500">
+        Evidence-only mode · Every point is source-linked
+      </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="flex-1 flex flex-col min-w-0">
+      <!-- Top bar -->
+      <header class="h-14 flex items-center justify-between px-4 border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/50 backdrop-blur">
+        <div class="flex items-center gap-3 min-w-0">
+          <button id="mobileMenuBtn" class="md:hidden inline-flex items-center justify-center w-10 h-10 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900" aria-label="Open menu">
+            <span class="text-lg">☰</span>
+          </button>
+          <div class="min-w-0">
+            <div class="text-xs uppercase tracking-wide text-slate-500">Case Chat</div>
+            <div id="chatTitle" class="font-semibold truncate">Chat</div>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button id="toggleSourcesBtn" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-sm">
+            <span>Sources</span>
+            <span id="sourcesCount" class="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-900">0</span>
+          </button>
+          <button id="themeBtn" class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900" aria-label="Toggle theme">🌓</button>
+          <button id="homeBtn" class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900" aria-label="Home">⌂</button>
+        </div>
+      </header>
+
+      <!-- Content area -->
+      <div class="flex-1 min-h-0 flex">
+        <!-- Chat thread -->
+        <section class="flex-1 min-w-0 flex flex-col">
+          <div id="statusBanner" class="hidden mx-4 mt-4 rounded-xl border px-4 py-3 text-sm"></div>
+
+          <div id="messages" class="flex-1 min-h-0 overflow-auto cq-scrollbar px-4 py-6 space-y-4">
+            <div class="max-w-3xl mx-auto">
+              <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+                <div class="text-sm text-slate-500">Ask a question about the uploaded materials. Responses are strictly grounded in the record and each point links to a quoted source.</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Composer -->
+          <form id="chatForm" class="border-t border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/50 backdrop-blur px-4 py-3">
+            <div class="max-w-3xl mx-auto flex items-end gap-2">
+              <div class="flex-1">
+                <textarea id="chatInput" rows="1" class="w-full resize-none rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ask anything about the record…"></textarea>
+                <div class="mt-1 text-xs text-slate-500">Shift+Enter for a newline</div>
+              </div>
+              <button id="sendBtn" type="submit" class="h-11 px-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold">Send</button>
+            </div>
+          </form>
+        </section>
+
+        <!-- Right sources sidebar (desktop) -->
+        <aside id="sourcesSidebar" class="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col border-l border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/50 backdrop-blur">
+          <div class="p-4 border-b border-slate-200 dark:border-slate-800">
+            <div class="flex items-center justify-between gap-3">
+              <div>
+                <div class="text-xs uppercase tracking-wide text-slate-500">Sources</div>
+                <div class="font-semibold">Quoted evidence</div>
+              </div>
+              <button id="closeSourcesBtn" class="lg:hidden w-10 h-10 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900">✕</button>
+            </div>
+          </div>
+          <div id="sourcesPanel" class="flex-1 overflow-auto cq-scrollbar p-4 space-y-3">
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-sm text-slate-500">
+              No sources yet. Ask a question to see quoted excerpts here.
+            </div>
+          </div>
+        </aside>
+      </div>
+    </main>
+  </div>
+
+  <!-- Mobile drawers -->
+  <div id="mobileMenu" class="hidden fixed inset-0 z-50">
+    <div class="absolute inset-0 bg-black/40" data-close="mobileMenu"></div>
+    <div class="absolute left-0 top-0 bottom-0 w-[86%] max-w-sm bg-white dark:bg-slate-950 border-r border-slate-200 dark:border-slate-800">
+      <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div class="font-semibold">Chats</div>
+        <button class="w-10 h-10 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900" data-close="mobileMenu">✕</button>
+      </div>
+      <div class="p-4">
+        <input id="mobileHistorySearch" class="w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Search recent questions" />
+      </div>
+      <div id="mobileHistoryList" class="px-2 pb-6 overflow-auto cq-scrollbar" style="height: calc(100% - 120px);"></div>
     </div>
-    <div id="chatWindow">
-        <div id="chatHeader">
-            <div id="headerLeft">
-                <button id="toggleSidebar">☰</button>
-                <div id="templatesContainer">
-                    <button id="templatesBtn" type="button">Templates ▾</button>
-                    <div id="templatesDropdown">
-                        <div class="template-option">Deposition Summary</div>
-                        <div class="template-option">Case Brief</div>
-                        <div class="template-option">Chronology</div>
-                        <div class="template-option">Motion outline (Memo of Points & Authority)</div>
-                    </div>
-                </div>
-            </div>
-            <span id="chatTitle">Chat</span>
-            <button id="homeBtn" class="btn btn-small">Home</button>
-        </div>
-        <div id="statusBanner" class="hidden" aria-live="polite"></div>
-        <div id="messages"></div>
-        <form id="chatForm">
-            <input id="chatInput" type="text" autocomplete="off" placeholder="Please ask your question...">
-            <button id="guideBtn" type="button">?</button>
-            <button id="sendBtn" type="submit">Send</button>
-        </form>
-        <div id="guideOverlay" class="hidden">
-            <div class="content">
-                <u>Quick-Start Prompting Guide for your “Second Chair” Digital Navigator</u><br><br>
-                <b>Talk to it like a colleague.</b> Write a complete sentence or two—just as you’d brief your in-house legal analyst:<br>
-                <i>“Under California contract law, is this 2-year, 10-mile non-compete for a physician enforceable? Give me a 3-paragraph memo with two on-point cases.”</i><br><br>
-                <b>Give the essentials up front.</b> Jurisdiction, key facts, and the exact output you want. The clearer the scene, the sharper the answer.<br><br>
-                <b>One request at a time.</b> Separate drafting tasks (“draft interrogatories”) from analysis tasks (“summarize deposition themes”) to avoid mixed results.<br><br>
-                <b>Narrow the lane.</b> If you don’t want antitrust angles, say so. Boundaries keep the AI from wandering.<br><br>
-                <b>Iterate like draft reviews.</b> Follow up with “Great—tighten the reasonableness analysis” instead of starting over.<br><br>
-                Treat every prompt as a concise assignment memo, and your Digital Navigator will respond with work product that needs minimal polishing.
-            </div>
-        </div>
-        <div id="witnessOverlay" class="hidden">
-            <div class="content">
-                <label for="witnessName">Witness Name:</label><br>
-                <input id="witnessName" type="text">
-            </div>
-        </div>
-        <div id="suggestionDialog" class="hidden">
-            <div id="suggestionContent">
-                <h3>We suggest refining your question</h3>
-                <p id="suggestReason"></p>
-                <div class="suggest-block">
-                    <strong>Original:</strong>
-                    <div id="suggestOriginal"></div>
-                </div>
-                <div class="suggest-block">
-                    <strong>Suggested:</strong>
-                    <div id="suggestedQuestion"></div>
-                </div>
-                <div class="suggest-buttons">
-                    <button class="btn btn-small" id="keepOriginalBtn">Keep Original</button>
-                    <button class="btn btn-small" id="useSuggestedBtn">Use Suggested Question</button>
-                </div>
-            </div>
-        </div>
+  </div>
+
+  <div id="mobileSources" class="hidden fixed inset-0 z-50">
+    <div class="absolute inset-0 bg-black/40" data-close="mobileSources"></div>
+    <div class="absolute right-0 top-0 bottom-0 w-[92%] max-w-md bg-white dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800">
+      <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+        <div class="font-semibold">Sources</div>
+        <button class="w-10 h-10 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900" data-close="mobileSources">✕</button>
+      </div>
+      <div id="mobileSourcesPanel" class="p-4 space-y-3 overflow-auto cq-scrollbar" style="height: calc(100% - 64px);"></div>
     </div>
-</div>
-<script>
-const params=new URLSearchParams(location.search);
-const tenant=params.get('tenant')||'';
-const agent=params.get('agent')||'';
-const token=localStorage.getItem('rag_auth_token');
-const sessionId=sessionStorage.getItem('cq_sid')||Math.random().toString(36).slice(2);
-sessionStorage.setItem('cq_sid',sessionId);
-const styleDefaults={
-    primary:"#d71920",
-    primaryDark:"#b2181b",
-    secondary:"#2f2f2f",
-    danger:"#f44336",
-    warning:"#ff9800",
-    headerBg:"#d71920",
-    headerText:"#ffffff",
-    btnRadius:4,
-    footerBg:"#2f2f2f",
-    bodyFontSize:16,
-    logoUrl:"https://www.craftedquery.com/logo.svg",
-    footerLink1Text:"About us",
-    footerLink1Url:"https://www.craftedquery.com/about",
-    footerLink2Text:"Contact us",
-    footerLink2Url:"https://www.craftedquery.com/contact",
-    footerLink3Text:"Status",
-    footerLink3Url:"https://www.craftedquery.com/status"
-};
-function applyCustomStyles(){
-    Object.keys(styleDefaults).forEach(k=>{
-        const v=localStorage.getItem("style_"+k)||styleDefaults[k];
-        if(k==="bodyFontSize"){
-            document.documentElement.style.setProperty("--body-font-size",v+"px");
-        }else if(k==="btnRadius"){
-            document.documentElement.style.setProperty("--btn-radius",v+"px");
-        }else if(!k.startsWith("footerLink") && k!=="logoUrl"){
-            const cssVar="--"+k.replace(/([A-Z])/g,"-$1").toLowerCase();
-            document.documentElement.style.setProperty(cssVar,v);
+  </div>
+
+  <script>
+    const params = new URLSearchParams(location.search)
+    const tenant = params.get('tenant') || 'public'
+    const agent = params.get('agent') || 'default'
+    const token = localStorage.getItem('rag_auth_token')
+    const sessionId = sessionStorage.getItem('cq_sid') || Math.random().toString(36).slice(2)
+    sessionStorage.setItem('cq_sid', sessionId)
+
+    const el = (id) => document.getElementById(id)
+
+    // Title
+    el('matterTitle').textContent = agent
+    el('chatTitle').textContent = agent
+
+    // Navigation
+    el('homeBtn').onclick = () => { window.location.href = '/user.html' }
+
+    // Theme
+    el('themeBtn').onclick = () => {
+      const isDark = document.documentElement.classList.contains('dark')
+      const next = isDark ? 'light' : 'dark'
+      localStorage.setItem('cq_theme', next)
+      document.documentElement.classList.toggle('dark', next === 'dark')
+    }
+
+    // Mobile drawers
+    function openDrawer(id){ el(id).classList.remove('hidden') }
+    function closeDrawer(id){ el(id).classList.add('hidden') }
+    el('mobileMenuBtn').onclick = () => openDrawer('mobileMenu')
+
+    document.addEventListener('click', (e) => {
+      const t = e.target
+      if (t && t.dataset && t.dataset.close) closeDrawer(t.dataset.close)
+    })
+
+    // Sources toggles
+    const sourcesSidebar = el('sourcesSidebar')
+    const sourcesPanel = el('sourcesPanel')
+    const mobileSourcesPanel = el('mobileSourcesPanel')
+
+    function openSources(){
+      if (window.matchMedia('(min-width: 1024px)').matches){
+        // desktop: toggle right rail visibility by showing/hiding element (already visible at lg)
+        // We keep it visible; just scroll to top
+        sourcesPanel.scrollTop = 0
+      } else {
+        openDrawer('mobileSources')
+      }
+    }
+
+    el('toggleSourcesBtn').onclick = openSources
+
+    // State
+    let evidence = []
+    let evidenceById = {}
+    let history = []
+
+    function setStatus(kind, text){
+      const b = el('statusBanner')
+      if (!text){
+        b.className = 'hidden'
+        b.textContent = ''
+        return
+      }
+      const base = 'mx-4 mt-4 rounded-xl border px-4 py-3 text-sm'
+      const styles = {
+        success: 'border-emerald-200 bg-emerald-50 text-emerald-900 dark:border-emerald-900/40 dark:bg-emerald-950/40 dark:text-emerald-100',
+        warning: 'border-amber-200 bg-amber-50 text-amber-900 dark:border-amber-900/40 dark:bg-amber-950/30 dark:text-amber-100',
+        error: 'border-rose-200 bg-rose-50 text-rose-900 dark:border-rose-900/40 dark:bg-rose-950/40 dark:text-rose-100'
+      }
+      b.className = base + ' ' + (styles[kind] || styles.success)
+      b.textContent = text
+    }
+
+    function formatSourceLink(src){
+      if (/^https?:\/\//i.test(src) || src.startsWith('/')) return src
+      return `/uploaded/${encodeURIComponent(tenant)}/${encodeURIComponent(agent)}/${encodeURIComponent(src)}?token=${encodeURIComponent(token || '')}`
+    }
+
+    function escapeHtml(s){
+      return (s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]))
+    }
+
+    function renderReplyToHtml(text){
+      // Minimal markdown-ish: headings and bullets.
+      const lines = (text || '').split(/\n/)
+      const out = []
+      let inList = false
+
+      const citeRe = /\[Source:([^\]]+)\]\s*\{cite:(C\d+)\}/g
+      const withCites = (line) => {
+        const safe = escapeHtml(line)
+        return safe.replace(citeRe, (_m, label, cid) => {
+          const display = `[Source:${label}]`
+          return `<button class="cq-cite inline-flex items-center gap-2 px-2 py-1 rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-medium hover:bg-slate-50 dark:hover:bg-slate-800" data-cite="${cid}">${escapeHtml(display)}<span class="text-slate-400">↗</span></button>`
+        })
+      }
+
+      for (const raw of lines){
+        const line = raw.trimEnd()
+        if (!line){
+          if (inList){ out.push('</ul>'); inList=false }
+          continue
         }
-    });
-    const logo=document.getElementById("footerLogo");
-    if(logo) logo.src=localStorage.getItem("style_logoUrl")||styleDefaults.logoUrl;
-    const links=[
-        {id:"footerLink1",text:"footerLink1Text",url:"footerLink1Url"},
-        {id:"footerLink2",text:"footerLink2Text",url:"footerLink2Url"},
-        {id:"footerLink3",text:"footerLink3Text",url:"footerLink3Url"}
-    ];
-    links.forEach(l=>{
-        const a=document.getElementById(l.id);
-        if(a){
-            a.textContent=localStorage.getItem("style_"+l.text)||styleDefaults[l.text];
-            a.href=localStorage.getItem("style_"+l.url)||styleDefaults[l.url];
+        if (/^Summary\s*$/i.test(line) || /^Key quotes\s*$/i.test(line)){
+          if (inList){ out.push('</ul>'); inList=false }
+          out.push(`<div class="mt-4 mb-2 text-xs uppercase tracking-wide text-slate-500">${escapeHtml(line)}</div>`)
+          continue
         }
-    });
-}
-document.addEventListener('DOMContentLoaded', applyCustomStyles);
-let sidebarVisible=false;
-let chatHistory=[];
-let filteredHistory=[];
-let selectedChat=null;
-const citeNums=Array.from({length:10},(_,i)=>`(${i+1})`);
-let pendingSuggestion=null;
-
-function insertCitations(text,sources){
-    if(/\(\d+\)/.test(text)) return text;
-    const sentences=text.match(/[^.!?]+[.!?]+|[^.!?]+$/g);
-    if(!sentences) return text;
-    return sentences.map((s,i)=>{
-        if(i<sources.length) return s.trimEnd()+` (${i+1})`;
-        return s;
-    }).join(' ');
-}
-
-const sidebar=document.getElementById('sidebar');
-const toggleSidebarBtn=document.getElementById('toggleSidebar');
-const chatTitleEl=document.getElementById('chatTitle');
-const chatList=document.getElementById('chatList');
-const searchInput=document.getElementById('search');
-const chatWindow=document.getElementById('chatWindow');
-const statusBanner=document.getElementById('statusBanner');
-chatTitleEl.textContent=`Chat with ${agent}`;
-
-chatWindow.classList.add('expanded');
-
-toggleSidebarBtn.onclick=()=>{
-    sidebarVisible=!sidebarVisible;
-    sidebar.classList.toggle('visible',sidebarVisible);
-    chatWindow.classList.toggle('shifted',sidebarVisible);
-    chatWindow.classList.toggle('expanded',!sidebarVisible);
-};
-
-document.getElementById('homeBtn').onclick=()=>{window.location.href='/user.html'};
-
-document.getElementById('newChat').onclick=()=>{
-    document.getElementById('messages').innerHTML='';
-    selectedChat=null;
-};
-
-function formatSourceLink(src){
-    if(/^https?:\/\//i.test(src) || src.startsWith('/')) return src;
-    return `/uploaded/${tenant}/${agent}/${encodeURIComponent(src)}?token=${encodeURIComponent(token)}`;
-}
-
-searchInput.addEventListener('input',()=>{
-    const q=searchInput.value.toLowerCase();
-    filteredHistory=chatHistory.filter(c=>c.question.toLowerCase().includes(q));
-    renderHistory();
-});
-
-function renderHistory(){
-    chatList.innerHTML='';
-    (filteredHistory.length?filteredHistory:chatHistory).forEach(item=>{
-        const li=document.createElement('li');
-        const title=document.createElement('div');
-        title.className='title';
-        title.textContent=item.question.slice(0,30);
-        const preview=document.createElement('div');
-        preview.className='preview';
-        if(item.timestamp){
-            preview.textContent=new Date(item.timestamp).toLocaleString();
-        }else{
-            preview.textContent='';
+        if (line.startsWith('- ')){
+          if (!inList){ out.push('<ul class="space-y-2">'); inList=true }
+          out.push(`<li class="leading-relaxed">${withCites(line.slice(2))}</li>`)
+          continue
         }
-        li.appendChild(title);
-        li.appendChild(preview);
-        li.onclick=()=>sendMessage(item.question);
-        chatList.appendChild(li);
-    });
-}
-
-function formatMessage(text){
-    return text
-        .replace(/\*\*(.*?)\*\*/g,'<b>$1</b>')
-        .replace(/\s*([\-*\u2022]\s)/g,'<br>$1')
-        .replace(/\n/g,'<br>');
-}
-
-function addMessage(text,cls,sources=[]){
-    if(cls==='bot' && sources && sources.length){
-        text=insertCitations(text,sources);
+        if (inList){ out.push('</ul>'); inList=false }
+        out.push(`<p class="leading-relaxed">${withCites(line)}</p>`)
+      }
+      if (inList) out.push('</ul>')
+      return out.join('')
     }
-    const div=document.createElement('div');
-    div.className='msg '+cls;
-    let html=cls==='bot'?formatMessage(text):text;
-    if(cls==='bot' && sources && sources.length){
-        const placed=new Set();
-        html=html.replace(/\((\d+)\)/g,(m,n)=>{
-            const idx=parseInt(n,10)-1;
-            if(idx>=0 && idx<sources.length){
-                placed.add(idx);
-                const s=sources[idx];
-                const link=formatSourceLink(s.source);
-                const tip=[s.heading||'',s.page?`p.${s.page}`:'',s.line?`l.${s.line}`:'',s.source].filter(Boolean).join(' - ');
-                return `<a href="${link}" target="_blank" class="cite-num" title="${tip}">(${idx+1})</a>`;
-            }
-            return m;
-        });
-        sources.slice(0,citeNums.length).forEach((s,i)=>{
-            if(!placed.has(i)){
-                const link=formatSourceLink(s.source);
-                const tip=[s.heading||'',s.page?`p.${s.page}`:'',s.line?`l.${s.line}`:'',s.source].filter(Boolean).join(' - ');
-                html+=` <a href="${link}" target="_blank" class="cite-num" title="${tip}">${citeNums[i]}</a>`;
-            }
-        });
+
+    function addMessage(role, content, {isLoading=false}={}){
+      const wrap = document.createElement('div')
+      wrap.className = 'max-w-3xl mx-auto'
+
+      const row = document.createElement('div')
+      row.className = role === 'user' ? 'flex justify-end' : 'flex justify-start'
+
+      const bubble = document.createElement('div')
+      const base = 'max-w-[92%] sm:max-w-[80%] rounded-2xl px-4 py-3 border'
+      if (role === 'user'){
+        bubble.className = base + ' bg-blue-600 text-white border-blue-600'
+        bubble.textContent = content
+      } else {
+        bubble.className = base + ' bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800'
+        bubble.innerHTML = isLoading
+          ? `<div class="space-y-2"><div class="h-3 rounded cq-skel w-3/4"></div><div class="h-3 rounded cq-skel w-2/3"></div><div class="h-3 rounded cq-skel w-1/2"></div></div>`
+          : `<div class="prose prose-slate dark:prose-invert max-w-none text-sm">${renderReplyToHtml(content)}</div>`
+      }
+
+      row.appendChild(bubble)
+      wrap.appendChild(row)
+      el('messages').appendChild(wrap)
+      el('messages').scrollTop = el('messages').scrollHeight
+      return {wrap, bubble}
     }
-    div.innerHTML=html;
-    if(cls==='bot' && sources && sources.length){
-        const cite=document.createElement('div');
-        cite.className='cite-window';
-        let idx=0;
-        const detailLink=sources[0].page?`<a href="${formatSourceLink(sources[0].source)}#page=${sources[0].page}" target="_blank">Page ${sources[0].page}</a>`:'';
-        cite.innerHTML=`Sources: ${sources.length>1?'<span class="cite-prev">&#8592;</span>':''}<a class="cite-link" href="${formatSourceLink(sources[0].source)}" target="_blank">${sources[0].source}</a>${sources.length>1?'<span class="cite-next">&#8594;</span>':''}<span class="cite-detail">${detailLink}${sources[0].heading?` - ${sources[0].heading}`:''}</span>`;
-        const update=()=>{
-            const src=sources[idx];
-            cite.querySelector('.cite-link').href=formatSourceLink(src.source);
-            cite.querySelector('.cite-link').textContent=src.source;
-            const detailLink=src.page?`<a href="${formatSourceLink(src.source)}#page=${src.page}" target="_blank">Page ${src.page}</a>`:'';
-            cite.querySelector('.cite-detail').innerHTML=`${detailLink}${src.heading?` - ${src.heading}`:''}`;
-        };
-        if(sources.length>1){
-            cite.querySelector('.cite-prev').addEventListener('click',()=>{idx=(idx-1+sources.length)%sources.length;update();});
-            cite.querySelector('.cite-next').addEventListener('click',()=>{idx=(idx+1)%sources.length;update();});
+
+    function renderEvidenceCard(ev){
+      const pl = (ev.page != null)
+        ? `Page ${ev.page}${ev.line_start != null ? `, Line ${ev.line_start}${ev.line_end != null ? `-${ev.line_end}` : ''}` : ''}`
+        : (ev.line_start != null ? `Line ${ev.line_start}${ev.line_end != null ? `-${ev.line_end}` : ''}` : '')
+
+      const srcLink = formatSourceLink(ev.source)
+      const title = `${ev.citation_id} · ${ev.source}`
+      const meta = [pl, ev.heading].filter(Boolean).join(' · ')
+
+      const card = document.createElement('div')
+      card.id = `evidence-${ev.citation_id}`
+      card.className = 'rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4'
+      card.innerHTML = `
+        <div class="flex items-start justify-between gap-3">
+          <div class="min-w-0">
+            <div class="text-sm font-semibold truncate">${escapeHtml(title)}</div>
+            <div class="text-xs text-slate-500 mt-0.5">${escapeHtml(meta || '')}</div>
+          </div>
+          <a class="shrink-0 text-xs px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800" href="${srcLink}" target="_blank" rel="noreferrer">Open</a>
+        </div>
+        <pre class="mt-3 whitespace-pre-wrap text-sm leading-relaxed text-slate-800 dark:text-slate-100">${escapeHtml(ev.quote || '')}</pre>
+      `
+      return card
+    }
+
+    function renderSources(){
+      const count = evidence.length
+      el('sourcesCount').textContent = String(count)
+
+      const empty = `<div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-sm text-slate-500">No sources yet. Ask a question to see quoted excerpts here.</div>`
+
+      sourcesPanel.innerHTML = ''
+      mobileSourcesPanel.innerHTML = ''
+      if (!count){
+        sourcesPanel.innerHTML = empty
+        mobileSourcesPanel.innerHTML = empty
+        return
+      }
+
+      for (const ev of evidence){
+        const c1 = renderEvidenceCard(ev)
+        const c2 = renderEvidenceCard(ev)
+        sourcesPanel.appendChild(c1)
+        mobileSourcesPanel.appendChild(c2)
+      }
+    }
+
+    function focusEvidence(citationId){
+      if (!citationId) return
+      openSources()
+
+      // Clear previous highlights
+      document.querySelectorAll('.cq-hilite').forEach(n => n.classList.remove('cq-hilite'))
+
+      const targetId = `evidence-${citationId}`
+      const node = document.getElementById(targetId)
+      if (node){
+        node.classList.add('cq-hilite')
+        node.scrollIntoView({behavior:'smooth', block:'start'})
+        setTimeout(() => node.classList.remove('cq-hilite'), 2000)
+        return
+      }
+
+      // Mobile panel node
+      const m = mobileSourcesPanel.querySelector('#' + CSS.escape(targetId))
+      if (m){
+        m.classList.add('cq-hilite')
+        m.scrollIntoView({behavior:'smooth', block:'start'})
+        setTimeout(() => m.classList.remove('cq-hilite'), 2000)
+      }
+    }
+
+    document.addEventListener('click', (e) => {
+      const t = e.target
+      const btn = t && t.closest && t.closest('button[data-cite]')
+      if (btn){
+        focusEvidence(btn.dataset.cite)
+      }
+    })
+
+    // History (best-effort; uses llm_logs table format already used by old UI)
+    async function loadHistory(){
+      if (!token) return
+      const res = await fetch(`/llm_logs?limit=40`, { headers: { Authorization: `Bearer ${token}` } })
+      if (!res.ok) return
+      const data = await res.json()
+      history = (data.logs || [])
+        .filter(l => l.tenant === tenant && l.agent === agent && l.description && l.description.includes('q:'))
+        .map(l => {
+          const q = (l.description.split('q:')[1] || '').trim()
+          return { ts: l.ts, q }
+        })
+      renderHistory()
+    }
+
+    function renderHistory(filter=''){
+      const f = (filter || '').toLowerCase()
+      const items = f ? history.filter(h => h.q.toLowerCase().includes(f)) : history
+
+      const renderTo = (container) => {
+        container.innerHTML = ''
+        if (!items.length){
+          container.innerHTML = `<div class="p-3 text-sm text-slate-500">No history yet.</div>`
+          return
         }
-        div.appendChild(cite);
-    }
-    document.getElementById('messages').appendChild(div);
-    document.getElementById('messages').scrollTop=document.getElementById('messages').scrollHeight;
-}
-
-async function loadHistory(){
-    const res=await fetch(`/llm_logs?limit=25`,{headers:{Authorization:`Bearer ${token}`}});
-    if(res.ok){
-        const data=await res.json();
-        chatHistory=(data.logs||[])
-
-            // `llm_logs` is a shared table across tenants and agents, so we filter
-            // by the active tenant/agent to avoid cross-tenant bleed. The table also
-            // stores non-question events, but `llm.py` records user prompts as
-            // `user:{user} q:{question}`. We keep only entries whose descriptions
-            // include `q:` and split on it to recover the question. If this format
-            // changes—or a question itself contains `q:`—the history parsing may
-            // need adjustment.
-
-            .filter(l=>l.tenant===tenant&&l.agent===agent&&l.description&&l.description.includes('q:'))
-            .map(l=>{
-                const q=l.description.split('q:')[1]||'';
-                return{timestamp:l.ts,question:q.trim()};
-            });
-        filteredHistory=chatHistory;
-        renderHistory();
-    }
-}
-
-function showSuggestionModal(qe){
-    pendingSuggestion=qe;
-    document.getElementById('suggestOriginal').textContent=qe.original_question||'';
-    document.getElementById('suggestedQuestion').textContent=qe.suggested_question||'';
-    document.getElementById('suggestReason').textContent=qe.reason||'We adjusted your question for better results.';
-    document.getElementById('suggestionDialog').classList.remove('hidden');
-}
-
-function hideSuggestionModal(){
-    document.getElementById('suggestionDialog').classList.add('hidden');
-}
-
-function renderStatusBanner(qe){
-    if(!statusBanner) return;
-    if(!qe){
-        statusBanner.className='hidden';
-        statusBanner.textContent='';
-        return;
-    }
-    const status=(qe.status||'').toString().toLowerCase();
-    const reason=qe.reason||qe.evaluation_summary||qe.user_message||'';
-    let cls='';
-    let text='';
-    if(status==='pass'){
-        cls='success';
-        text='✓ Question passed evaluation';
-    }else if(status==='suggest'){
-        cls='warning';
-        text=reason?`Suggestion: ${reason}`:'Suggestion: Please refine your question.';
-    }else if(status==='rejected' || status==='reject'){
-        cls='error';
-        text=reason?`✗ Question denied - ${reason}`:'✗ Question denied by evaluator';
-    }
-    if(!text){
-        statusBanner.className='hidden';
-        statusBanner.textContent='';
-        return;
-    }
-    statusBanner.textContent=text;
-    statusBanner.className=`${cls} status-banner`.trim();
-}
-
-function handleSuggestionChoice(useSuggested){
-    if(!pendingSuggestion) return;
-    const chosenQuestion = useSuggested && pendingSuggestion.suggested_question ? pendingSuggestion.suggested_question : (pendingSuggestion.original_question || '');
-    const choice = useSuggested ? 'use_suggested' : 'keep_original';
-    if(useSuggested){
-        addMessage(chosenQuestion,'user');
-    }
-    hideSuggestionModal();
-    sendMessage(chosenQuestion,{skipUserMessage:!useSuggested,evaluationContext:{skip:true,id:pendingSuggestion.question_evaluation_id,choice}});
-    pendingSuggestion=null;
-}
-
-async function sendMessage(msg,options={}){
-    const {skipUserMessage=false,evaluationContext=null}=options;
-    if(!skipUserMessage){
-        addMessage(msg,'user');
-    }
-
-    renderStatusBanner(null);
-    const payload={messages:[{role:'user',content:msg}]};
-    if(evaluationContext?.skip){
-        payload.skip_question_evaluation=true;
-        payload.question_evaluation_id=evaluationContext.id;
-        payload.question_decision=evaluationContext.choice;
-    }
-
-    const res=await fetch(`/chat?tenant=${tenant}&agent=${agent}`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json','Authorization':`Bearer ${token}`,'X-Session-Id':sessionId},
-        body:JSON.stringify(payload)
-    });
-    if(res.ok){
-        const data=await res.json();
-        const qe=data.question_evaluation;
-        renderStatusBanner(qe);
-        const status=(qe?.status||'').toString().toLowerCase();
-        const reason=qe?.reason || qe?.evaluation_summary || '';
-        if(qe && status==='suggest' && !qe.proceed){
-            addMessage(data.reply||'We suggest refining your question.','bot');
-            showSuggestionModal(qe);
-            return;
+        for (const h of items){
+          const btn = document.createElement('button')
+          btn.className = 'w-full text-left rounded-xl p-3 hover:bg-slate-50 dark:hover:bg-slate-900'
+          btn.innerHTML = `
+            <div class="text-sm font-medium line-clamp-2">${escapeHtml(h.q)}</div>
+            <div class="text-xs text-slate-500 mt-1">${h.ts ? new Date(h.ts).toLocaleString() : ''}</div>
+          `
+          btn.onclick = () => { sendMessage(h.q); closeDrawer('mobileMenu') }
+          container.appendChild(btn)
         }
-        if(qe && (status==='rejected' || status==='reject')){
-            const rejectionText=reason?`Question denied: ${reason}`:(data.reply||'The question was rejected.');
-            addMessage(rejectionText,'bot');
-            return;
-        }
-        addMessage(data.reply,'bot',data.sources||[]);
-        await loadHistory();
-    }else{
-        addMessage('Error: '+res.status,'bot');
+      }
+
+      renderTo(el('historyList'))
+      renderTo(el('mobileHistoryList'))
     }
-}
 
-document.getElementById('chatForm').addEventListener('submit',e=>{
-    e.preventDefault();
-    const m=document.getElementById('chatInput');
-    if(m.value.trim()){const t=m.value.trim();m.value='';sendMessage(t);}
-});
+    el('historySearch').addEventListener('input', (e) => renderHistory(e.target.value))
+    el('mobileHistorySearch').addEventListener('input', (e) => renderHistory(e.target.value))
 
-document.getElementById('guideBtn').addEventListener('click',()=>{
-    document.getElementById('guideOverlay').classList.remove('hidden');
-});
-document.getElementById('guideOverlay').addEventListener('click',()=>{
-    document.getElementById('guideOverlay').classList.add('hidden');
-});
-
-const templatesBtn=document.getElementById('templatesBtn');
-const templatesDropdown=document.getElementById('templatesDropdown');
-const templatesContainer=document.getElementById('templatesContainer');
-const witnessOverlay=document.getElementById('witnessOverlay');
-const witnessName=document.getElementById('witnessName');
-templatesBtn.addEventListener('click',e=>{e.stopPropagation();templatesDropdown.classList.toggle('show');});
-document.addEventListener('click',e=>{if(!templatesContainer.contains(e.target))templatesDropdown.classList.remove('show');});
-document.querySelectorAll('.template-option').forEach(o=>o.addEventListener('click',()=>{
-    const input=document.getElementById('chatInput');
-    const text=o.textContent.trim();
-    if(text==='Case Brief'){
-        input.value="Create an IRAC case brief for the uploaded opinion of this case. Follow California Citation Style (Cal., Cal.app., Cal.Rptr). Include separate 'Procedural History' after Facts.";
-
-    } else if (o.textContent.trim() === 'Chronology' || text === 'Chronology') {
-        input.value = "Build a chronological table for all pleadings & exhibits in this case. Columns:  Date | Event | Source Doc (with P/L or Bates) | Witness | Significance. Sort ascending by date.";
-    } else if (text === 'Motion outline (Memo of Points & Authority)' || text === 'Motion Outline') {
-        input.value = "Draft a Memorandum of Points & Authorities supporting a motion to Compel Discovery. Use the Sample Form L structure, insert record cites; add TOC/TOA placeholders.";
-    } else if (text === 'Deposition Summary') {
-        witnessOverlay.classList.remove('hidden');
-        witnessName.focus();
-        templatesDropdown.classList.remove('show');
-        return;
-    }else{
-        input.value=text;
+    // New chat
+    el('newChatBtn').onclick = () => {
+      // Clear messages except welcome block
+      el('messages').innerHTML = `
+        <div class="max-w-3xl mx-auto">
+          <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-5">
+            <div class="text-sm text-slate-500">Ask a question about the uploaded materials. Responses are strictly grounded in the record and each point links to a quoted source.</div>
+          </div>
+        </div>
+      `
+      evidence = []
+      evidenceById = {}
+      renderSources()
+      setStatus(null, null)
     }
-    templatesDropdown.classList.remove('show');
-}));
 
-witnessName.addEventListener('keydown',e=>{
-    if(e.key==='Enter'){
-        e.preventDefault();
-        const name=witnessName.value.trim();
-        witnessOverlay.classList.add('hidden');
-        if(name){
-            document.getElementById('chatInput').value=
-                `Generate a FULL page-line Deposition Summary for witness ${name}. Use the California paralegal standard columns Page/Line - Testimony - Key Point - Follow-up Q. Keep ration about 1 summary page (or equivalent rows) for 5 transcript pages - do not shorten excessively or provide samples. Source-cite every row directly from the document (e.g., "Source: PAGE40"). Approximate lines if not explicitly in OCR (e.g. assume 25 lines per page based on standard transcripts). Focus on case-relevant details.`;
-        }
+    // Composer behavior
+    el('chatInput').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey){
+        e.preventDefault()
+        el('chatForm').requestSubmit()
+      }
+    })
+
+    async function sendMessage(message){
+      if (!message || !message.trim()) return
+      if (!token){
+        setStatus('error', 'You are not logged in. Please sign in again.')
+        return
+      }
+
+      setStatus(null, null)
+      addMessage('user', message.trim())
+      const loading = addMessage('assistant', '', {isLoading:true})
+
+      const payload = { messages: [{ role: 'user', content: message.trim() }] }
+
+      const res = await fetch(`/chat?tenant=${encodeURIComponent(tenant)}&agent=${encodeURIComponent(agent)}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+          'X-Session-Id': sessionId
+        },
+        body: JSON.stringify(payload)
+      })
+
+      if (!res.ok){
+        loading.bubble.innerHTML = `<div class="text-sm text-rose-600">Error: ${res.status}</div>`
+        return
+      }
+
+      const data = await res.json()
+
+      // Remove loading bubble and replace
+      loading.wrap.remove()
+
+      const qe = data.question_evaluation
+      if (qe){
+        const status = String(qe.status || '').toLowerCase()
+        if (status === 'pass') setStatus('success', '✓ Question passed evaluation')
+        else if (status === 'suggest') setStatus('warning', qe.reason || qe.evaluation_summary || 'Suggestion: refine your question for better results')
+        else if (status === 'rejected' || status === 'reject') setStatus('error', qe.reason || qe.evaluation_summary || 'Question rejected')
+      }
+
+      addMessage('assistant', data.reply || '')
+
+      evidence = Array.isArray(data.evidence) ? data.evidence : []
+      evidenceById = {}
+      for (const ev of evidence){ evidenceById[ev.citation_id] = ev }
+      renderSources()
+
+      await loadHistory()
     }
-});
-witnessOverlay.addEventListener('click',e=>{if(e.target===witnessOverlay)witnessOverlay.classList.add('hidden');});
-document.getElementById('keepOriginalBtn').addEventListener('click',()=>handleSuggestionChoice(false));
-document.getElementById('useSuggestedBtn').addEventListener('click',()=>handleSuggestionChoice(true));
-document.getElementById('suggestionDialog').addEventListener('click',e=>{if(e.target.id==='suggestionDialog')hideSuggestionModal();});
 
-loadHistory();
-</script>
-<footer>
-    <img id="footerLogo" src="https://www.craftedquery.com/logo.svg" alt="Crafted Query Logo"> 2025 © Crafted Query. All rights reserved. -
-    <a id="footerLink1" href="https://www.craftedquery.com/about">About us</a> -
-    <a id="footerLink2" href="https://www.craftedquery.com/contact">Contact us</a> -
-    <a id="footerLink3" href="https://www.craftedquery.com/status">Status</a>.
-</footer>
+    el('chatForm').addEventListener('submit', (e) => {
+      e.preventDefault()
+      const t = el('chatInput')
+      const msg = t.value
+      t.value = ''
+      sendMessage(msg)
+    })
+
+    // Initial load
+    loadHistory()
+    renderSources()
+  </script>
 </body>
 </html>
