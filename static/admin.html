@@ -7,7 +7,12 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Spectral:wght@400;600;700&display=swap" rel="stylesheet">
-    <!-- Global CSS - Centralized Styles -->
+    <!-- Tailwind CSS - Required for utility classes used throughout the page -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] } } } }
+    </script>
+    <!-- Global CSS - Centralized Styles (overrides and custom styles) -->
     <link rel="stylesheet" href="/static/css/global.css">
     <!-- Header and Button Styles -->
     <link rel="stylesheet" href="/static/styles.css">
@@ -483,7 +488,8 @@
             }
         }
     </style>
-    <style>
+
+
         h1, h2, h3, h4, h5, h6 {
             font-family: 'Spectral', serif;
         }
@@ -620,32 +626,34 @@
         
         .nav-tabs {
             display: flex;
-            background: var(--white);
-            border-radius: 12px;
-            box-shadow: var(--shadow);
-            margin-bottom: 20px;
-            overflow: hidden;
+            flex-wrap: wrap;
         }
         
         .nav-tab {
             flex: 1;
-            padding: 15px 20px;
+            min-width: 120px;
+            padding: 0.9375rem 1.25rem;
             background: transparent;
             border: none;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 0.875rem;
             font-weight: 600;
-            transition: all 0.2s;
+            transition: all var(--transition-base);
             text-align: center;
+            color: var(--text-secondary);
         }
         
         .nav-tab:hover {
             background: var(--gray-100);
         }
         
+        .dark .nav-tab:hover {
+            background: var(--gray-800);
+        }
+        
         .nav-tab.active {
             background: var(--primary);
-            color: var(--white);
+            color: white;
         }
 
         .sub-tabs {
@@ -716,11 +724,17 @@
         .badge.flagged, .badge.review { background: #fff4e5; color: #b05a00; }
 
         .content-panel {
-            background: var(--white);
-            border-radius: 12px;
+            background: var(--bg-secondary);
+            border-radius: var(--radius-xl);
             box-shadow: var(--shadow);
-            padding: 30px;
-            margin-bottom: 20px;
+            padding: var(--spacing-xl);
+            margin-bottom: var(--spacing-md);
+            border: 1px solid var(--border-color);
+        }
+        
+        .dark .content-panel {
+            background: var(--gray-900);
+            border-color: var(--border-dark);
         }
         
         .hidden {
@@ -1096,49 +1110,75 @@
         }
     </style>
 </head>
-<body>
+<body class="h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+  <script>
+    (function initTheme(){
+      const saved = localStorage.getItem('cq_theme') || 'system'
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+      const dark = saved === 'dark' || (saved === 'system' && prefersDark)
+      document.documentElement.classList.toggle('dark', dark)
+    })()
+  </script>
+
     <!-- Login Page -->
-    <div id="loginPage" class="login-container">
-        <div class="login-box">
-            <h2>Second Chair Login</h2>
-            <form id="loginForm">
-                <div class="form-group">
-                    <label for="username">Username</label>
-                    <input type="text" id="username" name="username" required>
+    <div id="loginPage" class="min-h-full flex items-center justify-center px-4">
+        <div class="w-full max-w-md rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-6 shadow-sm">
+            <div class="flex items-start justify-between gap-3">
+                <div>
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Admin Dashboard</div>
+                    <h1 class="mt-1 text-xl font-semibold">Sign in</h1>
                 </div>
-                <div class="form-group">
-                    <label for="password">Password</label>
-                    <input type="password" id="password" name="password" required>
+                <button id="themeBtn" class="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800" title="Toggle theme">🌓</button>
+            </div>
+
+            <form id="loginForm" class="mt-6 space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-200">Username</label>
+                    <input name="username" id="username" class="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" autocomplete="username" required />
                 </div>
-                <button type="submit" class="btn btn-full">
-                    <span id="loginSpinner" class="spinner hidden"></span>
-                    Login
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-200">Password</label>
+                    <input name="password" id="password" type="password" class="mt-1 w-full rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-950 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-blue-500" autocomplete="current-password" required />
+                </div>
+
+                <button type="submit" class="w-full rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold py-2.5">
+                    <span id="loginSpinner" class="hidden mr-2 inline-block w-4 h-4 rounded-full border-2 border-white/30 border-t-white align-[-3px] animate-spin"></span>
+                    Sign in
                 </button>
-                <div id="loginError" class="error hidden"></div>
+
+                <div id="loginError" class="hidden text-sm text-rose-600"></div>
             </form>
         </div>
     </div>
 
     <!-- Main Interface -->
-    <div id="mainInterface" class="hidden">
-        <div class="container">
-            <!-- Header -->
-            <div class="header">
-                <h1>CQ Second Chair Administration</h1>
-                <div class="user-info">
-                    <span id="userWelcome">Welcome, User!</span>
-                    <button id="logoutBtn" class="btn btn-danger">Logout</button>
+    <div id="mainInterface" class="hidden min-h-full">
+        <header class="sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/50 backdrop-blur">
+            <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+                <div class="min-w-0">
+                    <div class="text-xs uppercase tracking-wide text-slate-500">Admin</div>
+                    <div class="font-semibold truncate">CQ Second Chair Administration</div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <div id="userWelcome" class="hidden sm:block text-sm text-slate-600 dark:text-slate-300">Welcome, User!</div>
+                    <button id="themeBtnMain" class="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800" title="Toggle theme">🌓</button>
+                    <button id="logoutBtn" class="px-3 py-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-sm font-semibold">Logout</button>
                 </div>
             </div>
+        </header>
+
+        <div class="max-w-6xl mx-auto px-4 py-6">
 
             <!-- Navigation Tabs -->
-            <div class="nav-tabs">
-                <button class="nav-tab active" data-tab="dashboard">📊 Dashboard</button>
-                <button class="nav-tab" data-tab="tenants">🏢 Tenants & Agents</button>
-                <button class="nav-tab" data-tab="users">👥 Users</button>
-                <button class="nav-tab" data-tab="analytics">📈 Analytics</button>
-                <button class="nav-tab" data-tab="settings">⚙️ Settings</button>
-                <button class="nav-tab" data-tab="styling">🎨 Styling</button>
+            <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden mb-4 shadow-sm">
+                <div class="flex flex-wrap">
+                    <button class="nav-tab active flex-1 min-w-[120px]" data-tab="dashboard">📊 Dashboard</button>
+                    <button class="nav-tab flex-1 min-w-[120px]" data-tab="tenants">🏢 Tenants & Agents</button>
+                    <button class="nav-tab flex-1 min-w-[120px]" data-tab="users">👥 Users</button>
+                    <button class="nav-tab flex-1 min-w-[120px]" data-tab="analytics">📈 Analytics</button>
+                    <button class="nav-tab flex-1 min-w-[120px]" data-tab="settings">⚙️ Settings</button>
+                    <button class="nav-tab flex-1 min-w-[120px]" data-tab="styling">🎨 Styling</button>
+                </div>
             </div>
 
             <!-- Dashboard Panel -->
@@ -1336,6 +1376,7 @@
                     </p>
                 </div>
             </div>
+        </div>
     </div>
 
     <!-- Modals -->
@@ -1922,6 +1963,18 @@
         });
 
         function setupEventListeners() {
+            // Theme toggle
+            const themeBtn = document.getElementById('themeBtn');
+            const themeBtnMain = document.getElementById('themeBtnMain');
+            const toggleTheme = () => {
+                const isDark = document.documentElement.classList.contains('dark');
+                const next = isDark ? 'light' : 'dark';
+                localStorage.setItem('cq_theme', next);
+                document.documentElement.classList.toggle('dark', next === 'dark');
+            };
+            if (themeBtn) themeBtn.addEventListener('click', toggleTheme);
+            if (themeBtnMain) themeBtnMain.addEventListener('click', toggleTheme);
+            
             // Login form
             document.getElementById('loginForm').addEventListener('submit', handleLogin);
             

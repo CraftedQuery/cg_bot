@@ -1,211 +1,177 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" class="h-full">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Files</title>
-    <link rel="stylesheet" href="/static/styles.css">
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Spectral:wght@400;700&family=Satoshi:wght@400;700&display=swap">
-    <style>
-        * { margin:0; padding:0; box-sizing:border-box; }
-        body {
-            font-family: 'Inter', sans-serif;
-            background: var(--gray-100);
-            color: var(--gray-800);
-            line-height:1.6;
-            font-size: var(--body-font-size);
-        }
-        h1, h2, h3, h4, h5, h6 { font-family:'Spectral', serif; }
-        .container { max-width:1400px; margin:0 auto; padding:20px; }
-        .header {
-            background: var(--header-bg);
-            color: var(--header-text);
-            padding:20px;
-            border-radius:12px;
-            box-shadow: var(--shadow);
-            margin-bottom:20px;
-            display:flex;
-            justify-content:space-between;
-            align-items:center;
-        }
-        table { width:100%; border-collapse:collapse; background: var(--white); }
-        th, td { padding:8px; border-bottom:1px solid var(--gray-200); }
-        th { background: var(--gray-200); text-transform:uppercase; font-size:14px; text-align:left; }
-        button { padding:6px 12px; border:none; border-radius:var(--btn-radius); background:var(--danger); color:var(--white); cursor:pointer; }
-        .btn { display:inline-block; padding:12px 24px; background:var(--primary); color:var(--white); border:none; border-radius:var(--btn-radius); cursor:pointer; font-size:14px; font-weight:600; transition:all 0.2s; }
-        .btn:hover { background:var(--primary-dark); }
-        .btn-small { padding:6px 12px; font-size:12px; }
-        a { color:var(--primary); text-decoration:none; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Files - Legal Workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Spectral:wght@400;600;700&display=swap" rel="stylesheet">
+  <!-- Tailwind CSS - Required for utility classes used throughout the page -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class', theme: { extend: { fontFamily: { sans: ['Inter', 'ui-sans-serif', 'system-ui'] } } } }
+  </script>
+  <!-- Global CSS - Centralized Styles (overrides and custom styles) -->
+  <link rel="stylesheet" href="/static/css/global.css">
 </head>
-<body>
-    <div class="container">
-        <div class="header">
-            <h2 id="caseTitle">Files</h2>
-            <button id="homeBtn" class="btn btn-small" type="button">Home</button>
+<body class="h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
+  <script>
+    (function initTheme(){
+      const saved = localStorage.getItem('cq_theme') || 'system'
+      const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches
+      const dark = saved === 'dark' || (saved === 'system' && prefersDark)
+      document.documentElement.classList.toggle('dark', dark)
+    })()
+  </script>
+
+  <div class="min-h-full">
+    <header class="sticky top-0 z-10 border-b border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/50 backdrop-blur">
+      <div class="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
+        <div class="min-w-0">
+          <div class="text-xs uppercase tracking-wide text-slate-500">Files</div>
+          <div id="caseTitle" class="font-semibold truncate">Files</div>
         </div>
-        <p style="margin-bottom:10px">Check the <strong>Template</strong> box for files that should only be used as examples. Template files are ignored as training data for the chatbot.</p>
-        <table id="filesTable">
-            <thead>
-                <tr>
-                    <th id="sortName" style="cursor:pointer">Name</th>
-                    <th>Size</th>
-                    <th id="sortDate" style="cursor:pointer">Updated</th>
-                    <th>Status</th>
-                    <th>OCR</th>
-                    <th>Template</th>
-                    <th>Actions</th>
-                </tr>
+        <div class="flex items-center gap-2">
+          <button id="themeBtn" class="w-10 h-10 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800" title="Toggle theme">🌓</button>
+          <button id="homeBtn" class="px-3 py-2 rounded-xl bg-slate-900 text-white hover:bg-slate-800 dark:bg-white dark:text-slate-900 dark:hover:bg-slate-200 text-sm font-semibold">Home</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4 py-6">
+      <div class="mb-4 text-sm text-slate-600 dark:text-slate-300">
+        Check the <strong>Template</strong> box for files that should only be used as examples. Template files are ignored as training data for the chatbot.
+      </div>
+
+      <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden">
+        <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+          <div class="font-semibold">Files</div>
+          <div class="text-xs text-slate-500">View and manage uploaded files</div>
+        </div>
+        <div class="overflow-auto">
+          <table id="filesTable" class="min-w-full text-sm">
+            <thead class="bg-slate-50 dark:bg-slate-950/50 text-slate-600 dark:text-slate-300">
+              <tr>
+                <th id="sortName" class="text-left px-4 py-3 font-semibold cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800">Name</th>
+                <th class="text-left px-4 py-3 font-semibold">Size</th>
+                <th id="sortDate" class="text-left px-4 py-3 font-semibold cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800">Updated</th>
+                <th class="text-left px-4 py-3 font-semibold">Status</th>
+                <th class="text-left px-4 py-3 font-semibold">OCR</th>
+                <th class="text-left px-4 py-3 font-semibold">Template</th>
+                <th class="text-left px-4 py-3 font-semibold">Actions</th>
+              </tr>
             </thead>
-            <tbody></tbody>
-        </table>
-        <div id="pager" style="margin-top:10px"></div>
-    </div>
-<script>
-const styleDefaults={
-    primary:"#d71920",
-    primaryDark:"#b2181b",
-    secondary:"#2f2f2f",
-    danger:"#f44336",
-    warning:"#ff9800",
-    headerBg:"#d71920",
-    headerText:"#ffffff",
-    btnRadius:4,
-    footerBg:"#2f2f2f",
-    bodyFontSize:16,
-    logoUrl:"https://www.craftedquery.com/logo.svg",
-    footerLink1Text:"About us",
-    footerLink1Url:"https://www.craftedquery.com/about",
-    footerLink2Text:"Contact us",
-    footerLink2Url:"https://www.craftedquery.com/contact",
-    footerLink3Text:"Status",
-    footerLink3Url:"https://www.craftedquery.com/status"
-};
-function applyCustomStyles(){
-    Object.keys(styleDefaults).forEach(k=>{
-        const v=localStorage.getItem("style_"+k)||styleDefaults[k];
-        if(k==="bodyFontSize"){
-            document.documentElement.style.setProperty("--body-font-size",v+"px");
-        }else if(k==="btnRadius"){
-            document.documentElement.style.setProperty("--btn-radius",v+"px");
-        }else if(!k.startsWith("footerLink") && k!=="logoUrl"){
-            const cssVar="--"+k.replace(/([A-Z])/g,"-$1").toLowerCase();
-            document.documentElement.style.setProperty(cssVar,v);
-        }
-    });
-    const logo=document.getElementById("footerLogo");
-    if(logo) logo.src=localStorage.getItem("style_logoUrl")||styleDefaults.logoUrl;
-    const links=[
-        {id:"footerLink1",text:"footerLink1Text",url:"footerLink1Url"},
-        {id:"footerLink2",text:"footerLink2Text",url:"footerLink2Url"},
-        {id:"footerLink3",text:"footerLink3Text",url:"footerLink3Url"}
-    ];
-    links.forEach(l=>{
-        const a=document.getElementById(l.id);
-        if(a){
-            a.textContent=localStorage.getItem("style_"+l.text)||styleDefaults[l.text];
-            a.href=localStorage.getItem("style_"+l.url)||styleDefaults[l.url];
-        }
-    });
-}
-document.addEventListener("DOMContentLoaded", applyCustomStyles);
-const params = new URLSearchParams(window.location.search);
-const tenant = params.get('tenant');
-const agent = params.get('agent');
-const API_BASE = '';
-const authToken = localStorage.getItem('rag_auth_token');
-const tbody = document.querySelector('#filesTable tbody');
-const pageTitle = document.getElementById('caseTitle');
-if(agent && pageTitle){
-    pageTitle.textContent = `Files - ${agent}`;
-}
-let currentUser = null;
-let filesData = [];
-let currentPage = 1;
-const pageSize = 25;
-let sortField = 'date';
-let sortAsc = false;
-document.getElementById('homeBtn').onclick = () => { window.location.href = '/user.html'; };
+            <tbody id="filesTableBody" class="divide-y divide-slate-200 dark:divide-slate-800"></tbody>
+          </table>
+        </div>
+        <div id="pager" class="px-4 py-3 border-t border-slate-200 dark:border-slate-800 flex items-center justify-center gap-2 text-sm"></div>
+      </div>
+    </main>
+  </div>
 
-init();
+  <script>
+    // Theme toggle
+    document.getElementById('themeBtn').addEventListener('click', () => {
+      const isDark = document.documentElement.classList.contains('dark')
+      const next = isDark ? 'light' : 'dark'
+      localStorage.setItem('cq_theme', next)
+      document.documentElement.classList.toggle('dark', next === 'dark')
+    })
 
-async function init(){
-    const res = await fetch(`${API_BASE}/users/me`,{headers:{Authorization:`Bearer ${authToken}`}});
-    if(res.ok){
-        currentUser = await res.json();
+    const params = new URLSearchParams(window.location.search)
+    const tenant = params.get('tenant')
+    const agent = params.get('agent')
+    const API_BASE = ''
+    const authToken = localStorage.getItem('rag_auth_token')
+    const tbody = document.querySelector('#filesTableBody')
+    const pageTitle = document.getElementById('caseTitle')
+    if(agent && pageTitle){
+      pageTitle.textContent = `Files - ${agent}`
+    }
+    let currentUser = null
+    let filesData = []
+    let currentPage = 1
+    const pageSize = 25
+    let sortField = 'date'
+    let sortAsc = false
+    document.getElementById('homeBtn').onclick = () => { window.location.href = '/user.html' }
+
+    init()
+
+    async function init(){
+      const res = await fetch(`${API_BASE}/users/me`,{headers:{Authorization:`Bearer ${authToken}`}})
+      if(res.ok){
+        currentUser = await res.json()
         if(!currentUser.allow_files){
-            document.body.innerHTML = '<p>File access is disabled for your account.</p>';
-            return;
+          document.body.innerHTML = '<div class="min-h-full flex items-center justify-center px-4"><div class="text-center"><p class="text-lg font-semibold text-slate-900 dark:text-slate-100">File access is disabled for your account.</p></div></div>'
+          return
         }
+      }
+      load()
     }
-    load();
-}
-async function load(){
-    const res = await fetch(`${API_BASE}/files?tenant=${tenant}&agent=${agent}`,{headers:{Authorization:`Bearer ${authToken}`}});
-    if(res.ok){
-        filesData = await res.json();
-        currentPage = 1;
-        render();
+
+    async function load(){
+      const res = await fetch(`${API_BASE}/files?tenant=${tenant}&agent=${agent}`,{headers:{Authorization:`Bearer ${authToken}`}})
+      if(res.ok){
+        filesData = await res.json()
+        currentPage = 1
+        render()
+      }
     }
-}
 
-async function del(id){
-    if(currentUser && !currentUser.allow_files) return;
-    if(!confirm('Delete file?')) return;
-    const res = await fetch(`${API_BASE}/files/${id}`,{method:'DELETE', headers:{Authorization:`Bearer ${authToken}`}});
-    if(res.ok) load();
-}
+    async function del(id){
+      if(currentUser && !currentUser.allow_files) return
+      if(!confirm('Delete file?')) return
+      const res = await fetch(`${API_BASE}/files/${id}`,{method:'DELETE', headers:{Authorization:`Bearer ${authToken}`}})
+      if(res.ok) load()
+    }
 
-async function toggleTemplate(id, val){
-    if(currentUser && !currentUser.allow_files) return;
-    await fetch(`${API_BASE}/files/${id}/template?template=${val}`, {method:'POST', headers:{Authorization:`Bearer ${authToken}`}});
-    const f = filesData.find(x=>x.id===id);
-    if(f) f.template = val;
-}
+    async function toggleTemplate(id, val){
+      if(currentUser && !currentUser.allow_files) return
+      await fetch(`${API_BASE}/files/${id}/template?template=${val}`, {method:'POST', headers:{Authorization:`Bearer ${authToken}`}})
+      const f = filesData.find(x=>x.id===id)
+      if(f) f.template = val
+    }
 
-function render(){
-    let data = [...filesData];
-    data.sort((a,b)=>{
+    function render(){
+      let data = [...filesData]
+      data.sort((a,b)=>{
         if(sortField==='name'){
-            return sortAsc ? a.filename.localeCompare(b.filename) : b.filename.localeCompare(a.filename);
+          return sortAsc ? a.filename.localeCompare(b.filename) : b.filename.localeCompare(a.filename)
         }else{
-            return sortAsc ? new Date(a.uploaded_at)-new Date(b.uploaded_at) : new Date(b.uploaded_at)-new Date(a.uploaded_at);
+          return sortAsc ? new Date(a.uploaded_at)-new Date(b.uploaded_at) : new Date(b.uploaded_at)-new Date(a.uploaded_at)
         }
-    });
-    const start = (currentPage-1)*pageSize;
-    const pageItems = data.slice(start,start+pageSize);
-    tbody.innerHTML='';
-    pageItems.forEach(f=>{
-        const tr=document.createElement('tr');
-        const fileUrl=`/uploaded/${tenant}/${agent}/${encodeURIComponent(f.filename)}?token=${encodeURIComponent(authToken)}`;
-        tr.innerHTML=`<td><a href="${fileUrl}" target="_blank">${f.filename} \u2197</a></td>`+
-                     `<td>${(f.size/1024).toFixed(1)} KB</td>`+
-                     `<td>${new Date(f.uploaded_at).toLocaleString()}</td>`+
-                     `<td>${f.status}</td>`+
-                     `<td>${f.ocr_used ? 'Yes' : 'No'}</td>`+
-                     `<td><input type="checkbox" ${f.template ? 'checked' : ''} onchange="toggleTemplate(${f.id}, this.checked)"></td>`+
-                     `<td><button onclick="del(${f.id})">Delete</button></td>`;
-        tbody.appendChild(tr);
-    });
-    const pages=Math.ceil(data.length/pageSize)||1;
-    const pager=document.getElementById('pager');
-    pager.innerHTML=`<button ${currentPage===1?'disabled':''} onclick="changePage(-1)">Prev</button> Page ${currentPage}/${pages} <button ${currentPage===pages?'disabled':''} onclick="changePage(1)">Next</button>`;
-}
+      })
+      const start = (currentPage-1)*pageSize
+      const pageItems = data.slice(start,start+pageSize)
+      tbody.innerHTML=''
+      pageItems.forEach(f=>{
+        const tr=document.createElement('tr')
+        tr.className = 'hover:bg-slate-50 dark:hover:bg-slate-800/50'
+        const fileUrl=`/uploaded/${tenant}/${agent}/${encodeURIComponent(f.filename)}?token=${encodeURIComponent(authToken)}`
+        tr.innerHTML=`<td class="px-4 py-3"><a href="${fileUrl}" target="_blank" class="text-blue-600 dark:text-blue-400 hover:underline">${f.filename} ↗</a></td>`+
+                     `<td class="px-4 py-3 text-slate-600 dark:text-slate-300">${(f.size/1024).toFixed(1)} KB</td>`+
+                     `<td class="px-4 py-3 text-slate-600 dark:text-slate-300">${new Date(f.uploaded_at).toLocaleString()}</td>`+
+                     `<td class="px-4 py-3"><span class="px-2 py-1 rounded text-xs font-semibold ${f.status === 'processed' ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400'}">${f.status}</span></td>`+
+                     `<td class="px-4 py-3 text-slate-600 dark:text-slate-300">${f.ocr_used ? 'Yes' : 'No'}</td>`+
+                     `<td class="px-4 py-3"><input type="checkbox" ${f.template ? 'checked' : ''} onchange="toggleTemplate(${f.id}, this.checked)" class="w-4 h-4 rounded border-slate-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"></td>`+
+                     `<td class="px-4 py-3"><button onclick="del(${f.id})" class="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-semibold">Delete</button></td>`
+        tbody.appendChild(tr)
+      })
+      const pages=Math.ceil(data.length/pageSize)||1
+      const pager=document.getElementById('pager')
+      pager.innerHTML=`<button ${currentPage===1?'disabled':''} onclick="changePage(-1)" class="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">Prev</button> <span class="text-slate-600 dark:text-slate-300">Page ${currentPage}/${pages}</span> <button ${currentPage===pages?'disabled':''} onclick="changePage(1)" class="px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-sm font-semibold disabled:opacity-50 disabled:cursor-not-allowed">Next</button>`
+    }
 
-function changePage(delta){
-    const pages=Math.ceil(filesData.length/pageSize)||1;
-    currentPage=Math.min(pages,Math.max(1,currentPage+delta));
-    render();
-}
+    function changePage(delta){
+      const pages=Math.ceil(filesData.length/pageSize)||1
+      currentPage=Math.min(pages,Math.max(1,currentPage+delta))
+      render()
+    }
 
-document.getElementById('sortName').addEventListener('click',()=>{sortField='name';sortAsc=!sortAsc;render();});
-document.getElementById('sortDate').addEventListener('click',()=>{sortField='date';sortAsc=!sortAsc;render();});
-</script>
-<footer>
-    <img id="footerLogo" alt="Crafted Query Logo"> 2025 © Crafted Query. All rights reserved. -
-    <a id="footerLink1" href="https://www.craftedquery.com/about">About us</a> -
-    <a id="footerLink2" href="https://www.craftedquery.com/contact">Contact us</a> -
-    <a id="footerLink3" href="https://www.craftedquery.com/status">Status</a>.
-</footer>
+    document.getElementById('sortName').addEventListener('click',()=>{sortField='name';sortAsc=!sortAsc;render()})
+    document.getElementById('sortDate').addEventListener('click',()=>{sortField='date';sortAsc=!sortAsc;render()})
+  </script>
 </body>
 </html>
