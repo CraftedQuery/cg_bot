@@ -72,6 +72,17 @@ def init_database():
         _ensure_column(con, "llm_logs", "model TEXT")
         _ensure_column(con, "llm_logs", "description TEXT")
         _ensure_column(con, "llm_logs", "error_message TEXT")
+        # Enhanced error logging fields
+        _ensure_column(con, "llm_logs", "user TEXT")
+        _ensure_column(con, "llm_logs", "question TEXT")
+        _ensure_column(con, "llm_logs", "stage TEXT")
+        _ensure_column(con, "llm_logs", "request_payload TEXT")
+        _ensure_column(con, "llm_logs", "response_payload TEXT")
+        _ensure_column(con, "llm_logs", "error_type TEXT")
+        _ensure_column(con, "llm_logs", "error_details TEXT")
+        _ensure_column(con, "llm_logs", "latency_ms REAL")
+        _ensure_column(con, "llm_logs", "tokens_in INTEGER")
+        _ensure_column(con, "llm_logs", "tokens_out INTEGER")
         _ensure_column(con, "uploaded_files", "ocr_used INTEGER DEFAULT 0")
         _ensure_column(con, "uploaded_files", "template INTEGER DEFAULT 0")
         _ensure_column(con, "chat_logs", "question_evaluation_id INTEGER")
@@ -215,15 +226,37 @@ def log_llm_event(
     agent: str | None = None,
     model: str | None = None,
     description: str | None = None,
+    user: str | None = None,
+    question: str | None = None,
+    stage: str | None = None,
+    request_payload: str | None = None,
+    response_payload: str | None = None,
+    error_type: str | None = None,
+    error_details: str | None = None,
+    latency_ms: float | None = None,
+    tokens_in: int | None = None,
+    tokens_out: int | None = None,
 ):
-    """Log an LLM request or error with optional context"""
+    """Log an LLM request or error with optional context and enhanced error details"""
     from datetime import datetime, timezone
+    import json
+
+    # Truncate large payloads to prevent database bloat (keep first 50KB)
+    MAX_PAYLOAD_SIZE = 50000
+    if request_payload and len(request_payload) > MAX_PAYLOAD_SIZE:
+        request_payload = request_payload[:MAX_PAYLOAD_SIZE] + "\n... [truncated]"
+    if response_payload and len(response_payload) > MAX_PAYLOAD_SIZE:
+        response_payload = response_payload[:MAX_PAYLOAD_SIZE] + "\n... [truncated]"
+    if error_details and len(error_details) > MAX_PAYLOAD_SIZE:
+        error_details = error_details[:MAX_PAYLOAD_SIZE] + "\n... [truncated]"
 
     with get_db() as con:
         con.execute(
             """INSERT INTO llm_logs
-               (ts, provider, status, tenant, agent, model, description, error_message)
-               VALUES (?, ?, ?, ?, ?, ?, ?, ?)""",
+               (ts, provider, status, tenant, agent, model, description, error_message,
+                user, question, stage, request_payload, response_payload, error_type,
+                error_details, latency_ms, tokens_in, tokens_out)
+               VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)""",
             (
                 datetime.now(timezone.utc).isoformat(),
                 provider,
@@ -233,6 +266,16 @@ def log_llm_event(
                 model,
                 description,
                 error_message,
+                user,
+                question,
+                stage,
+                request_payload,
+                response_payload,
+                error_type,
+                error_details,
+                latency_ms,
+                tokens_in,
+                tokens_out,
             )
         )
         con.commit()

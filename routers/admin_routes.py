@@ -3,6 +3,7 @@ routers/admin_routes.py - Admin interface endpoints
 """
 
 import json
+import re
 from datetime import datetime
 from pathlib import Path
 import os
@@ -153,29 +154,70 @@ async def llm_test():
 
 @router.get("/llm_logs")
 async def get_llm_logs(limit: int = 100):
-    """Retrieve recent LLM logs"""
+    """Retrieve recent LLM logs with enhanced error details"""
     with get_db() as con:
         cur = con.execute(
-            "SELECT ts, provider, status, tenant, agent, model, description, error_message FROM llm_logs ORDER BY id DESC LIMIT ?",
+            """SELECT ts, provider, status, tenant, agent, model, description, error_message,
+                      user, question, stage, request_payload, response_payload, error_type,
+                      error_details, latency_ms, tokens_in, tokens_out
+               FROM llm_logs ORDER BY id DESC LIMIT ?""",
             (limit,),
         )
         rows = cur.fetchall()
 
         logs = []
         for r in rows:
-            ts, provider, status, tenant, agent, model, desc, error = r
+            (ts, provider, status, tenant, agent, model, desc, error,
+             user, question, stage, request_payload, response_payload, error_type,
+             error_details, latency_ms, tokens_in, tokens_out) = r
+            
+            # For backward compatibility, try to extract question/user from description if not directly stored
+            if not question and desc and "q:" in desc:
+                question = desc.split("q:", 1)[1].strip()
+            if not user and desc and "user:" in desc:
+                user_match = re.search(r"user:([^\s]+)", desc)
+                if user_match:
+                    user = user_match.group(1)
+            
+            # Try to get answer from chat_logs if not in response_payload (backward compatibility)
             answer = None
-            question = None
-            if desc and "q:" in desc:
-                question = desc.split("q:", 1)[1]
             if question:
-                cur2 = con.execute(
-                    "SELECT answer FROM chat_logs WHERE tenant = ? AND agent = ? AND question = ? ORDER BY id DESC LIMIT 1",
-                    (tenant or "", agent or "", question),
-                )
-                row2 = cur2.fetchone()
-                if row2:
-                    answer = row2[0]
+                try:
+                    cur2 = con.execute(
+                        "SELECT answer FROM chat_logs WHERE tenant = ? AND agent = ? AND question = ? ORDER BY id DESC LIMIT 1",
+                        (tenant or "", agent or "", question),
+                    )
+                    row2 = cur2.fetchone()
+                    if row2:
+                        answer = row2[0]
+                except Exception:
+                    pass  # Ignore errors in backward compatibility lookup
+            
+            # Parse JSON fields if they exist
+            request_payload_parsed = None
+            response_payload_parsed = None
+            error_details_parsed = None
+            
+            try:
+                if request_payload:
+                    request_payload_parsed = json.loads(request_payload)
+            except Exception:
+                pass
+            
+            try:
+                if response_payload:
+                    response_payload_parsed = json.loads(response_payload)
+                    # Extract answer from response payload if available
+                    if not answer and response_payload_parsed and "content" in response_payload_parsed:
+                        answer = response_payload_parsed.get("content")
+            except Exception:
+                pass
+            
+            try:
+                if error_details:
+                    error_details_parsed = json.loads(error_details)
+            except Exception:
+                pass
 
             logs.append(
                 {
@@ -186,8 +228,18 @@ async def get_llm_logs(limit: int = 100):
                     "agent": agent,
                     "model": model,
                     "description": desc,
+                    "user": user,
+                    "question": question,
+                    "stage": stage,
                     "answer": answer,
                     "error": error,
+                    "error_type": error_type,
+                    "error_details": error_details_parsed,
+                    "request_payload": request_payload_parsed,
+                    "response_payload": response_payload_parsed,
+                    "latency_ms": latency_ms,
+                    "tokens_in": tokens_in,
+                    "tokens_out": tokens_out,
                 }
             )
 

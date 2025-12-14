@@ -4,6 +4,8 @@ llm.py - LLM provider integrations
 import logging
 import os
 import time
+import json
+import traceback
 from typing import List, Dict, Any
 
 import requests
@@ -21,6 +23,66 @@ from openai import OpenAI
 logger = logging.getLogger(__name__)
 
 
+def _classify_error(exception: Exception) -> tuple[str, dict]:
+    """Classify error type and extract detailed error information"""
+    error_type = "unknown"
+    error_details = {
+        "exception_type": type(exception).__name__,
+        "exception_message": str(exception),
+        "stack_trace": traceback.format_exc(),
+    }
+    
+    error_str = str(exception).lower()
+    error_class = type(exception).__name__.lower()
+    
+    # Check for rate limiting
+    if "rate limit" in error_str or "rate_limit" in error_str or "429" in error_str:
+        error_type = "rate_limit"
+        if hasattr(exception, "response"):
+            try:
+                error_details["http_status"] = getattr(exception.response, "status_code", None)
+                if hasattr(exception.response, "json"):
+                    error_details["api_error_response"] = exception.response.json()
+            except Exception:
+                pass
+    
+    # Check for timeout
+    elif "timeout" in error_str or "timed out" in error_str:
+        error_type = "timeout"
+    
+    # Check for authentication errors
+    elif "auth" in error_str or "401" in error_str or "403" in error_str:
+        error_type = "authentication_error"
+        if hasattr(exception, "response"):
+            try:
+                error_details["http_status"] = getattr(exception.response, "status_code", None)
+            except Exception:
+                pass
+    
+    # Check for API errors (HTTP errors from providers)
+    elif hasattr(exception, "response") or "http" in error_str or "api" in error_str:
+        error_type = "api_error"
+        if hasattr(exception, "response"):
+            try:
+                error_details["http_status"] = getattr(exception.response, "status_code", None)
+                if hasattr(exception.response, "json"):
+                    error_details["api_error_response"] = exception.response.json()
+                elif hasattr(exception.response, "text"):
+                    error_details["api_error_response"] = exception.response.text
+            except Exception:
+                pass
+    
+    # Check for validation/parsing errors
+    elif "json" in error_str or "parse" in error_str or "validation" in error_str:
+        error_type = "validation_error"
+    
+    # Check for provider-specific errors
+    elif "model" in error_str and ("not found" in error_str or "invalid" in error_str):
+        error_type = "provider_error"
+    
+    return error_type, error_details
+
+
 def get_llm_response(
     messages: List[Dict],
     provider: str = "openai",
@@ -35,14 +97,32 @@ def get_llm_response(
     user: str | None = None,
     question: str | None = None,
     description: str | None = None,
+    stage: str | None = None,
     optional: bool = False,
 ) -> Dict[str, Any]:
-    """Get response from selected LLM provider"""
+    """Get response from selected LLM provider with enhanced logging"""
     start_time = time.time()
     tokens_in = _estimate_tokens(messages)
-    logger.info("LLM request to provider=%s model=%s", provider, model)
+    logger.info("LLM request to provider=%s model=%s stage=%s", provider, model, stage)
+
+    # Prepare request payload for logging
+    request_payload_dict = {
+        "messages": messages,
+        "model": model,
+        "temperature": temperature,
+    }
+    if max_tokens is not None:
+        request_payload_dict["max_tokens"] = max_tokens
+    if endpoint:
+        request_payload_dict["endpoint"] = endpoint
+    request_payload_json = json.dumps(request_payload_dict, indent=2)
 
     error_message = None
+    error_type = None
+    error_details = None
+    response_payload_json = None
+    tokens_out = 0
+
     try:
         if provider == "openai":
             response = _get_openai_response(messages, model, temperature, api_key=api_key, endpoint=endpoint, max_tokens=max_tokens)
@@ -55,6 +135,14 @@ def get_llm_response(
         else:
             raise ValueError(f"Unknown LLM provider: {provider}")
 
+        # Prepare response payload for logging
+        tokens_out = response.get("tokens_out", 0)
+        response_payload_dict = {
+            "content": response.get("content", ""),
+            "tokens_out": tokens_out,
+        }
+        response_payload_json = json.dumps(response_payload_dict, indent=2)
+
         desc_parts = []
         if description:
             desc_parts.append(description)
@@ -62,6 +150,9 @@ def get_llm_response(
             desc_parts.append(f"user:{user}")
         if question:
             desc_parts.append(f"q:{question}")
+        
+        latency_ms = (time.time() - start_time) * 1000
+        
         log_llm_event(
             provider,
             "success",
@@ -70,10 +161,23 @@ def get_llm_response(
             agent=agent,
             model=model,
             description=" ".join(desc_parts) if desc_parts else None,
+            user=user,
+            question=question,
+            stage=stage,
+            request_payload=request_payload_json,
+            response_payload=response_payload_json,
+            error_type=None,
+            error_details=None,
+            latency_ms=latency_ms,
+            tokens_in=tokens_in,
+            tokens_out=tokens_out,
         )
 
     except Exception as e:
         error_message = str(e)
+        error_type, error_details_dict = _classify_error(e)
+        error_details_json = json.dumps(error_details_dict, indent=2)
+        
         desc_parts = []
         if description:
             desc_parts.append(description)
@@ -81,8 +185,12 @@ def get_llm_response(
             desc_parts.append(f"user:{user}")
         if question:
             desc_parts.append(f"q:{question}")
+        
         # Optional stages (e.g., HyDE) should not be treated as a hard error in logs.
         status = "skipped" if optional else "error"
+        
+        latency_ms = (time.time() - start_time) * 1000
+        
         log_llm_event(
             provider,
             status,
@@ -91,6 +199,16 @@ def get_llm_response(
             agent=agent,
             model=model,
             description=" ".join(desc_parts) if desc_parts else None,
+            user=user,
+            question=question,
+            stage=stage,
+            request_payload=request_payload_json,
+            response_payload=response_payload_json,
+            error_type=error_type,
+            error_details=error_details_json,
+            latency_ms=latency_ms,
+            tokens_in=tokens_in,
+            tokens_out=0,
         )
         logger.exception("LLM request failed")
         response = {

@@ -154,6 +154,7 @@ async def chat(
                 user=current_user.username,
                 question=q,
                 description="question_evaluator",
+                stage="question_evaluator",
             )
         except Exception as exc:  # Defensive: continue main flow
             logger.exception("Question evaluation failed")
@@ -351,6 +352,7 @@ async def chat(
                 user=current_user.username,
                 question=q,
                 description="answer_evaluator",
+                stage="answer_evaluator",
             )
         except Exception as exc:
             logger.exception("Answer evaluation failed")

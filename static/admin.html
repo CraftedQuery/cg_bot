@@ -392,6 +392,40 @@
             color: var(--gray-600); 
         }
         
+        .status-badge.status-error {
+            background: #ffebee;
+            color: #c62828;
+        }
+        
+        .status-badge.status-success {
+            background: #e8f5e9;
+            color: #2e7d32;
+        }
+        
+        .status-badge.status-skipped {
+            background: #fff3e0;
+            color: #e65100;
+        }
+        
+        .error-type-badge {
+            display: inline-block;
+            background: #d32f2f;
+            color: white;
+            padding: 0.125rem 0.375rem;
+            border-radius: 3px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-left: 0.5rem;
+        }
+        
+        .error-status {
+            background-color: #ffebee !important;
+        }
+        
+        .success-status {
+            background-color: #e8f5e9 !important;
+        }
+        
         .toggle-switch {
             position: relative;
             display: inline-block;
@@ -2682,20 +2716,27 @@
                 renderSummary([], 'rag');
                 return;
             }
-            const rows = logs.map(log => `
-                <tr class="clickable-row" onclick='showLogDetail("rag", ${JSON.stringify(log).replace(/'/g, "&#39;")})'>
+            const rows = logs.map(log => {
+                const statusClass = log.status === 'error' ? 'error-status' : log.status === 'success' ? 'success-status' : '';
+                const errorTypeDisplay = log.error_type ? `<span class="error-type-badge">${escapeHtml(log.error_type)}</span>` : '';
+                return `
+                <tr class="clickable-row ${statusClass}" onclick='showLogDetail("rag", ${JSON.stringify(log).replace(/'/g, "&#39;")})'>
                     <td>${new Date(log.ts).toLocaleString()}</td>
                     <td>${escapeHtml(log.user || '')}</td>
                     <td>${escapeHtml(log.question || '')}</td>
                     <td>${escapeHtml(log.provider || '')}</td>
-                    <td>${escapeHtml(log.status)}</td>
+                    <td><span class="status-badge status-${log.status}">${escapeHtml(log.status)}</span>${errorTypeDisplay}</td>
                     <td>${escapeHtml(log.model || '')}</td>
+                    <td>${escapeHtml(log.stage || '')}</td>
                     <td>${escapeHtml(log.tenant || '')}</td>
                     <td>${escapeHtml(log.agent || '')}</td>
-                    <td>${escapeHtml(log.description || '')}</td>
+                    <td>${log.latency_ms !== null && log.latency_ms !== undefined ? Math.round(log.latency_ms) + 'ms' : 'N/A'}</td>
+                    <td>${log.tokens_in !== null && log.tokens_in !== undefined ? log.tokens_in : 'N/A'}</td>
+                    <td>${log.tokens_out !== null && log.tokens_out !== undefined ? log.tokens_out : 'N/A'}</td>
                     <td>${escapeHtml(log.answer || '')}</td>
                 </tr>
-            `).join('');
+            `;
+            }).join('');
             container.innerHTML = `
                 <table>
                     <thead>
@@ -2706,9 +2747,12 @@
                             <th>Provider</th>
                             <th>Status</th>
                             <th>Model</th>
+                            <th>Stage</th>
                             <th>Tenant</th>
                             <th>Agent</th>
-                            <th>Description</th>
+                            <th>Latency</th>
+                            <th>Tokens In</th>
+                            <th>Tokens Out</th>
                             <th>Answer</th>
                         </tr>
                     </thead>
@@ -2852,24 +2896,87 @@
                     <p><strong>Selected Answer:</strong> ${escapeHtml(log.selected_answer_provider || log.model || '')}</p>
                 `;
             } else {
+                // RAG logs (llm_logs)
                 meta = `
                     <p><strong>User:</strong> ${escapeHtml(log.user || '')}</p>
                     <p><strong>Question:</strong> ${escapeHtml(log.question || '')}</p>
-                    <p><strong>Status:</strong> ${escapeHtml(log.status)}</p>
+                    <p><strong>Status:</strong> <span class="status-badge status-${log.status}">${escapeHtml(log.status)}</span></p>
+                    <p><strong>Stage:</strong> ${escapeHtml(log.stage || 'N/A')}</p>
+                    <p><strong>Latency:</strong> ${log.latency_ms !== null && log.latency_ms !== undefined ? Math.round(log.latency_ms) + 'ms' : 'N/A'}</p>
+                    <p><strong>Tokens In:</strong> ${log.tokens_in !== null && log.tokens_in !== undefined ? log.tokens_in : 'N/A'}</p>
+                    <p><strong>Tokens Out:</strong> ${log.tokens_out !== null && log.tokens_out !== undefined ? log.tokens_out : 'N/A'}</p>
+                    ${log.error_type ? `<p><strong>Error Type:</strong> <span class="error-type-badge">${escapeHtml(log.error_type)}</span></p>` : ''}
+                    ${log.error ? `<p><strong>Error Message:</strong> <span style="color: #d32f2f;">${escapeHtml(log.error)}</span></p>` : ''}
+                `;
+                
+                // Enhanced error details for RAG logs
+                let errorDetailsSection = '';
+                if (log.error_details) {
+                    try {
+                        const errorDetails = typeof log.error_details === 'string' ? JSON.parse(log.error_details) : log.error_details;
+                        errorDetailsSection = `
+                            <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
+                                <h4 style="margin-top: 0; color: #856404;">Error Details</h4>
+                                <pre style="background: white; padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 300px; overflow-y: auto;">${escapeHtml(JSON.stringify(errorDetails, null, 2))}</pre>
+                            </div>
+                        `;
+                    } catch (e) {
+                        errorDetailsSection = `<div><strong>Error Details:</strong> <pre>${escapeHtml(log.error_details)}</pre></div>`;
+                    }
+                }
+                
+                // Request payload section
+                let requestPayloadSection = '';
+                if (log.request_payload) {
+                    try {
+                        const requestPayload = typeof log.request_payload === 'string' ? JSON.parse(log.request_payload) : log.request_payload;
+                        requestPayloadSection = `
+                            <div style="margin-top: 15px;">
+                                <h4>Request Payload</h4>
+                                <details>
+                                    <summary style="cursor: pointer; color: #1976d2; margin-bottom: 5px;">Click to expand request details</summary>
+                                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 400px; overflow-y: auto;">${escapeHtml(JSON.stringify(requestPayload, null, 2))}</pre>
+                                </details>
+                            </div>
+                        `;
+                    } catch (e) {
+                        requestPayloadSection = `<div><strong>Request Payload:</strong> <pre>${escapeHtml(log.request_payload)}</pre></div>`;
+                    }
+                }
+                
+                // Response payload section
+                let responsePayloadSection = '';
+                if (log.response_payload) {
+                    try {
+                        const responsePayload = typeof log.response_payload === 'string' ? JSON.parse(log.response_payload) : log.response_payload;
+                        responsePayloadSection = `
+                            <div style="margin-top: 15px;">
+                                <h4>Response Payload</h4>
+                                <details>
+                                    <summary style="cursor: pointer; color: #1976d2; margin-bottom: 5px;">Click to expand response details</summary>
+                                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 400px; overflow-y: auto;">${escapeHtml(JSON.stringify(responsePayload, null, 2))}</pre>
+                                </details>
+                            </div>
+                        `;
+                    } catch (e) {
+                        responsePayloadSection = `<div><strong>Response Payload:</strong> <pre>${escapeHtml(log.response_payload)}</pre></div>`;
+                    }
+                }
+
+                detail.innerHTML = `
+                    <div style="display:grid; gap:10px;">
+                        <div><strong>Timestamp:</strong> ${new Date(log.ts).toLocaleString()}</div>
+                        <div><strong>Provider:</strong> ${escapeHtml(log.provider || '')}</div>
+                        <div><strong>Model:</strong> ${escapeHtml(log.model || '')}</div>
+                        ${meta}
+                        ${errorDetailsSection}
+                        ${requestPayloadSection}
+                        ${responsePayloadSection}
+                        <div><strong>Answer:</strong> <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 300px; overflow-y: auto;">${escapeHtml(log.answer || 'N/A')}</pre></div>
+                    </div>
                 `;
             }
 
-            detail.innerHTML = `
-                <div style="display:grid; gap:10px;">
-                    <div><strong>Timestamp:</strong> ${new Date(log.ts).toLocaleString()}</div>
-                    <div><strong>Provider:</strong> ${escapeHtml(log.provider || '')}</div>
-                    <div><strong>Model:</strong> ${escapeHtml(log.model || '')}</div>
-                    ${meta}
-                    <div><strong>Criteria Scores:</strong> ${buildScoresCell(log.criteria_scores)}</div>
-                    <div><strong>Prompt:</strong> ${safePrompt}</div>
-                    <div><strong>Full Response:</strong> <pre>${safeResponse}</pre></div>
-                </div>
-            `;
             showModal('logDetailModal');
         }
 

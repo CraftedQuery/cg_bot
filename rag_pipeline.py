@@ -229,6 +229,7 @@ def generate_hyde_query(
         user=user,
         question=question,
         description="hyde",
+        stage="hyde",
         optional=True,
     )
     hyde = (rsp.get("content") or "").strip()
@@ -299,6 +300,7 @@ def generate_structured_answer(
         user=user,
         question=question,
         description="rag_answer_json",
+        stage="rag_answer_json",
     )
     raw = (rsp.get("content") or "").strip()
 
@@ -336,6 +338,7 @@ def generate_structured_answer(
             user=user,
             question=question,
             description="rag_answer_json_repair",
+            stage="rag_answer_json_repair",
         )
         repaired = (repair.get("content") or "").strip()
         if repair.get("error"):
