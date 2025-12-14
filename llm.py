@@ -35,6 +35,7 @@ def get_llm_response(
     user: str | None = None,
     question: str | None = None,
     description: str | None = None,
+    optional: bool = False,
 ) -> Dict[str, Any]:
     """Get response from selected LLM provider"""
     start_time = time.time()
@@ -80,9 +81,11 @@ def get_llm_response(
             desc_parts.append(f"user:{user}")
         if question:
             desc_parts.append(f"q:{question}")
+        # Optional stages (e.g., HyDE) should not be treated as a hard error in logs.
+        status = "skipped" if optional else "error"
         log_llm_event(
             provider,
-            "error",
+            status,
             error_message,
             tenant=tenant,
             agent=agent,
@@ -136,42 +139,80 @@ def _get_openai_response(
         model.startswith("o3")
     )
     
-    try:
+    def _from_chat_completions() -> Dict:
         create_kwargs = {
             "model": model,
             "temperature": temperature,
             "messages": messages,
         }
-        
         if max_tokens is not None:
             if requires_max_completion_tokens:
                 create_kwargs["max_completion_tokens"] = max_tokens
             else:
                 create_kwargs["max_tokens"] = max_tokens
-        
+
         rsp = client.chat.completions.create(**create_kwargs)
+        return {
+            "content": rsp.choices[0].message.content,
+            "tokens_out": getattr(rsp.usage, "completion_tokens", None),
+        }
+
+    def _from_responses_api() -> Dict:
+        # Some newer OpenAI models are served via the Responses API.
+        if not hasattr(client, "responses"):
+            raise RuntimeError("OpenAI client does not support Responses API")
+        req: Dict[str, Any] = {
+            "model": model,
+            "input": [{"role": m.get("role"), "content": m.get("content", "")} for m in messages],
+        }
+        # Keep temperature consistent if supported by the server.
+        req["temperature"] = temperature
+        if max_tokens is not None:
+            # Responses API uses `max_output_tokens`.
+            req["max_output_tokens"] = max_tokens
+        rsp = client.responses.create(**req)
+        # `output_text` is the most stable accessor across SDK versions.
+        content = getattr(rsp, "output_text", None)
+        if content is None:
+            # Defensive fallback for older SDK shapes.
+            content = getattr(rsp, "text", "") or ""
+        usage = getattr(rsp, "usage", None)
+        tokens_out = None
+        if usage is not None:
+            tokens_out = getattr(usage, "output_tokens", None) or getattr(usage, "completion_tokens", None)
+        return {"content": content, "tokens_out": tokens_out}
+
+    try:
+        return _from_chat_completions()
     except Exception as e:
         # If we get a BadRequestError about max_tokens, retry with max_completion_tokens
         if "max_tokens" in str(e) and "max_completion_tokens" in str(e) and not requires_max_completion_tokens:
             try:
-                create_kwargs = {
+                # Force the retry path with `max_completion_tokens`.
+                retry_kwargs: Dict[str, Any] = {
                     "model": model,
                     "temperature": temperature,
                     "messages": messages,
                 }
                 if max_tokens is not None:
-                    create_kwargs["max_completion_tokens"] = max_tokens
-                rsp = client.chat.completions.create(**create_kwargs)
+                    retry_kwargs["max_completion_tokens"] = max_tokens
+                rsp = client.chat.completions.create(**retry_kwargs)
+                return {
+                    "content": rsp.choices[0].message.content,
+                    "tokens_out": getattr(rsp.usage, "completion_tokens", None),
+                }
             except Exception as retry_error:
-                # Chain the exceptions so both the original and retry errors are visible
                 raise retry_error from e
-        else:
-            raise
 
-    return {
-        "content": rsp.choices[0].message.content,
-        "tokens_out": rsp.usage.completion_tokens,
-    }
+        # Fallback to Responses API for models that don't support chat.completions.
+        msg = str(e).lower()
+        if "responses" in msg or "does not support" in msg or "chat.completions" in msg:
+            try:
+                return _from_responses_api()
+            except Exception as responses_error:
+                # Preserve the original exception if fallback also fails.
+                raise e from responses_error
+        raise
 
 
 def _get_anthropic_response(

@@ -180,9 +180,15 @@ def render_answer_with_citations(
             lines.append(f"- “{quote_text}” {bracket} {{cite:{ev.citation_id}}}")
 
     if answer.limitations:
-        if lines:
-            lines.append("")
-        lines.append(f"Limitations: {answer.limitations.strip()}")
+        # Only show limitations when we have a substantive structured answer.
+        # When JSON validation fails, `limitations` is often an internal failure hint
+        # that should not leak into the user-visible chat reply.
+        if answer.summary_bullets or answer.key_quotes:
+            if lines:
+                lines.append("")
+            lines.append(f"Limitations: {answer.limitations.strip()}")
+        else:
+            return "Sorry—something went wrong while generating your answer. Please try again."
 
     if not lines:
         return "I don’t have sufficient support in the provided materials to answer that question."
@@ -223,8 +229,11 @@ def generate_hyde_query(
         user=user,
         question=question,
         description="hyde",
+        optional=True,
     )
     hyde = (rsp.get("content") or "").strip()
+    if rsp.get("error"):
+        return question
     # Conservative fallback
     if len(hyde) < 40:
         return question
@@ -297,6 +306,14 @@ def generate_structured_answer(
         data = json.loads(s)
         return StructuredAnswer.model_validate(data)
 
+    # Provider failures should not enter the JSON validation/repair loop.
+    if rsp.get("error"):
+        return StructuredAnswer(limitations="Temporary system issue generating a structured answer."), {
+            "raw": raw,
+            "llm": rsp,
+            "error": "llm_error",
+        }
+
     try:
         return _parse(raw), {"raw": raw, "llm": rsp}
     except (json.JSONDecodeError, ValidationError):
@@ -321,6 +338,13 @@ def generate_structured_answer(
             description="rag_answer_json_repair",
         )
         repaired = (repair.get("content") or "").strip()
+        if repair.get("error"):
+            return StructuredAnswer(limitations="Temporary system issue generating a structured answer."), {
+                "raw": raw,
+                "llm": rsp,
+                "repair": repair,
+                "error": "llm_error_repair",
+            }
         try:
             return _parse(repaired), {"raw": repaired, "llm": rsp, "repair": repair}
         except Exception:

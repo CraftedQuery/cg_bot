@@ -64,6 +64,50 @@ def test_chat_returns_structured_citations_and_evidence(legal_client, monkeypatc
         assert "summary_bullets" in data["answer_json"]
 
 
+def _fake_llm_response_fail_structured(*, messages, provider="openai", model=None, temperature=0.0, **kwargs):
+    desc = kwargs.get("description")
+    # Simulate an upstream provider failure for the structured answer stages.
+    if desc in {"rag_answer_json", "rag_answer_json_repair"}:
+        return {
+            "content": "Error generating response: API key is missing",
+            "tokens_out": 0,
+            "error": "API key is missing",
+            "provider": provider,
+            "model": model,
+        }
+    if desc == "hyde":
+        return {
+            "content": "Error generating response: API key is missing",
+            "tokens_out": 0,
+            "error": "API key is missing",
+            "provider": provider,
+            "model": model,
+        }
+    return {"content": "{}", "tokens_out": 5}
+
+
+def test_chat_does_not_leak_structured_validation_limitations_to_user(legal_client, monkeypatch):
+    # Upload a small text fixture via API to build the vector store.
+    text = "\n".join([f"LINE {i}: Troy Brown sample text." for i in range(1, 61)])
+    files = [("files", ("troy_brown_sample.txt", text.encode("utf-8"), "text/plain"))]
+    r_up = legal_client.post("/upload", files=files, params={"tenant": "public", "agent": "default"})
+    assert r_up.status_code == 200
+
+    # Patch LLM calls inside the RAG pipeline to fail structured stages.
+    import cg_bot.rag_pipeline as rag_pipeline
+    monkeypatch.setattr(rag_pipeline, "get_llm_response", _fake_llm_response_fail_structured)
+
+    payload = {"messages": [{"role": "user", "content": "What does the witness say about the timeline?"}]}
+    r = legal_client.post("/chat", params={"tenant": "public", "agent": "default"}, json=payload)
+    assert r.status_code == 200
+
+    data = r.json()
+    assert "reply" in data
+    # Must not leak internal limitations text into the user-visible reply.
+    assert "Limitations:" not in data["reply"]
+    assert "Please try again" in data["reply"]
+
+
 def test_chat_requires_auth_when_not_overridden(tmp_path, monkeypatch):
     # Minimal smoke: without overrides, endpoint should enforce auth.
     # We import a fresh app without dependency overrides.
