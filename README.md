@@ -180,6 +180,21 @@ Every agent configuration includes a staged pipeline that can be tuned independe
 
 Stage defaults live in each agent’s config file (`configs/<tenant>/<agent>.json`), and `config.py` backfills missing blocks for older configs. The admin UI exposes toggles, provider/model pickers, API-key overrides, and readiness badges for each stage so you can validate the full pipeline before saving.
 
+## RAG request flow and provider calls
+
+Even when you “only” configure a question evaluator and a main RAG model, a RAG request can legitimately trigger **multiple external calls**:
+
+- **Question evaluator (optional LLM call)**: Runs first when `question_evaluator.enabled` is true.
+- **HyDE (optional LLM call)**: When `hyde.enabled` is true, the system generates a *hypothetical* excerpt to improve retrieval. This is a separate LLM call and is **not** MMR.
+- **Embeddings (embedding model call)**: Retrieval against FAISS requires embedding the query (HyDE output or the original question). This happens for both `retrieval.mode="mmr"` and `"similarity"`.
+- **Answer generation (LLM call)**: The main RAG stage generates a structured JSON answer anchored to retrieved evidence.
+- **JSON repair (optional extra LLM call)**: If the answer is not valid JSON, the pipeline performs **one** repair attempt.
+- **Answer evaluator (optional LLM call)**: Runs last when `answer_evaluator.enabled` is true.
+
+Providers/models for each stage are configurable per tenant/agent (see `configs/<tenant>/<agent>.json`).
+
+For a detailed, step-by-step sequence (including HyDE vs MMR and why embeddings show up), see [`docs/rag-request-flow.md`](docs/rag-request-flow.md).
+
 ## Logging and analytics
 
 FastAPI bootstraps `logging.basicConfig(level=logging.INFO)` in `main.py`. Application events are also captured in SQLite tables:

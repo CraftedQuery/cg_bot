@@ -16,6 +16,14 @@ This project keeps its runtime state in a few predictable locations. Paths are r
 
 Configs are created lazily with defaults (colors, prompts, model settings, widget options) the first time an agent is requested.
 
+### Tenant/agent naming gotchas
+
+Tenant and agent values are used directly as directory/file names (for configs, uploads, and vector stores). Avoid:
+
+- Trailing spaces (problematic on Windows paths)
+- Characters your filesystem forbids (for example `:` on Windows)
+- Extremely long tenant/agent names that may exceed path-length limits
+
 ## Vector stores
 
 - **Directory**: `${RAG_CHATBOT_HOME:-.}/vector_store/`
