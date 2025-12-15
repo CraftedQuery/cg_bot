@@ -33,6 +33,7 @@
     .cq-skel{background:linear-gradient(90deg,rgba(148,163,184,.18),rgba(148,163,184,.34),rgba(148,163,184,.18));background-size:200% 100%;animation:cq-shimmer 1.1s infinite}
     @keyframes cq-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}
     .cq-hilite{outline:2px solid rgba(59,130,246,.65); background: rgba(59,130,246,.08)}
+    .cq-citations-collapsed{display:none !important}
   </style>
 </head>
 <body class="h-full bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100">
@@ -82,7 +83,7 @@
 
         <div class="flex items-center gap-2">
           <button id="toggleSourcesBtn" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-sm">
-            <span>Sources</span>
+            <span>Citations</span>
             <span id="sourcesCount" class="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-900">0</span>
           </button>
           <button id="themeBtn" class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900" aria-label="Toggle theme">🌓</button>
@@ -111,25 +112,29 @@
                 <textarea id="chatInput" rows="1" class="w-full resize-none rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ask anything about the record…"></textarea>
                 <div class="mt-1 text-xs text-slate-500">Shift+Enter for a newline</div>
               </div>
+              <button id="toggleCitationsBtn" type="button" class="h-11 inline-flex items-center gap-2 px-4 rounded-2xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900 text-sm font-semibold">
+                <span>Citations</span>
+                <span id="citationsCount" class="text-xs px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-900">0</span>
+              </button>
               <button id="sendBtn" type="submit" class="h-11 px-4 rounded-2xl bg-blue-600 hover:bg-blue-500 text-white text-sm font-semibold">Send</button>
             </div>
           </form>
         </section>
 
         <!-- Right sources sidebar (desktop) -->
-        <aside id="sourcesSidebar" class="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col border-l border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/50 backdrop-blur">
+        <aside id="sourcesSidebar" class="hidden lg:flex lg:w-[420px] xl:w-[480px] flex-col border-l border-slate-200 dark:border-slate-800 bg-white/70 dark:bg-slate-950/50 backdrop-blur cq-citations-collapsed">
           <div class="p-4 border-b border-slate-200 dark:border-slate-800">
             <div class="flex items-center justify-between gap-3">
               <div>
-                <div class="text-xs uppercase tracking-wide text-slate-500">Sources</div>
-                <div class="font-semibold">Quoted evidence</div>
+                <div class="text-xs uppercase tracking-wide text-slate-500">Citations</div>
+                <div class="font-semibold">Citations</div>
               </div>
               <button id="closeSourcesBtn" class="lg:hidden w-10 h-10 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900">✕</button>
             </div>
           </div>
           <div id="sourcesPanel" class="flex-1 overflow-auto cq-scrollbar p-4 space-y-3">
             <div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-sm text-slate-500">
-              No sources yet. Ask a question to see quoted excerpts here.
+              No citations yet. Ask a question to see quoted excerpts here.
             </div>
           </div>
         </aside>
@@ -156,7 +161,7 @@
     <div class="absolute inset-0 bg-black/40" data-close="mobileSources"></div>
     <div class="absolute right-0 top-0 bottom-0 w-[92%] max-w-md bg-white dark:bg-slate-950 border-l border-slate-200 dark:border-slate-800">
       <div class="p-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
-        <div class="font-semibold">Sources</div>
+        <div class="font-semibold">Citations</div>
         <button class="w-10 h-10 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-900" data-close="mobileSources">✕</button>
       </div>
       <div id="mobileSourcesPanel" class="p-4 space-y-3 overflow-auto cq-scrollbar" style="height: calc(100% - 64px);"></div>
@@ -203,10 +208,22 @@
     const sourcesPanel = el('sourcesPanel')
     const mobileSourcesPanel = el('mobileSourcesPanel')
 
+    const CITATIONS_COLLAPSED_CLASS = 'cq-citations-collapsed'
+
+    function setCitationsExpanded(expanded){
+      if (!sourcesSidebar) return
+      sourcesSidebar.classList.toggle(CITATIONS_COLLAPSED_CLASS, !expanded)
+    }
+
+    function citationsExpanded(){
+      if (!sourcesSidebar) return false
+      return !sourcesSidebar.classList.contains(CITATIONS_COLLAPSED_CLASS)
+    }
+
     function openSources(){
       if (window.matchMedia('(min-width: 1024px)').matches){
-        // desktop: toggle right rail visibility by showing/hiding element (already visible at lg)
-        // We keep it visible; just scroll to top
+        // desktop: expand citations rail and scroll to top
+        setCitationsExpanded(true)
         sourcesPanel.scrollTop = 0
       } else {
         openDrawer('mobileSources')
@@ -214,6 +231,16 @@
     }
 
     el('toggleSourcesBtn').onclick = openSources
+    el('toggleCitationsBtn').onclick = () => {
+      if (window.matchMedia('(min-width: 1024px)').matches){
+        setCitationsExpanded(!citationsExpanded())
+      } else {
+        // mobile: treat as drawer toggle
+        const m = el('mobileSources')
+        if (m && m.classList.contains('hidden')) openDrawer('mobileSources')
+        else closeDrawer('mobileSources')
+      }
+    }
 
     // State
     let evidence = []
@@ -338,8 +365,10 @@
     function renderSources(){
       const count = evidence.length
       el('sourcesCount').textContent = String(count)
+      const cc = el('citationsCount')
+      if (cc) cc.textContent = String(count)
 
-      const empty = `<div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-sm text-slate-500">No sources yet. Ask a question to see quoted excerpts here.</div>`
+      const empty = `<div class="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 text-sm text-slate-500">No citations yet. Ask a question to see quoted excerpts here.</div>`
 
       sourcesPanel.innerHTML = ''
       mobileSourcesPanel.innerHTML = ''
