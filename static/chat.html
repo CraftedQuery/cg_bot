@@ -425,12 +425,27 @@
       const res = await fetch(`/llm_logs?limit=40`, { headers: { Authorization: `Bearer ${token}` } })
       if (!res.ok) return
       const data = await res.json()
-      history = (data.logs || [])
+      const allEntries = (data.logs || [])
         .filter(l => l.tenant === tenant && l.agent === agent && l.description && l.description.includes('q:'))
         .map(l => {
           const q = (l.description.split('q:')[1] || '').trim()
           return { ts: l.ts, q }
         })
+        .filter(e => e.q) // Remove empty questions
+      
+      // Deduplicate: keep only the most recent occurrence of each unique question
+      const questionMap = new Map()
+      for (const entry of allEntries) {
+        const existing = questionMap.get(entry.q)
+        if (!existing || new Date(entry.ts) > new Date(existing.ts)) {
+          questionMap.set(entry.q, entry)
+        }
+      }
+      
+      // Convert back to array and sort by timestamp (most recent first)
+      history = Array.from(questionMap.values())
+        .sort((a, b) => new Date(b.ts) - new Date(a.ts))
+      
       renderHistory()
     }
 
