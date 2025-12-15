@@ -254,15 +254,30 @@ def _get_openai_response(
     requires_max_completion_tokens = (
         model.startswith("gpt-5") or 
         model.startswith("o1") or
-        model.startswith("o3")
+        model.startswith("o3") or
+        model.startswith("o4")
     )
     
-    def _from_chat_completions() -> Dict:
-        create_kwargs = {
+    # Some models (o-series reasoning models) don't support temperature parameter
+    # or only support temperature=1. We detect these and exclude temperature.
+    model_lower = model.lower()
+    temperature_not_supported = (
+        model_lower.startswith("o1") or
+        model_lower.startswith("o3") or
+        model_lower.startswith("o4") or
+        # Match patterns like "o1-mini", "o1-preview", "o3-mini", etc.
+        any(model_lower.startswith(f"{prefix}-") for prefix in ["o1", "o3", "o4"])
+    )
+    
+    def _from_chat_completions(skip_temperature: bool = False) -> Dict:
+        create_kwargs: Dict[str, Any] = {
             "model": model,
-            "temperature": temperature,
             "messages": messages,
         }
+        # Only include temperature if supported by the model
+        if not skip_temperature and not temperature_not_supported:
+            create_kwargs["temperature"] = temperature
+        
         if max_tokens is not None:
             if requires_max_completion_tokens:
                 create_kwargs["max_completion_tokens"] = max_tokens
@@ -275,7 +290,7 @@ def _get_openai_response(
             "tokens_out": getattr(rsp.usage, "completion_tokens", None),
         }
 
-    def _from_responses_api() -> Dict:
+    def _from_responses_api(skip_temperature: bool = False) -> Dict:
         # Some newer OpenAI models are served via the Responses API.
         if not hasattr(client, "responses"):
             raise RuntimeError("OpenAI client does not support Responses API")
@@ -283,8 +298,9 @@ def _get_openai_response(
             "model": model,
             "input": [{"role": m.get("role"), "content": m.get("content", "")} for m in messages],
         }
-        # Keep temperature consistent if supported by the server.
-        req["temperature"] = temperature
+        # Only include temperature if supported by the model/server.
+        if not skip_temperature and not temperature_not_supported:
+            req["temperature"] = temperature
         if max_tokens is not None:
             # Responses API uses `max_output_tokens`.
             req["max_output_tokens"] = max_tokens
@@ -300,18 +316,44 @@ def _get_openai_response(
             tokens_out = getattr(usage, "output_tokens", None) or getattr(usage, "completion_tokens", None)
         return {"content": content, "tokens_out": tokens_out}
 
+    def _is_temperature_error(error: Exception) -> bool:
+        """Check if the error is related to unsupported temperature parameter."""
+        error_str = str(error).lower()
+        return (
+            "temperature" in error_str and 
+            ("unsupported" in error_str or "not supported" in error_str or "does not support" in error_str)
+        )
+
     try:
         return _from_chat_completions()
     except Exception as e:
+        error_str = str(e)
+        
+        # If we get an error about temperature not being supported, retry without it
+        if _is_temperature_error(e):
+            logger.warning("Temperature parameter not supported for model %s, retrying without it", model)
+            try:
+                return _from_chat_completions(skip_temperature=True)
+            except Exception as retry_error:
+                # If retry also fails, try the Responses API without temperature
+                msg = str(retry_error).lower()
+                if "responses" in msg or "does not support" in msg or "chat.completions" in msg:
+                    try:
+                        return _from_responses_api(skip_temperature=True)
+                    except Exception as responses_error:
+                        raise retry_error from responses_error
+                raise retry_error from e
+        
         # If we get a BadRequestError about max_tokens, retry with max_completion_tokens
-        if "max_tokens" in str(e) and "max_completion_tokens" in str(e) and not requires_max_completion_tokens:
+        if "max_tokens" in error_str and "max_completion_tokens" in error_str and not requires_max_completion_tokens:
             try:
                 # Force the retry path with `max_completion_tokens`.
                 retry_kwargs: Dict[str, Any] = {
                     "model": model,
-                    "temperature": temperature,
                     "messages": messages,
                 }
+                if not temperature_not_supported:
+                    retry_kwargs["temperature"] = temperature
                 if max_tokens is not None:
                     retry_kwargs["max_completion_tokens"] = max_tokens
                 rsp = client.chat.completions.create(**retry_kwargs)
@@ -320,6 +362,15 @@ def _get_openai_response(
                     "tokens_out": getattr(rsp.usage, "completion_tokens", None),
                 }
             except Exception as retry_error:
+                # Check if the retry failed due to temperature
+                if _is_temperature_error(retry_error):
+                    logger.warning("Temperature parameter not supported for model %s, retrying without it", model)
+                    retry_kwargs.pop("temperature", None)
+                    rsp = client.chat.completions.create(**retry_kwargs)
+                    return {
+                        "content": rsp.choices[0].message.content,
+                        "tokens_out": getattr(rsp.usage, "completion_tokens", None),
+                    }
                 raise retry_error from e
 
         # Fallback to Responses API for models that don't support chat.completions.
@@ -328,6 +379,13 @@ def _get_openai_response(
             try:
                 return _from_responses_api()
             except Exception as responses_error:
+                # Check if the Responses API failed due to temperature
+                if _is_temperature_error(responses_error):
+                    logger.warning("Temperature parameter not supported for model %s in Responses API, retrying without it", model)
+                    try:
+                        return _from_responses_api(skip_temperature=True)
+                    except Exception as final_error:
+                        raise final_error from responses_error
                 # Preserve the original exception if fallback also fails.
                 raise e from responses_error
         raise
