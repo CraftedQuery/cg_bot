@@ -1210,6 +1210,7 @@
                     <button class="nav-tab flex-1 min-w-[120px]" data-tab="tenants">🏢 Tenants & Agents</button>
                     <button class="nav-tab flex-1 min-w-[120px]" data-tab="users">👥 Users</button>
                     <button class="nav-tab flex-1 min-w-[120px]" data-tab="analytics">📈 Analytics</button>
+                    <button class="nav-tab flex-1 min-w-[140px]" data-tab="workflow">🧭 Workflow Explorer</button>
                     <button class="nav-tab flex-1 min-w-[120px]" data-tab="settings">⚙️ Settings</button>
                     <button class="nav-tab flex-1 min-w-[120px]" data-tab="styling">🎨 Styling</button>
                 </div>
@@ -1280,6 +1281,157 @@
                         <option value="">Select Tenant</option>
                     </select>
                     <div id="analyticsResults" class="hidden"></div>
+                </div>
+            </div>
+
+            <!-- Workflow Explorer Panel -->
+            <div id="workflowPanel" class="content-panel hidden">
+                <div class="card-header" style="display:flex; justify-content: space-between; align-items: center; gap: 12px;">
+                    <div>
+                        <h2>Workflow Explorer</h2>
+                        <p class="text-sm" style="color: var(--text-secondary); margin-top: 0.25rem;">
+                            A unified, end-to-end view of the RAG pipeline: chats, LLM stage calls, evaluators, uploads, and errors—fully filterable with drill-down payloads.
+                        </p>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center; flex-wrap: wrap;">
+                        <button id="wfRefreshBtn" class="btn">Refresh</button>
+                        <button id="wfExportBtn" class="btn btn-secondary">Export</button>
+                    </div>
+                </div>
+
+                <div class="log-toolbar" style="margin-top: 10px;">
+                    <div class="form-group">
+                        <label for="wfStartDate">Start</label>
+                        <input type="datetime-local" id="wfStartDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="wfEndDate">End</label>
+                        <input type="datetime-local" id="wfEndDate">
+                    </div>
+                    <div class="form-group">
+                        <label for="wfTenant">Tenant</label>
+                        <select id="wfTenant">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="wfAgent">Agent</label>
+                        <select id="wfAgent">
+                            <option value="">All</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="wfUser">User</label>
+                        <input type="text" id="wfUser" placeholder="username">
+                    </div>
+                    <div class="form-group">
+                        <label for="wfProvider">Provider</label>
+                        <input type="text" id="wfProvider" placeholder="openai, anthropic...">
+                    </div>
+                    <div class="form-group">
+                        <label for="wfStage">Stage</label>
+                        <select id="wfStage">
+                            <option value="">All</option>
+                            <option value="question_evaluator">question_evaluator</option>
+                            <option value="hyde">hyde</option>
+                            <option value="rag_answer_json">rag_answer_json</option>
+                            <option value="rag_answer_json_repair">rag_answer_json_repair</option>
+                            <option value="answer_evaluator">answer_evaluator</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="wfLlmStatus">LLM Status</label>
+                        <select id="wfLlmStatus">
+                            <option value="">All</option>
+                            <option value="success">success</option>
+                            <option value="error">error</option>
+                            <option value="skipped">skipped</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="wfEvalResult">Eval Result</label>
+                        <select id="wfEvalResult">
+                            <option value="">All</option>
+                            <option value="pass">Pass</option>
+                            <option value="fail">Fail</option>
+                            <option value="flag">Flagged</option>
+                            <option value="review">Review</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="min-width: 260px;">
+                        <label for="wfSearch">Search</label>
+                        <input type="text" id="wfSearch" placeholder="question, answer, filename, error...">
+                    </div>
+                    <div class="form-group">
+                        <label for="wfLimit">Limit</label>
+                        <select id="wfLimit">
+                            <option value="200">200</option>
+                            <option value="500">500</option>
+                            <option value="1000">1000</option>
+                        </select>
+                    </div>
+                    <button id="wfApplyBtn" class="btn">Apply</button>
+                    <button id="wfResetBtn" class="btn btn-outline">Reset</button>
+                </div>
+
+                <div class="sub-tabs" id="wfTabs" style="margin-top: 12px;">
+                    <button class="sub-tab active" data-wftab="wfFlowView">Workflow View</button>
+                    <button class="sub-tab" data-wftab="wfTablesView">Tables View</button>
+                </div>
+
+                <div id="wfSummary" class="summary-grid" style="margin-top: 10px;"></div>
+
+                <div id="wfFlowView" class="log-section" style="margin-top: 10px;">
+                    <div style="display:grid; grid-template-columns: 360px 1fr; gap: 12px; align-items:start;">
+                        <div class="tenant-card" style="padding: 12px;">
+                            <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 10px;">
+                                <div style="font-weight: 700;">Flows</div>
+                                <div class="text-xs" style="color: var(--text-secondary);" id="wfFlowCount">0</div>
+                            </div>
+                            <div id="wfFlowList" style="display:grid; gap: 8px;"></div>
+                        </div>
+                        <div class="tenant-card" style="padding: 12px;">
+                            <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom: 10px;">
+                                <div style="font-weight: 700;">Selected Flow</div>
+                                <div class="text-xs" style="color: var(--text-secondary);" id="wfSelectedKey"></div>
+                            </div>
+                            <div id="wfFlowDetail">
+                                <p style="color: var(--text-secondary);">Select a flow to view its full pipeline timeline.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="wfTablesView" class="log-section hidden" style="margin-top: 10px;">
+                    <details open class="tenant-card" style="padding: 12px; margin-bottom: 10px;">
+                        <summary style="cursor:pointer; font-weight: 700;">Chat Logs (`chat_logs`)</summary>
+                        <div class="table-container" id="wfChatTable" style="margin-top: 10px;"></div>
+                    </details>
+
+                    <details open class="tenant-card" style="padding: 12px; margin-bottom: 10px;">
+                        <summary style="cursor:pointer; font-weight: 700;">LLM Stage Calls (`llm_logs`)</summary>
+                        <div class="table-container" id="wfLlmTable" style="margin-top: 10px;"></div>
+                    </details>
+
+                    <details class="tenant-card" style="padding: 12px; margin-bottom: 10px;">
+                        <summary style="cursor:pointer; font-weight: 700;">Question Evaluations (`question_evaluation_logs`)</summary>
+                        <div class="table-container" id="wfQuestionEvalTable" style="margin-top: 10px;"></div>
+                    </details>
+
+                    <details class="tenant-card" style="padding: 12px; margin-bottom: 10px;">
+                        <summary style="cursor:pointer; font-weight: 700;">Answer Evaluations (`answer_evaluation_logs`)</summary>
+                        <div class="table-container" id="wfAnswerEvalTable" style="margin-top: 10px;"></div>
+                    </details>
+
+                    <details class="tenant-card" style="padding: 12px; margin-bottom: 10px;">
+                        <summary style="cursor:pointer; font-weight: 700;">Uploaded Files (`uploaded_files`)</summary>
+                        <div class="table-container" id="wfFilesTable" style="margin-top: 10px;"></div>
+                    </details>
+
+                    <details class="tenant-card" style="padding: 12px; margin-bottom: 10px;">
+                        <summary style="cursor:pointer; font-weight: 700;">Application Errors (`error_logs`)</summary>
+                        <div class="table-container" id="wfErrorsTable" style="margin-top: 10px;"></div>
+                    </details>
                 </div>
             </div>
 
@@ -1929,6 +2081,20 @@
         let answerEvalLogs = [];
         let activeLogTab = 'answerLogs';
         let visibleLogs = [];
+
+        // Workflow Explorer state
+        let wfInitialized = false;
+        let wfTenantsCache = [];
+        let wfData = {
+            chat: [],
+            llm: [],
+            question_eval: [],
+            answer_eval: [],
+            files: [],
+            errors: [],
+        };
+        let wfFiltered = { ...wfData };
+        let wfSelectedFlowKey = null;
         function loadStyleDefaults() {
             const rootStyles = getComputedStyle(document.documentElement);
             styleKeys.forEach(key => {
@@ -2018,6 +2184,24 @@
             // Navigation tabs
             document.querySelectorAll('.nav-tab').forEach(tab => {
                 tab.addEventListener('click', () => switchTab(tab.dataset.tab));
+            });
+
+            // Workflow Explorer controls
+            const wfApplyBtn = document.getElementById('wfApplyBtn');
+            const wfResetBtn = document.getElementById('wfResetBtn');
+            const wfRefreshBtn = document.getElementById('wfRefreshBtn');
+            const wfExportBtn = document.getElementById('wfExportBtn');
+            if (wfApplyBtn) wfApplyBtn.addEventListener('click', () => wfApplyFilters());
+            if (wfResetBtn) wfResetBtn.addEventListener('click', () => wfResetFilters());
+            if (wfRefreshBtn) wfRefreshBtn.addEventListener('click', () => wfLoadAll(true));
+            if (wfExportBtn) wfExportBtn.addEventListener('click', () => wfExport());
+
+            const wfTenant = document.getElementById('wfTenant');
+            if (wfTenant) wfTenant.addEventListener('change', () => wfPopulateAgents());
+
+            const wfTabs = document.querySelectorAll('#wfTabs .sub-tab');
+            wfTabs.forEach(tab => {
+                tab.addEventListener('click', () => wfSwitchTab(tab.dataset.wftab));
             });
             
             // Create buttons
@@ -2250,6 +2434,10 @@
                     break;
                 case 'analytics':
                     loadAnalyticsOptions();
+                    break;
+                case 'workflow':
+                    wfInitIfNeeded();
+                    wfLoadAll(false);
                     break;
                 case 'settings':
                     loadSettings();
@@ -2872,6 +3060,733 @@
             }
         }
 
+        // =========================
+        // Workflow Explorer (new)
+        // =========================
+
+        function wfSwitchTab(tabId) {
+            document.querySelectorAll('#wfTabs .sub-tab').forEach(t => t.classList.remove('active'));
+            document.querySelector(`#wfTabs .sub-tab[data-wftab="${tabId}"]`)?.classList.add('active');
+
+            document.getElementById('wfFlowView')?.classList.toggle('hidden', tabId !== 'wfFlowView');
+            document.getElementById('wfTablesView')?.classList.toggle('hidden', tabId !== 'wfTablesView');
+        }
+
+        function wfInitIfNeeded() {
+            if (wfInitialized) return;
+            wfInitialized = true;
+            wfSwitchTab('wfFlowView');
+            wfLoadTenantsForFilters();
+        }
+
+        async function wfLoadTenantsForFilters() {
+            const tenantSelect = document.getElementById('wfTenant');
+            const agentSelect = document.getElementById('wfAgent');
+            if (!tenantSelect || !agentSelect) return;
+
+            try {
+                const rsp = await fetch(`${API_BASE}/tenants`, {
+                    headers: { 'Authorization': `Bearer ${authToken}` }
+                });
+                if (!rsp.ok) return;
+                wfTenantsCache = await rsp.json();
+
+                tenantSelect.innerHTML = `<option value="">All</option>` + wfTenantsCache
+                    .map(t => `<option value="${escapeHtml(t.name)}">${escapeHtml(t.name)}</option>`)
+                    .join('');
+
+                wfPopulateAgents();
+            } catch (e) {
+                console.error('Workflow explorer: failed to load tenants', e);
+            }
+        }
+
+        function wfPopulateAgents() {
+            const tenantSelect = document.getElementById('wfTenant');
+            const agentSelect = document.getElementById('wfAgent');
+            if (!tenantSelect || !agentSelect) return;
+
+            const tenant = tenantSelect.value;
+            if (!tenant) {
+                agentSelect.innerHTML = `<option value="">All</option>`;
+                return;
+            }
+
+            const found = (wfTenantsCache || []).find(t => t.name === tenant);
+            const agents = (found?.agents || []).map(a => (typeof a === 'string' ? a : a.name)).filter(Boolean);
+            agentSelect.innerHTML = `<option value="">All</option>` + agents.map(a => `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`).join('');
+        }
+
+        function wfGetFilters() {
+            const v = (id) => document.getElementById(id)?.value || '';
+            const startRaw = v('wfStartDate');
+            const endRaw = v('wfEndDate');
+            const start = startRaw ? new Date(startRaw) : null;
+            const end = endRaw ? new Date(endRaw) : null;
+            return {
+                start,
+                end,
+                tenant: v('wfTenant').trim(),
+                agent: v('wfAgent').trim(),
+                user: v('wfUser').trim(),
+                provider: v('wfProvider').trim(),
+                stage: v('wfStage').trim(),
+                llmStatus: v('wfLlmStatus').trim(),
+                evalResult: v('wfEvalResult').trim(),
+                search: v('wfSearch').trim(),
+                limit: parseInt(v('wfLimit') || '200', 10) || 200,
+            };
+        }
+
+        function wfResetFilters() {
+            const set = (id, val) => {
+                const el = document.getElementById(id);
+                if (el) el.value = val;
+            };
+            set('wfStartDate', '');
+            set('wfEndDate', '');
+            set('wfTenant', '');
+            set('wfAgent', '');
+            set('wfUser', '');
+            set('wfProvider', '');
+            set('wfStage', '');
+            set('wfLlmStatus', '');
+            set('wfEvalResult', '');
+            set('wfSearch', '');
+            set('wfLimit', '200');
+            wfPopulateAgents();
+            wfApplyFilters();
+        }
+
+        function wfApplyFilters() {
+            wfFiltered = wfFilterAll(wfData, wfGetFilters());
+            wfRenderAll();
+        }
+
+        function wfExport() {
+            const payload = {
+                filters: wfGetFilters(),
+                data: wfFiltered,
+                exported_at: new Date().toISOString(),
+            };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `workflow-export-${Date.now()}.json`;
+            document.body.appendChild(a);
+            a.click();
+            a.remove();
+            URL.revokeObjectURL(url);
+        }
+
+        async function wfLoadAll(forceRefresh) {
+            wfInitIfNeeded();
+            if (!authToken) return;
+
+            const f = wfGetFilters();
+            const limit = f.limit || 200;
+
+            // UI: lightweight loading states
+            const setLoading = (id) => {
+                const el = document.getElementById(id);
+                if (el) el.innerHTML = '<p style="color: var(--text-secondary);">Loading…</p>';
+            };
+            setLoading('wfChatTable');
+            setLoading('wfLlmTable');
+            setLoading('wfQuestionEvalTable');
+            setLoading('wfAnswerEvalTable');
+            setLoading('wfFilesTable');
+            setLoading('wfErrorsTable');
+
+            const headers = { 'Authorization': `Bearer ${authToken}` };
+
+            const qs = (params) => {
+                const u = new URLSearchParams();
+                Object.entries(params || {}).forEach(([k, v]) => {
+                    if (v === undefined || v === null || v === '') return;
+                    u.set(k, String(v));
+                });
+                return u.toString();
+            };
+
+            try {
+                const [chatRsp, llmRsp, qEvalRsp, aEvalRsp, filesRsp, errRsp] = await Promise.all([
+                    fetch(`${API_BASE}/chat_logs?` + qs({ limit, tenant: f.tenant || undefined, agent: f.agent || undefined, search: f.search || undefined }), { headers }),
+                    fetch(`${API_BASE}/llm_logs?` + qs({ limit }), { headers }),
+                    fetch(`${API_BASE}/question_evaluation_logs?` + qs({ limit }), { headers }),
+                    fetch(`${API_BASE}/answer_evaluation_logs?` + qs({ limit }), { headers }),
+                    fetch(`${API_BASE}/uploaded_files?` + qs({ limit, tenant: f.tenant || undefined, agent: f.agent || undefined, search: f.search || undefined }), { headers }),
+                    fetch(`${API_BASE}/error_logs?` + qs({ limit }), { headers }),
+                ]);
+
+                const toLogs = async (rsp) => (rsp.ok ? (await rsp.json()).logs || (await rsp.json()) : []);
+
+                const chatJson = chatRsp.ok ? await chatRsp.json() : { logs: [] };
+                const llmJson = llmRsp.ok ? await llmRsp.json() : { logs: [] };
+                const qEvalJson = qEvalRsp.ok ? await qEvalRsp.json() : { logs: [] };
+                const aEvalJson = aEvalRsp.ok ? await aEvalRsp.json() : { logs: [] };
+                const filesJson = filesRsp.ok ? await filesRsp.json() : { logs: [] };
+                const errJson = errRsp.ok ? await errRsp.json() : { logs: [] };
+
+                wfData = {
+                    chat: chatJson.logs || [],
+                    llm: llmJson.logs || [],
+                    question_eval: qEvalJson.logs || [],
+                    answer_eval: aEvalJson.logs || [],
+                    files: filesJson.logs || [],
+                    errors: errJson.logs || [],
+                };
+                wfApplyFilters();
+            } catch (e) {
+                console.error('Workflow explorer: load failed', e);
+                const el = document.getElementById('wfFlowDetail');
+                if (el) el.innerHTML = `<p style="color:#c62828;"><strong>Failed to load workflow data.</strong> ${escapeHtml(String(e))}</p>`;
+            }
+        }
+
+        function wfInDateRange(ts, start, end) {
+            if (!ts) return true;
+            const d = new Date(ts);
+            if (start && d < start) return false;
+            if (end && d > end) return false;
+            return true;
+        }
+
+        function wfTextMatch(haystack, needle) {
+            if (!needle) return true;
+            const n = needle.toLowerCase();
+            return String(haystack || '').toLowerCase().includes(n);
+        }
+
+        function wfFilterAll(data, f) {
+            const tenant = (f.tenant || '').toLowerCase();
+            const agent = (f.agent || '').toLowerCase();
+            const user = (f.user || '').toLowerCase();
+            const provider = (f.provider || '').toLowerCase();
+            const stage = (f.stage || '').toLowerCase();
+            const llmStatus = (f.llmStatus || '').toLowerCase();
+            const evalResult = (f.evalResult || '').toLowerCase();
+            const search = (f.search || '').toLowerCase();
+
+            const filterTenantAgent = (row) => {
+                if (tenant && String(row.tenant || '').toLowerCase() !== tenant) return false;
+                if (agent && String(row.agent || '').toLowerCase() !== agent) return false;
+                return true;
+            };
+
+            const filtered = {
+                chat: (data.chat || []).filter(r => {
+                    if (!filterTenantAgent(r)) return false;
+                    if (!wfInDateRange(r.ts, f.start, f.end)) return false;
+                    if (search && !wfTextMatch(`${r.question || ''} ${r.answer || ''} ${JSON.stringify(r.sources || '')} ${r.session_id || ''}`, search)) return false;
+                    return true;
+                }),
+                llm: (data.llm || []).filter(r => {
+                    if (!filterTenantAgent(r)) return false;
+                    if (!wfInDateRange(r.ts, f.start, f.end)) return false;
+                    if (user && !wfTextMatch(r.user || '', user)) return false;
+                    if (provider && !wfTextMatch(r.provider || '', provider)) return false;
+                    if (stage && !wfTextMatch(r.stage || '', stage)) return false;
+                    if (llmStatus && String(r.status || '').toLowerCase() !== llmStatus) return false;
+                    if (search) {
+                        const blob = `${r.question || ''} ${r.description || ''} ${r.answer || ''} ${r.error || ''} ${r.error_type || ''}`;
+                        if (!wfTextMatch(blob, search)) return false;
+                    }
+                    return true;
+                }),
+                question_eval: (data.question_eval || []).filter(r => {
+                    if (!filterTenantAgent(r)) return false;
+                    if (!wfInDateRange(r.ts, f.start, f.end)) return false;
+                    if (user && !wfTextMatch(r.username || '', user)) return false;
+                    if (provider && !wfTextMatch(r.provider || '', provider)) return false;
+                    if (evalResult && !wfTextMatch(r.evaluation_result || r.evaluation_status || '', evalResult)) return false;
+                    if (search) {
+                        const blob = `${r.original_question || ''} ${r.evaluation_result || ''} ${r.reason || ''} ${r.full_response || ''}`;
+                        if (!wfTextMatch(blob, search)) return false;
+                    }
+                    return true;
+                }),
+                answer_eval: (data.answer_eval || []).filter(r => {
+                    if (!filterTenantAgent(r)) return false;
+                    if (!wfInDateRange(r.ts, f.start, f.end)) return false;
+                    if (user && !wfTextMatch(r.username || '', user)) return false;
+                    if (provider && !wfTextMatch(r.provider || '', provider)) return false;
+                    if (evalResult && !wfTextMatch(r.evaluation_result || '', evalResult)) return false;
+                    if (search) {
+                        const blob = `${r.original_answer || ''} ${r.evaluation_result || ''} ${JSON.stringify(r.issues || '')} ${r.full_response || ''}`;
+                        if (!wfTextMatch(blob, search)) return false;
+                    }
+                    return true;
+                }),
+                files: (data.files || []).filter(r => {
+                    if (!filterTenantAgent(r)) return false;
+                    if (search && !wfTextMatch(`${r.filename || ''} ${r.status || ''}`, search)) return false;
+                    return true;
+                }),
+                errors: (data.errors || []).filter(r => {
+                    if (!filterTenantAgent(r)) return false;
+                    if (!wfInDateRange(r.ts, f.start, f.end)) return false;
+                    if (search && !wfTextMatch(`${r.endpoint || ''} ${r.message || ''}`, search)) return false;
+                    return true;
+                }),
+            };
+
+            return filtered;
+        }
+
+        function wfRenderAll() {
+            wfRenderSummary();
+            wfRenderFlowView();
+            wfRenderTables();
+        }
+
+        function wfRenderSummary() {
+            const s = document.getElementById('wfSummary');
+            if (!s) return;
+
+            const llm = wfFiltered.llm || [];
+            const chat = wfFiltered.chat || [];
+            const q = wfFiltered.question_eval || [];
+            const a = wfFiltered.answer_eval || [];
+            const files = wfFiltered.files || [];
+            const errs = wfFiltered.errors || [];
+
+            const countBy = (arr, key) => {
+                const m = {};
+                (arr || []).forEach(x => {
+                    const k = (x[key] || 'unknown') + '';
+                    m[k] = (m[k] || 0) + 1;
+                });
+                return m;
+            };
+
+            const llmStatus = countBy(llm, 'status');
+            const llmStage = countBy(llm, 'stage');
+
+            s.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-number">${chat.length}</div>
+                    <div class="stat-label">Chat Logs</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${llm.length}</div>
+                    <div class="stat-label">LLM Calls</div>
+                    <div class="text-xs" style="color: var(--text-secondary); margin-top: 6px;">
+                        success: ${llmStatus.success || 0} • error: ${llmStatus.error || 0} • skipped: ${llmStatus.skipped || 0}
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${q.length}</div>
+                    <div class="stat-label">Question Evals</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${a.length}</div>
+                    <div class="stat-label">Answer Evals</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${files.length}</div>
+                    <div class="stat-label">Uploaded Files</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number">${errs.length}</div>
+                    <div class="stat-label">Errors</div>
+                </div>
+            `;
+        }
+
+        function wfFlowKey(row) {
+            const t = row.tenant || '';
+            const a = row.agent || '';
+            const u = row.user || '';
+            const q = row.question || row.original_question || '';
+            return `${t}|||${a}|||${u}|||${q}`;
+        }
+
+        function wfTrunc(s, n) {
+            const v = String(s || '');
+            return v.length > n ? v.slice(0, n - 1) + '…' : v;
+        }
+
+        function wfRenderFlowView() {
+            const list = document.getElementById('wfFlowList');
+            const count = document.getElementById('wfFlowCount');
+            const detail = document.getElementById('wfFlowDetail');
+            const selected = document.getElementById('wfSelectedKey');
+            if (!list || !detail || !count || !selected) return;
+
+            // Build flows from main answer stage calls (rag_answer_json) when available; else fall back to any llm logs.
+            const llm = (wfFiltered.llm || []).slice().sort((a, b) => String(b.ts || '').localeCompare(String(a.ts || '')));
+            const base = llm.filter(x => (x.stage || '').toLowerCase() === 'rag_answer_json');
+            const seed = base.length ? base : llm;
+
+            const map = new Map();
+            seed.forEach(x => {
+                const key = wfFlowKey(x);
+                if (!map.has(key)) map.set(key, { key, latest_ts: x.ts, tenant: x.tenant, agent: x.agent, user: x.user, question: x.question, stages: [] });
+            });
+
+            const flows = Array.from(map.values()).sort((a, b) => String(b.latest_ts || '').localeCompare(String(a.latest_ts || '')));
+            count.textContent = `${flows.length}`;
+
+            list.innerHTML = flows.map(f => {
+                const isActive = wfSelectedFlowKey === f.key;
+                return `
+                    <button class="btn btn-outline" style="text-align:left; width:100%; padding:10px; border-radius: 12px; ${isActive ? 'border-color: var(--primary); box-shadow: var(--shadow);' : ''}"
+                        onclick="wfSelectFlow(${JSON.stringify(f.key).replace(/'/g, '&#39;')})">
+                        <div style="display:flex; justify-content: space-between; gap: 10px; align-items:center;">
+                            <div style="font-weight:700;">${escapeHtml(wfTrunc(f.question || '(no question)', 64))}</div>
+                            <div class="text-xs" style="color: var(--text-secondary); white-space:nowrap;">${f.latest_ts ? new Date(f.latest_ts).toLocaleString() : ''}</div>
+                        </div>
+                        <div class="text-xs" style="color: var(--text-secondary); margin-top: 6px;">
+                            ${escapeHtml(f.tenant || '')}${f.agent ? ' • ' + escapeHtml(f.agent) : ''}${f.user ? ' • ' + escapeHtml(f.user) : ''}
+                        </div>
+                    </button>
+                `;
+            }).join('');
+
+            if (!wfSelectedFlowKey && flows.length) {
+                wfSelectFlow(flows[0].key);
+                return;
+            }
+
+            if (!wfSelectedFlowKey) {
+                selected.textContent = '';
+                detail.innerHTML = `<p style="color: var(--text-secondary);">No flows match the current filters.</p>`;
+                return;
+            }
+
+            // Keep current detail if selected exists
+            wfRenderFlowDetail(wfSelectedFlowKey);
+        }
+
+        function wfSelectFlow(key) {
+            wfSelectedFlowKey = key;
+            wfRenderFlowDetail(key);
+            // Update list highlight without rebuilding everything
+            wfRenderFlowView();
+        }
+
+        function wfRenderFlowDetail(key) {
+            const detail = document.getElementById('wfFlowDetail');
+            const selected = document.getElementById('wfSelectedKey');
+            if (!detail || !selected) return;
+            selected.textContent = key ? 'keyed by tenant/agent/user/question' : '';
+
+            const parts = String(key || '').split('|||');
+            const [tenant, agent, user, question] = parts;
+
+            const llmAll = (wfData.llm || []).filter(x =>
+                String(x.tenant || '') === tenant &&
+                String(x.agent || '') === agent &&
+                String(x.user || '') === user &&
+                String(x.question || '') === question
+            ).sort((a, b) => String(a.ts || '').localeCompare(String(b.ts || '')));
+
+            const qEvalAll = (wfData.question_eval || []).filter(x =>
+                String(x.tenant || '') === tenant &&
+                String(x.agent || '') === agent &&
+                String(x.username || '') === user &&
+                String(x.original_question || '') === question
+            ).sort((a, b) => String(a.ts || '').localeCompare(String(b.ts || '')));
+
+            const chatAll = (wfData.chat || []).filter(x =>
+                String(x.tenant || '') === tenant &&
+                String(x.agent || '') === agent &&
+                String(x.question || '') === question
+            ).sort((a, b) => String(a.ts || '').localeCompare(String(b.ts || '')));
+
+            const aEvalAll = (wfData.answer_eval || []).filter(x =>
+                String(x.tenant || '') === tenant &&
+                String(x.agent || '') === agent &&
+                String(x.username || '') === user
+            ).sort((a, b) => String(a.ts || '').localeCompare(String(b.ts || '')));
+
+            const errAll = (wfData.errors || []).filter(x =>
+                String(x.tenant || '') === tenant &&
+                String(x.agent || '') === agent
+            ).sort((a, b) => String(a.ts || '').localeCompare(String(b.ts || '')));
+
+            const stageRow = (x) => `
+                <tr class="clickable-row" onclick='showLogDetail("rag", ${JSON.stringify(x).replace(/'/g, "&#39;")})'>
+                    <td>${x.ts ? new Date(x.ts).toLocaleString() : ''}</td>
+                    <td>${escapeHtml(x.stage || '')}</td>
+                    <td>${escapeHtml(x.provider || '')}</td>
+                    <td>${escapeHtml(x.model || '')}</td>
+                    <td><span class="status-badge status-${escapeHtml(x.status || '')}">${escapeHtml(x.status || '')}</span></td>
+                    <td>${x.latency_ms !== null && x.latency_ms !== undefined ? Math.round(x.latency_ms) + 'ms' : 'N/A'}</td>
+                    <td>${escapeHtml(x.error_type || '')}</td>
+                </tr>
+            `;
+
+            const miniTable = (rowsHtml, headersHtml) => `
+                <div class="table-container" style="margin-top: 8px;">
+                    <table>
+                        <thead><tr>${headersHtml}</tr></thead>
+                        <tbody>${rowsHtml || ''}</tbody>
+                    </table>
+                </div>
+            `;
+
+            detail.innerHTML = `
+                <div style="display:grid; gap: 14px;">
+                    <div class="tenant-card" style="padding: 12px;">
+                        <div style="display:flex; justify-content: space-between; gap: 10px; align-items:center;">
+                            <div>
+                                <div style="font-weight: 800; font-size: 1rem;">${escapeHtml(question || '(no question)')}</div>
+                                <div class="text-xs" style="color: var(--text-secondary); margin-top: 6px;">
+                                    ${escapeHtml(tenant || '')}${agent ? ' • ' + escapeHtml(agent) : ''}${user ? ' • ' + escapeHtml(user) : ''}
+                                </div>
+                            </div>
+                            <div style="display:flex; gap:8px; align-items:center;">
+                                ${chatAll.length ? `<button class="btn btn-outline" onclick='showLogDetail("chat", ${JSON.stringify(chatAll[chatAll.length - 1]).replace(/'/g, "&#39;")})'>View Chat</button>` : ''}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tenant-card" style="padding: 12px;">
+                        <div style="font-weight: 800;">LLM Stage Timeline</div>
+                        ${llmAll.length ? miniTable(llmAll.map(stageRow).join(''), `<th>Timestamp</th><th>Stage</th><th>Provider</th><th>Model</th><th>Status</th><th>Latency</th><th>Error Type</th>`) : `<p style="color: var(--text-secondary); margin-top: 8px;">No LLM stage calls found for this flow.</p>`}
+                    </div>
+
+                    <div class="tenant-card" style="padding: 12px;">
+                        <div style="font-weight: 800;">Question Evaluation</div>
+                        ${qEvalAll.length ? miniTable(qEvalAll.map(x => `
+                            <tr class="clickable-row" onclick='showLogDetail("question", ${JSON.stringify(x).replace(/'/g, "&#39;")})'>
+                                <td>${x.ts ? new Date(x.ts).toLocaleString() : ''}</td>
+                                <td>${escapeHtml(x.provider || '')}</td>
+                                <td>${escapeHtml(x.model || '')}</td>
+                                <td>${escapeHtml(x.evaluation_status || x.evaluation_result || '')}</td>
+                            </tr>
+                        `).join(''), `<th>Timestamp</th><th>Provider</th><th>Model</th><th>Result</th>`) : `<p style="color: var(--text-secondary); margin-top: 8px;">No question evaluation found for this flow.</p>`}
+                    </div>
+
+                    <div class="tenant-card" style="padding: 12px;">
+                        <div style="font-weight: 800;">Answer Evaluation</div>
+                        ${aEvalAll.length ? miniTable(aEvalAll.map(x => `
+                            <tr class="clickable-row" onclick='showLogDetail("answer", ${JSON.stringify(x).replace(/'/g, "&#39;")})'>
+                                <td>${x.ts ? new Date(x.ts).toLocaleString() : ''}</td>
+                                <td>${escapeHtml(x.provider || '')}</td>
+                                <td>${escapeHtml(x.model || '')}</td>
+                                <td>${escapeHtml(x.evaluation_result || '')}</td>
+                            </tr>
+                        `).join(''), `<th>Timestamp</th><th>Provider</th><th>Model</th><th>Result</th>`) : `<p style="color: var(--text-secondary); margin-top: 8px;">No answer evaluation found for this tenant/agent/user.</p>`}
+                    </div>
+
+                    <div class="tenant-card" style="padding: 12px;">
+                        <div style="font-weight: 800;">App Errors (same tenant/agent)</div>
+                        ${errAll.length ? miniTable(errAll.slice(-20).map(x => `
+                            <tr class="clickable-row" onclick='showLogDetail("app_error", ${JSON.stringify(x).replace(/'/g, "&#39;")})'>
+                                <td>${x.ts ? new Date(x.ts).toLocaleString() : ''}</td>
+                                <td>${escapeHtml(x.endpoint || '')}</td>
+                                <td>${escapeHtml(wfTrunc(x.message || '', 120))}</td>
+                            </tr>
+                        `).join(''), `<th>Timestamp</th><th>Endpoint</th><th>Message</th>`) : `<p style="color: var(--text-secondary); margin-top: 8px;">No application errors found for this tenant/agent (within current limit).</p>`}
+                    </div>
+                </div>
+            `;
+        }
+
+        function wfRenderTables() {
+            wfRenderChatTable();
+            wfRenderLlmTable();
+            wfRenderQuestionEvalTable();
+            wfRenderAnswerEvalTable();
+            wfRenderFilesTable();
+            wfRenderErrorsTable();
+        }
+
+        function wfRenderChatTable() {
+            const container = document.getElementById('wfChatTable');
+            if (!container) return;
+            const logs = wfFiltered.chat || [];
+            if (!logs.length) {
+                container.innerHTML = '<p style="color: var(--text-secondary);">No chat logs.</p>';
+                return;
+            }
+            const rows = logs.map(log => `
+                <tr class="clickable-row" onclick='showLogDetail("chat", ${JSON.stringify(log).replace(/'/g, "&#39;")})'>
+                    <td>${escapeHtml(String(log.id || ''))}</td>
+                    <td>${log.ts ? new Date(log.ts).toLocaleString() : ''}</td>
+                    <td>${escapeHtml(log.tenant || '')}</td>
+                    <td>${escapeHtml(log.agent || '')}</td>
+                    <td>${escapeHtml(log.session_id || '')}</td>
+                    <td>${escapeHtml(wfTrunc(log.question || '', 80))}</td>
+                    <td>${escapeHtml(wfTrunc(log.answer || '', 80))}</td>
+                    <td>${log.latency !== null && log.latency !== undefined ? Math.round(Number(log.latency) * 1000) + 'ms' : 'N/A'}</td>
+                    <td>${log.tokens_in ?? 'N/A'}</td>
+                    <td>${log.tokens_out ?? 'N/A'}</td>
+                </tr>
+            `).join('');
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th><th>Timestamp</th><th>Tenant</th><th>Agent</th><th>Session</th><th>Question</th><th>Answer</th><th>Latency</th><th>In</th><th>Out</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+        }
+
+        function wfRenderLlmTable() {
+            const container = document.getElementById('wfLlmTable');
+            if (!container) return;
+            const logs = wfFiltered.llm || [];
+            if (!logs.length) {
+                container.innerHTML = '<p style="color: var(--text-secondary);">No LLM logs.</p>';
+                return;
+            }
+            const rows = logs.map(log => `
+                <tr class="clickable-row" onclick='showLogDetail("rag", ${JSON.stringify(log).replace(/'/g, "&#39;")})'>
+                    <td>${log.ts ? new Date(log.ts).toLocaleString() : ''}</td>
+                    <td>${escapeHtml(log.user || '')}</td>
+                    <td>${escapeHtml(wfTrunc(log.question || '', 80))}</td>
+                    <td>${escapeHtml(log.provider || '')}</td>
+                    <td><span class="status-badge status-${escapeHtml(log.status || '')}">${escapeHtml(log.status || '')}</span></td>
+                    <td>${escapeHtml(log.model || '')}</td>
+                    <td>${escapeHtml(log.stage || '')}</td>
+                    <td>${log.latency_ms !== null && log.latency_ms !== undefined ? Math.round(log.latency_ms) + 'ms' : 'N/A'}</td>
+                    <td>${log.tokens_in ?? 'N/A'}</td>
+                    <td>${log.tokens_out ?? 'N/A'}</td>
+                </tr>
+            `).join('');
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th><th>User</th><th>Question</th><th>Provider</th><th>Status</th><th>Model</th><th>Stage</th><th>Latency</th><th>In</th><th>Out</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+        }
+
+        function wfRenderQuestionEvalTable() {
+            const container = document.getElementById('wfQuestionEvalTable');
+            if (!container) return;
+            const logs = wfFiltered.question_eval || [];
+            if (!logs.length) {
+                container.innerHTML = '<p style="color: var(--text-secondary);">No question evaluation logs.</p>';
+                return;
+            }
+            const rows = logs.map(log => `
+                <tr class="clickable-row" onclick='showLogDetail("question", ${JSON.stringify(log).replace(/'/g, "&#39;")})'>
+                    <td>${escapeHtml(String(log.id || ''))}</td>
+                    <td>${log.ts ? new Date(log.ts).toLocaleString() : ''}</td>
+                    <td>${escapeHtml(log.username || '')}</td>
+                    <td>${escapeHtml(log.provider || '')}</td>
+                    <td>${escapeHtml(log.model || '')}</td>
+                    <td>${escapeHtml(wfTrunc(log.original_question || '', 90))}</td>
+                    <td>${escapeHtml(wfTrunc(log.evaluation_status || log.evaluation_result || '', 40))}</td>
+                </tr>
+            `).join('');
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th><th>Timestamp</th><th>User</th><th>Provider</th><th>Model</th><th>Question</th><th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+        }
+
+        function wfRenderAnswerEvalTable() {
+            const container = document.getElementById('wfAnswerEvalTable');
+            if (!container) return;
+            const logs = wfFiltered.answer_eval || [];
+            if (!logs.length) {
+                container.innerHTML = '<p style="color: var(--text-secondary);">No answer evaluation logs.</p>';
+                return;
+            }
+            const rows = logs.map(log => `
+                <tr class="clickable-row" onclick='showLogDetail("answer", ${JSON.stringify(log).replace(/'/g, "&#39;")})'>
+                    <td>${escapeHtml(String(log.id || ''))}</td>
+                    <td>${log.ts ? new Date(log.ts).toLocaleString() : ''}</td>
+                    <td>${escapeHtml(log.username || '')}</td>
+                    <td>${escapeHtml(log.provider || '')}</td>
+                    <td>${escapeHtml(log.model || '')}</td>
+                    <td>${escapeHtml(wfTrunc(log.evaluation_result || '', 50))}</td>
+                </tr>
+            `).join('');
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th><th>Timestamp</th><th>User</th><th>Provider</th><th>Model</th><th>Result</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+        }
+
+        function wfRenderFilesTable() {
+            const container = document.getElementById('wfFilesTable');
+            if (!container) return;
+            const logs = wfFiltered.files || [];
+            if (!logs.length) {
+                container.innerHTML = '<p style="color: var(--text-secondary);">No uploaded file records.</p>';
+                return;
+            }
+            const rows = logs.map(log => `
+                <tr class="clickable-row" onclick='showLogDetail("file", ${JSON.stringify(log).replace(/'/g, "&#39;")})'>
+                    <td>${escapeHtml(String(log.id || ''))}</td>
+                    <td>${escapeHtml(log.tenant || '')}</td>
+                    <td>${escapeHtml(log.agent || '')}</td>
+                    <td>${escapeHtml(log.filename || '')}</td>
+                    <td>${escapeHtml(String(log.size || ''))}</td>
+                    <td>${escapeHtml(log.uploaded_at || '')}</td>
+                    <td>${escapeHtml(log.status || '')}</td>
+                    <td>${log.ocr_used ? 'Yes' : 'No'}</td>
+                    <td>${log.template ? 'Yes' : 'No'}</td>
+                </tr>
+            `).join('');
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID</th><th>Tenant</th><th>Agent</th><th>Filename</th><th>Size</th><th>Uploaded</th><th>Status</th><th>OCR</th><th>Template</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+        }
+
+        function wfRenderErrorsTable() {
+            const container = document.getElementById('wfErrorsTable');
+            if (!container) return;
+            const logs = wfFiltered.errors || [];
+            if (!logs.length) {
+                container.innerHTML = '<p style="color: var(--text-secondary);">No error logs.</p>';
+                return;
+            }
+            const rows = logs.map(log => `
+                <tr class="clickable-row" onclick='showLogDetail("app_error", ${JSON.stringify(log).replace(/'/g, "&#39;")})'>
+                    <td>${log.ts ? new Date(log.ts).toLocaleString() : ''}</td>
+                    <td>${escapeHtml(log.endpoint || '')}</td>
+                    <td>${escapeHtml(log.tenant || '')}</td>
+                    <td>${escapeHtml(log.agent || '')}</td>
+                    <td>${escapeHtml(wfTrunc(log.message || '', 140))}</td>
+                </tr>
+            `).join('');
+            container.innerHTML = `
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Timestamp</th><th>Endpoint</th><th>Tenant</th><th>Agent</th><th>Message</th>
+                        </tr>
+                    </thead>
+                    <tbody>${rows}</tbody>
+                </table>
+            `;
+        }
+
         function showLogDetail(type, log) {
             const detail = document.getElementById('logDetailBody');
             const safePrompt = log.prompt ? `<pre>${escapeHtml(JSON.stringify(log.prompt, null, 2))}</pre>` : '<p>No prompt captured.</p>';
@@ -2895,6 +3810,58 @@
                     <p><strong>Recommendations:</strong> ${escapeHtml(log.recommendations ? JSON.stringify(log.recommendations) : 'None')}</p>
                     <p><strong>Selected Answer:</strong> ${escapeHtml(log.selected_answer_provider || log.model || '')}</p>
                 `;
+            } else if (type === 'chat') {
+                meta = `
+                    <p><strong>Chat ID:</strong> ${escapeHtml(String(log.id || ''))}</p>
+                    <p><strong>Tenant:</strong> ${escapeHtml(log.tenant || '')}</p>
+                    <p><strong>Agent:</strong> ${escapeHtml(log.agent || '')}</p>
+                    <p><strong>Session:</strong> ${escapeHtml(log.session_id || '')}</p>
+                    <p><strong>Latency:</strong> ${log.latency !== null && log.latency !== undefined ? Math.round(Number(log.latency) * 1000) + 'ms' : 'N/A'}</p>
+                    <p><strong>Tokens In:</strong> ${log.tokens_in ?? 'N/A'}</p>
+                    <p><strong>Tokens Out:</strong> ${log.tokens_out ?? 'N/A'}</p>
+                    <p><strong>Question Eval ID:</strong> ${escapeHtml(String(log.question_evaluation_id ?? 'N/A'))}</p>
+                    <p><strong>Answer Eval ID:</strong> ${escapeHtml(String(log.answer_evaluation_id ?? 'N/A'))}</p>
+                `;
+                const sources = log.sources ? `<pre style="background:#f5f5f5; padding:10px; border-radius: 6px; overflow:auto; max-height: 260px;">${escapeHtml(JSON.stringify(log.sources, null, 2))}</pre>` : '<p>No sources captured.</p>';
+                detail.innerHTML = `
+                    <div style="display:grid; gap:10px;">
+                        <div><strong>Timestamp:</strong> ${log.ts ? new Date(log.ts).toLocaleString() : ''}</div>
+                        ${meta}
+                        <div><strong>Question:</strong> <pre style="background:#f5f5f5; padding:10px; border-radius: 6px; overflow:auto;">${escapeHtml(log.question || '')}</pre></div>
+                        <div><strong>Answer:</strong> <pre style="background:#f5f5f5; padding:10px; border-radius: 6px; overflow:auto; max-height: 320px;">${escapeHtml(log.answer || '')}</pre></div>
+                        <div><strong>Sources:</strong> ${sources}</div>
+                    </div>
+                `;
+                showModal('logDetailModal');
+                return;
+            } else if (type === 'file') {
+                detail.innerHTML = `
+                    <div style="display:grid; gap:10px;">
+                        <div><strong>File ID:</strong> ${escapeHtml(String(log.id || ''))}</div>
+                        <div><strong>Tenant:</strong> ${escapeHtml(log.tenant || '')}</div>
+                        <div><strong>Agent:</strong> ${escapeHtml(log.agent || '')}</div>
+                        <div><strong>Filename:</strong> ${escapeHtml(log.filename || '')}</div>
+                        <div><strong>Size:</strong> ${escapeHtml(String(log.size || ''))}</div>
+                        <div><strong>Uploaded At:</strong> ${escapeHtml(log.uploaded_at || '')}</div>
+                        <div><strong>Status:</strong> ${escapeHtml(log.status || '')}</div>
+                        <div><strong>OCR Used:</strong> ${log.ocr_used ? 'Yes' : 'No'}</div>
+                        <div><strong>Template:</strong> ${log.template ? 'Yes' : 'No'}</div>
+                    </div>
+                `;
+                showModal('logDetailModal');
+                return;
+            } else if (type === 'app_error') {
+                detail.innerHTML = `
+                    <div style="display:grid; gap:10px;">
+                        <div><strong>Timestamp:</strong> ${log.ts ? new Date(log.ts).toLocaleString() : ''}</div>
+                        <div><strong>Endpoint:</strong> ${escapeHtml(log.endpoint || '')}</div>
+                        <div><strong>Tenant:</strong> ${escapeHtml(log.tenant || '')}</div>
+                        <div><strong>Agent:</strong> ${escapeHtml(log.agent || '')}</div>
+                        <div><strong>Message:</strong> <pre style="background:#f5f5f5; padding:10px; border-radius: 6px; overflow:auto; max-height: 360px;">${escapeHtml(log.message || '')}</pre></div>
+                    </div>
+                `;
+                showModal('logDetailModal');
+                return;
             } else {
                 // RAG logs (llm_logs)
                 meta = `
