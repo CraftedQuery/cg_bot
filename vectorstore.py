@@ -124,9 +124,27 @@ def retrieve_documents_mmr(
     Notes:
     - Requires LangChain optional dependencies (same as the vector store).
     - Uses FAISS' retriever interface.
+    
+    Args:
+        tenant: Tenant identifier
+        agent: Agent identifier
+        query: Search query string
+        k: Final number of documents to return (default: 8)
+        fetch_k: Number of candidates to fetch before MMR selection (default: 50)
+        lambda_mult: MMR diversity parameter (0.0=max diversity, 1.0=max relevance, default: 0.6)
     """
 
     _require_deps()
+    
+    # Validate parameters
+    if not (0 <= lambda_mult <= 1):
+        raise ValueError(f"lambda_mult must be between 0 and 1, got {lambda_mult}")
+    if fetch_k < k:
+        # Auto-adjust: fetch_k should be >= k for meaningful MMR
+        fetch_k = max(k, fetch_k)
+    if k <= 0:
+        raise ValueError(f"k must be positive, got {k}")
+    
     try:
         from langchain_core.documents import Document  # type: ignore
     except Exception as e:  # pragma: no cover - optional deps mismatch

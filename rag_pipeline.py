@@ -235,8 +235,14 @@ def generate_hyde_query(
     hyde = (rsp.get("content") or "").strip()
     if rsp.get("error"):
         return question
-    # Conservative fallback
+    # Conservative fallback: validate quality
     if len(hyde) < 40:
+        logger.warning("HyDE generation too short (<40 chars), using original question")
+        return question
+    # Additional check: ensure it's not just a copy of the question
+    # (simple heuristic: if identical ignoring case/whitespace, it's not useful)
+    if hyde.lower().strip() == question.lower().strip():
+        logger.warning("HyDE generation identical to original question, using original")
         return question
     return hyde
 
