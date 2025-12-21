@@ -1908,8 +1908,72 @@
                                     <input type="checkbox" id="localOnly" name="local_only" checked>
                                     <label for="localOnly">Local Data Only</label>
                                 </div>
+                                <details style="margin-top: 15px; padding: 10px; background: var(--gray-50); border-radius: 4px;">
+                                    <summary style="cursor: pointer; font-weight: 500; color: var(--gray-700); margin-bottom: 10px;">Advanced Options</summary>
+                                    <div class="form-group" style="margin-top: 10px;">
+                                        <label for="mainJsonRepairPrompt">JSON Repair Prompt</label>
+                                        <textarea id="mainJsonRepairPrompt" rows="2" placeholder="You fix JSON to match the required schema exactly. Output only valid JSON."></textarea>
+                                        <small style="color: var(--gray-600);">Used when the initial JSON response needs repair.</small>
+                                    </div>
+                                </details>
                                 <div style="text-align: right; margin-top: 8px;">
                                     <button type="button" class="btn btn-outline" onclick="document.getElementById('agentConfigForm').requestSubmit()">Save Main Bot</button>
+                                </div>
+                            </div>
+
+                            <div class="pipeline-card" style="background: var(--gray-50);">
+                                <div class="stage-header">
+                                    <div class="stage-order" style="background: var(--gray-400);">2a</div>
+                                    <div>
+                                        <h5>HyDE Query Enhancement</h5>
+                                        <small style="color: var(--gray-600);">Optional query expansion for better retrieval.</small>
+                                    </div>
+                                    <label class="toggle-switch" title="Enable HyDE">
+                                        <input type="checkbox" id="hydeEnabled">
+                                        <span class="slider"></span>
+                                    </label>
+                                </div>
+                                <div style="margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;">
+                                    <span class="status-badge" id="hydeStatus">Enabled</span>
+                                    <span style="color: var(--gray-600); font-size: 12px;">Optional</span>
+                                </div>
+                                <div class="form-group">
+                                    <label for="hydeProvider">AI Provider</label>
+                                    <select id="hydeProvider">
+                                        <option value="anthropic">Anthropic</option>
+                                        <option value="openai">OpenAI</option>
+                                        <option value="vertexai">Google Vertex AI</option>
+                                        <option value="custom">Custom</option>
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="hydeEndpoint">API Endpoint (for custom)</label>
+                                    <input type="text" id="hydeEndpoint" placeholder="https://...">
+                                </div>
+                                <div class="form-group">
+                                    <label for="hydeApiKey">API Key</label>
+                                    <input type="password" id="hydeApiKey" placeholder="Optional override">
+                                </div>
+                                <div class="form-group">
+                                    <label for="hydeModel">Model</label>
+                                    <select id="hydeModel"></select>
+                                </div>
+                                <div class="form-group">
+                                    <label for="hydeSystemPrompt">System Prompt</label>
+                                    <textarea id="hydeSystemPrompt" rows="4" placeholder="You write a hypothetical excerpt that would likely appear in the relevant document..."></textarea>
+                                </div>
+                                <div class="form-row">
+                                    <div class="form-group">
+                                        <label for="hydeMaxTokens">Max Tokens</label>
+                                        <input type="number" id="hydeMaxTokens" min="1" step="50" placeholder="400">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="hydeTemperature">Temperature</label>
+                                        <input type="number" id="hydeTemperature" min="0" max="2" step="0.1" value="0.2">
+                                    </div>
+                                </div>
+                                <div style="text-align: right; margin-top: 8px;">
+                                    <button type="button" class="btn btn-outline" onclick="document.getElementById('agentConfigForm').requestSubmit()">Save HyDE</button>
                                 </div>
                             </div>
 
@@ -4079,7 +4143,7 @@
 
             const providerEl = document.getElementById(prefix === 'main' ? 'llmProvider' : `${prefix}Provider`);
             const modelEl = document.getElementById(prefix === 'main' ? 'llmModel' : `${prefix}Model`);
-            const endpointEl = document.getElementById(`${prefix}Endpoint`);
+            const endpointEl = document.getElementById(prefix === 'main' ? 'mainEndpoint' : `${prefix}Endpoint`);
 
             const provider = providerEl ? providerEl.value : '';
             const model = modelEl ? modelEl.value : '';
@@ -4210,10 +4274,22 @@
             document.getElementById('mainEndpoint').value = mainCfg.endpoint || '';
             document.getElementById('mainApiKey').value = mainCfg.api_key || '';
             document.getElementById('mainSystemPrompt').value = mainCfg.system_prompt || config.system_prompt || '';
+            document.getElementById('mainJsonRepairPrompt').value = mainCfg.json_repair_prompt || '';
             document.getElementById('maxTokens').value = mainCfg.max_tokens ?? '';
             document.getElementById('temperature').value = mainCfg.temperature ?? config.temperature ?? 0.3;
             document.getElementById('tempValue').textContent = document.getElementById('temperature').value;
             document.getElementById('localOnly').checked = config.local_only !== false;
+            
+            const hydeCfg = config.hyde || {};
+            document.getElementById('hydeEnabled').checked = hydeCfg.enabled !== false;
+            document.getElementById('hydeProvider').value = hydeCfg.provider || 'anthropic';
+            await loadModels(document.getElementById('hydeProvider').value, hydeCfg.model || 'claude-3-5-sonnet-20240620', 'hydeModel');
+            document.getElementById('hydeModel').value = hydeCfg.model || 'claude-3-5-sonnet-20240620';
+            document.getElementById('hydeEndpoint').value = hydeCfg.endpoint || '';
+            document.getElementById('hydeApiKey').value = hydeCfg.api_key || '';
+            document.getElementById('hydeSystemPrompt').value = hydeCfg.system_prompt || '';
+            document.getElementById('hydeMaxTokens').value = hydeCfg.max_tokens ?? '';
+            document.getElementById('hydeTemperature').value = hydeCfg.temperature ?? 0.2;
             const qeCfg = config.question_evaluator || {};
             document.getElementById('qeEnabled').checked = qeCfg.enabled || false;
             document.getElementById('qeProvider').value = qeCfg.provider || 'openai';
@@ -4243,6 +4319,7 @@
             const domains = Array.isArray(config.allowed_domains) ? config.allowed_domains.join('\n') : '*';
             document.getElementById('allowedDomains').value = domains;
             updateStageStatus('main');
+            updateStageStatus('hyde');
             updateStageStatus('qe');
             updateStageStatus('ae');
         }
@@ -4270,8 +4347,20 @@
                 api_key: document.getElementById('mainApiKey').value,
                 model: document.getElementById('llmModel').value,
                 system_prompt: document.getElementById('mainSystemPrompt').value || formData.get('system_prompt'),
+                json_repair_prompt: document.getElementById('mainJsonRepairPrompt').value || null,
                 max_tokens: parseIntOrNull(document.getElementById('maxTokens').value),
                 temperature: parseFloatOrDefault(document.getElementById('temperature').value, 0.3),
+            };
+            
+            const hydeStage = {
+                enabled: document.getElementById('hydeEnabled').checked,
+                provider: document.getElementById('hydeProvider').value,
+                endpoint: (document.getElementById('hydeEndpoint').value || '').trim(),
+                api_key: document.getElementById('hydeApiKey').value,
+                model: document.getElementById('hydeModel').value,
+                system_prompt: document.getElementById('hydeSystemPrompt').value || null,
+                max_tokens: parseIntOrNull(document.getElementById('hydeMaxTokens').value),
+                temperature: parseFloatOrDefault(document.getElementById('hydeTemperature').value, 0.2),
             };
 
             const questionStage = {
@@ -4316,6 +4405,7 @@
                 placeholder_text: formData.get('placeholder_text') || 'Please ask your question...',
                 question_evaluator: questionStage,
                 main_rag: mainStage,
+                hyde: hydeStage,
                 answer_evaluator: answerStage,
             };
 

@@ -20,14 +20,14 @@ DEFAULT_AGENT = "default"
 
 # Default question evaluator prompt to keep the stage strictly focused on validation
 DEFAULT_QUESTION_EVALUATOR_PROMPT = """
-You are ONLY evaluating if a user question is appropriate for the municipal government chatbot. You are NOT answering the question.
+You are ONLY evaluating if a user question is appropriate for this chatbot. You are NOT answering the question.
 
 Your job is to assess the question against the evaluation criteria and return a brief evaluation summary. NEVER provide information that answers the user's question.
 
 Evaluate based on:
-- Is it within scope (city services, policies, procedures, public information)?
-- Does it request restricted information (confidential, PII, privileged)?
-- Does it ask for services outside our authority (legal advice, medical advice, official decisions)?
+- Is it within scope of the available knowledge base and permitted topics?
+- Does it request restricted information (confidential, PII, privileged, or sensitive data)?
+- Does it ask for services outside the system's authority (legal advice, medical advice, official decisions)?
 - Is it clear and specific enough to answer?
 
 Respond ONLY with JSON in one of these formats:
@@ -120,15 +120,24 @@ def _ensure_stage_defaults(cfg: Dict[str, Any]) -> Dict[str, Any]:
     base_temp = cfg.get("temperature", 0.3)
     system_prompt = cfg.get("system_prompt", "You are a helpful assistant.")
 
+    # Default JSON repair prompt
+    default_json_repair_prompt = (
+        "You fix JSON to match the required schema exactly. Output only valid JSON.\n"
+        "Do not add new facts. Preserve the same citation_ids.\n"
+    )
+    
+    main_rag_defaults = _default_stage_config(
+        enabled=True,
+        provider=base_provider,
+        model=base_model,
+        temperature=base_temp,
+        system_prompt=system_prompt,
+    )
+    main_rag_defaults["json_repair_prompt"] = default_json_repair_prompt
+    
     cfg["main_rag"] = _apply_stage_defaults(
         cfg.get("main_rag", {}),
-        _default_stage_config(
-            enabled=True,
-            provider=base_provider,
-            model=base_model,
-            temperature=base_temp,
-            system_prompt=system_prompt,
-        ),
+        main_rag_defaults,
     )
     cfg["question_evaluator"] = _apply_stage_defaults(
         cfg.get("question_evaluator", {}),
@@ -157,6 +166,15 @@ def _ensure_stage_defaults(cfg: Dict[str, Any]) -> Dict[str, Any]:
     )
 
     # HyDE defaults (Claude 3.5 Sonnet)
+    default_hyde_prompt = (
+        "You write a hypothetical excerpt that would likely appear in the relevant document.\n"
+        "Rules:\n"
+        "- DO NOT answer the question.\n"
+        "- DO NOT add facts not implied by the question.\n"
+        "- Write 8-14 lines of a plausible excerpt that would contain relevant information.\n"
+        "- No citations.\n"
+        "- Output ONLY the excerpt text.\n"
+    )
     cfg.setdefault(
         "hyde",
         {
@@ -165,6 +183,7 @@ def _ensure_stage_defaults(cfg: Dict[str, Any]) -> Dict[str, Any]:
             "model": "claude-3-5-sonnet-20240620",
             "temperature": 0.2,
             "max_tokens": 400,
+            "system_prompt": default_hyde_prompt,
         },
     )
     return cfg
@@ -223,13 +242,19 @@ def load_config(tenant: str, agent: str) -> Dict[str, Any]:
             temperature=0,
             system_prompt=DEFAULT_QUESTION_EVALUATOR_PROMPT,
         ),
-        "main_rag": _default_stage_config(
-            enabled=True,
-            provider="openai",
-            model="gpt-4o-mini",
-            temperature=0.3,
-            system_prompt="You are a helpful assistant.",
-        ),
+        "main_rag": {
+            **_default_stage_config(
+                enabled=True,
+                provider="openai",
+                model="gpt-4o-mini",
+                temperature=0.3,
+                system_prompt="You are a helpful assistant.",
+            ),
+            "json_repair_prompt": (
+                "You fix JSON to match the required schema exactly. Output only valid JSON.\n"
+                "Do not add new facts. Preserve the same citation_ids.\n"
+            ),
+        },
         "answer_evaluator": _default_stage_config(enabled=False),
         "retrieval": {
             "mode": "mmr",

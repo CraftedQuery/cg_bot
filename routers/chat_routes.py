@@ -288,6 +288,7 @@ async def chat(
                 hyde_model=str(hyde_cfg.get("model", "claude-3-5-sonnet-20240620")),
                 hyde_temperature=float(hyde_cfg.get("temperature", 0.2)),
                 hyde_max_tokens=hyde_cfg.get("max_tokens", 400),
+                hyde_system_prompt=hyde_cfg.get("system_prompt"),
                 retrieval_mode=str(retrieval_cfg.get("mode", "mmr")),
                 mmr_lambda_mult=float(retrieval_cfg.get("lambda_mult", 0.6)),
                 mmr_fetch_k=int(retrieval_cfg.get("fetch_k", 50)),
@@ -296,6 +297,8 @@ async def chat(
                 answer_model=main_stage_cfg.get("model") or cfg.get("llm_model", "gpt-4o-mini"),
                 answer_temperature=float(main_stage_cfg.get("temperature", cfg.get("temperature", 0.3))),
                 answer_max_tokens=main_stage_cfg.get("max_tokens"),
+                answer_system_prompt=main_stage_cfg.get("system_prompt"),
+                json_repair_prompt=main_stage_cfg.get("json_repair_prompt"),
             )
         except HTTPException as exc:
             # Translate missing vector store into a user-friendly message.

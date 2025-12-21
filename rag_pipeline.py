@@ -206,10 +206,16 @@ def generate_hyde_query(
     tenant: str,
     agent: str,
     user: str,
+    system_prompt: str | None = None,
 ) -> str:
-    """Generate a hypothetical relevant excerpt to improve retrieval."""
-
-    system = (
+    """
+    Generate a hypothetical relevant excerpt to improve retrieval.
+    
+    Args:
+        system_prompt: Optional custom system prompt. If not provided, uses default.
+    """
+    # Default system prompt (backward compatible)
+    default_system = (
         "You write a hypothetical excerpt that would likely appear in the relevant document.\n"
         "Rules:\n"
         "- DO NOT answer the question.\n"
@@ -218,6 +224,8 @@ def generate_hyde_query(
         "- No citations.\n"
         "- Output ONLY the excerpt text.\n"
     )
+    
+    system = system_prompt.strip() if system_prompt and system_prompt.strip() else default_system
     rsp = get_llm_response(
         messages=[{"role": "system", "content": system}, {"role": "user", "content": question}],
         provider=provider,
@@ -247,7 +255,23 @@ def generate_hyde_query(
     return hyde
 
 
-def _answer_system_prompt(*, evidence: list[EvidenceItem], language: str) -> str:
+def _answer_system_prompt(
+    *, 
+    evidence: list[EvidenceItem], 
+    language: str,
+    base_prompt: str | None = None,
+) -> str:
+    """
+    Build the system prompt for answer generation.
+    
+    Args:
+        evidence: List of evidence items to include
+        language: Target language for response
+        base_prompt: Optional custom base prompt. If not provided, uses default.
+    
+    Returns:
+        Complete system prompt with evidence formatting and JSON schema requirements.
+    """
     evidence_lines: list[str] = []
     for ev in evidence:
         pl = _format_pl(ev)
@@ -257,12 +281,19 @@ def _answer_system_prompt(*, evidence: list[EvidenceItem], language: str) -> str
             f"{ev.citation_id}: {ev.source}{pl_part}{heading_part}\n<<<\n{ev.quote}\n>>>"
         )
 
-    return (
+    # Default base prompt (backward compatible)
+    default_base = (
         "You are a legal-tech assistant operating in a strict evidence-only mode.\n"
         "You MUST use only the Evidence items provided. Do not use prior knowledge.\n"
         "Every bullet MUST be supported by exactly one Evidence item.\n"
-        "If you cannot support a point with the Evidence, omit it.\n\n"
-        f"Respond in {language}.\n\n"
+        "If you cannot support a point with the Evidence, omit it.\n"
+    )
+    
+    base = base_prompt.strip() if base_prompt and base_prompt.strip() else default_base
+    
+    # Structural requirements (always appended)
+    structural_requirements = (
+        f"\nRespond in {language}.\n\n"
         "Output STRICT JSON only, matching this schema:\n"
         "{\n"
         '  "summary_bullets": [{"text": "...", "citation_id": "C1"}],\n'
@@ -274,8 +305,9 @@ def _answer_system_prompt(*, evidence: list[EvidenceItem], language: str) -> str
         "- key_quotes: 3-6 items, short direct quotes copied from Evidence (no paraphrase).\n"
         "- Aim for ~1:5–1:6 compression vs the Evidence.\n\n"
         "Evidence:\n"
-        + "\n\n".join(evidence_lines)
     )
+    
+    return base + structural_requirements + "\n\n".join(evidence_lines)
 
 
 def generate_structured_answer(
@@ -290,10 +322,18 @@ def generate_structured_answer(
     agent: str,
     user: str,
     language: str,
+    base_system_prompt: str | None = None,
+    json_repair_prompt: str | None = None,
 ) -> tuple[StructuredAnswer, dict[str, Any]]:
-    """Generate and validate structured JSON from the model. One repair attempt."""
+    """
+    Generate and validate structured JSON from the model. One repair attempt.
+    
+    Args:
+        base_system_prompt: Optional custom base prompt for answer generation
+        json_repair_prompt: Optional custom prompt for JSON repair
+    """
 
-    system = _answer_system_prompt(evidence=evidence, language=language)
+    system = _answer_system_prompt(evidence=evidence, language=language, base_prompt=base_system_prompt)
     base_messages = [{"role": "system", "content": system}, {"role": "user", "content": question}]
     rsp = get_llm_response(
         messages=base_messages,
@@ -326,10 +366,11 @@ def generate_structured_answer(
         return _parse(raw), {"raw": raw, "llm": rsp}
     except (json.JSONDecodeError, ValidationError):
         # Repair once
-        repair_system = (
+        default_repair = (
             "You fix JSON to match the required schema exactly. Output only valid JSON.\n"
             "Do not add new facts. Preserve the same citation_ids.\n"
         )
+        repair_system = json_repair_prompt.strip() if json_repair_prompt and json_repair_prompt.strip() else default_repair
         repair = get_llm_response(
             messages=[
                 {"role": "system", "content": repair_system},
@@ -379,6 +420,7 @@ def run_legal_rag(
     hyde_model: str = "claude-3-5-sonnet-20240620",
     hyde_temperature: float = 0.2,
     hyde_max_tokens: int | None = 400,
+    hyde_system_prompt: str | None = None,
     # Retrieval config
     retrieval_mode: Literal["mmr", "similarity"] = "mmr",
     mmr_lambda_mult: float = 0.6,
@@ -389,6 +431,8 @@ def run_legal_rag(
     answer_model: str = "gpt-4o-mini",
     answer_temperature: float = 0.2,
     answer_max_tokens: int | None = 800,
+    answer_system_prompt: str | None = None,
+    json_repair_prompt: str | None = None,
 ) -> RAGResult:
     """End-to-end retrieval + structured answering suitable for UI citations."""
 
@@ -404,6 +448,7 @@ def run_legal_rag(
                 tenant=tenant,
                 agent=agent,
                 user=user,
+                system_prompt=hyde_system_prompt,
             )
         except Exception:
             logger.exception("HyDE failed; falling back to original question")
@@ -442,6 +487,8 @@ def run_legal_rag(
         agent=agent,
         user=user,
         language=language,
+        base_system_prompt=answer_system_prompt,
+        json_repair_prompt=json_repair_prompt,
     )
     reply = render_answer_with_citations(structured, evidence_by_id)
 
