@@ -806,7 +806,7 @@
         
         /* Tenants and Agents */
         .tenant-card {
-            background: var(--white);
+            background: var(--bg-secondary);
             border-radius: 12px;
             box-shadow: var(--shadow);
             overflow: hidden;
@@ -893,23 +893,41 @@
         table {
             width: 100%;
             border-collapse: collapse;
-            background: var(--white);
+            background: var(--bg-secondary);
         }
         
         th, td {
             padding: 12px;
             text-align: left;
-            border-bottom: 1px solid var(--gray-200);
+            border-bottom: 1px solid var(--border-color);
         }
         
         th {
             background: var(--gray-100);
             font-weight: 600;
-            color: var(--gray-800);
+            color: var(--text-primary);
         }
         
         tr:hover {
             background: var(--gray-100);
+        }
+        
+        /* Dark theme overrides for tables */
+        .dark table {
+            background: var(--bg-secondary);
+        }
+        
+        .dark th {
+            background: var(--gray-950);
+            color: var(--text-secondary);
+        }
+        
+        .dark th, .dark td {
+            border-color: var(--border-dark);
+        }
+        
+        .dark tr:hover {
+            background: var(--gray-800);
         }
         
         /* Modal */
@@ -3820,13 +3838,13 @@
                     <p><strong>Question Eval ID:</strong> ${escapeHtml(String(log.question_evaluation_id ?? 'N/A'))}</p>
                     <p><strong>Answer Eval ID:</strong> ${escapeHtml(String(log.answer_evaluation_id ?? 'N/A'))}</p>
                 `;
-                const sources = log.sources ? `<pre style="background:#f5f5f5; padding:10px; border-radius: 6px; overflow:auto; max-height: 260px;">${escapeHtml(JSON.stringify(log.sources, null, 2))}</pre>` : '<p>No sources captured.</p>';
+                const sources = log.sources ? `<pre style="background:var(--bg-secondary); padding:10px; border-radius: 6px; overflow:auto; max-height: 260px; color:var(--text-primary);">${escapeHtml(JSON.stringify(log.sources, null, 2))}</pre>` : '<p>No sources captured.</p>';
                 detail.innerHTML = `
                     <div style="display:grid; gap:10px;">
                         <div><strong>Timestamp:</strong> ${log.ts ? new Date(log.ts).toLocaleString() : ''}</div>
                         ${meta}
-                        <div><strong>Question:</strong> <pre style="background:#f5f5f5; padding:10px; border-radius: 6px; overflow:auto;">${escapeHtml(log.question || '')}</pre></div>
-                        <div><strong>Answer:</strong> <pre style="background:#f5f5f5; padding:10px; border-radius: 6px; overflow:auto; max-height: 320px;">${escapeHtml(log.answer || '')}</pre></div>
+                        <div><strong>Question:</strong> <pre style="background:var(--bg-secondary); padding:10px; border-radius: 6px; overflow:auto; color:var(--text-primary);">${escapeHtml(log.question || '')}</pre></div>
+                        <div><strong>Answer:</strong> <pre style="background:var(--bg-secondary); padding:10px; border-radius: 6px; overflow:auto; max-height: 320px; color:var(--text-primary);">${escapeHtml(log.answer || '')}</pre></div>
                         <div><strong>Sources:</strong> ${sources}</div>
                     </div>
                 `;
@@ -3855,7 +3873,7 @@
                         <div><strong>Endpoint:</strong> ${escapeHtml(log.endpoint || '')}</div>
                         <div><strong>Tenant:</strong> ${escapeHtml(log.tenant || '')}</div>
                         <div><strong>Agent:</strong> ${escapeHtml(log.agent || '')}</div>
-                        <div><strong>Message:</strong> <pre style="background:#f5f5f5; padding:10px; border-radius: 6px; overflow:auto; max-height: 360px;">${escapeHtml(log.message || '')}</pre></div>
+                        <div><strong>Message:</strong> <pre style="background:var(--bg-secondary); padding:10px; border-radius: 6px; overflow:auto; max-height: 360px; color:var(--text-primary);">${escapeHtml(log.message || '')}</pre></div>
                     </div>
                 `;
                 showModal('logDetailModal');
@@ -3880,9 +3898,9 @@
                     try {
                         const errorDetails = typeof log.error_details === 'string' ? JSON.parse(log.error_details) : log.error_details;
                         errorDetailsSection = `
-                            <div style="margin-top: 15px; padding: 10px; background: #fff3cd; border-left: 4px solid #ffc107; border-radius: 4px;">
-                                <h4 style="margin-top: 0; color: #856404;">Error Details</h4>
-                                <pre style="background: white; padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 300px; overflow-y: auto;">${escapeHtml(JSON.stringify(errorDetails, null, 2))}</pre>
+                            <div style="margin-top: 15px; padding: 10px; background: var(--bg-secondary); border-left: 4px solid #ffc107; border-radius: 4px; border-color: var(--border-color);">
+                                <h4 style="margin-top: 0; color: var(--text-primary);">Error Details</h4>
+                                <pre style="background: var(--bg-primary); padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 300px; overflow-y: auto; color: var(--text-primary);">${escapeHtml(JSON.stringify(errorDetails, null, 2))}</pre>
                             </div>
                         `;
                     } catch (e) {
@@ -3900,7 +3918,7 @@
                                 <h4>Request Payload</h4>
                                 <details>
                                     <summary style="cursor: pointer; color: #1976d2; margin-bottom: 5px;">Click to expand request details</summary>
-                                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 400px; overflow-y: auto;">${escapeHtml(JSON.stringify(requestPayload, null, 2))}</pre>
+                                    <pre style="background: var(--bg-secondary); padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 400px; overflow-y: auto; color: var(--text-primary);">${escapeHtml(JSON.stringify(requestPayload, null, 2))}</pre>
                                 </details>
                             </div>
                         `;
@@ -3919,7 +3937,7 @@
                                 <h4>Response Payload</h4>
                                 <details>
                                     <summary style="cursor: pointer; color: #1976d2; margin-bottom: 5px;">Click to expand response details</summary>
-                                    <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 400px; overflow-y: auto;">${escapeHtml(JSON.stringify(responsePayload, null, 2))}</pre>
+                                    <pre style="background: var(--bg-secondary); padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 400px; overflow-y: auto; color: var(--text-primary);">${escapeHtml(JSON.stringify(responsePayload, null, 2))}</pre>
                                 </details>
                             </div>
                         `;
@@ -3937,7 +3955,7 @@
                         ${errorDetailsSection}
                         ${requestPayloadSection}
                         ${responsePayloadSection}
-                        <div><strong>Answer:</strong> <pre style="background: #f5f5f5; padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 300px; overflow-y: auto;">${escapeHtml(log.answer || 'N/A')}</pre></div>
+                        <div><strong>Answer:</strong> <pre style="background: var(--bg-secondary); padding: 10px; border-radius: 4px; overflow-x: auto; max-height: 300px; overflow-y: auto; color: var(--text-primary);">${escapeHtml(log.answer || 'N/A')}</pre></div>
                     </div>
                 `;
             }
