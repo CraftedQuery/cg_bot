@@ -2,6 +2,10 @@
 
 This document analyzes where system context (system prompts) is set for each LLM API call in the RAG workflow.
 
+**📖 User Guide:** For instructions on how to configure these prompts through the Admin UI, see [`docs/system-prompts-configuration.md`](docs/system-prompts-configuration.md).
+
+**Note:** This is a technical analysis document. All prompts described here are now fully configurable through the Admin UI.
+
 ## Workflow Overview
 
 The RAG pipeline consists of the following stages that may make LLM API calls:
@@ -202,11 +206,15 @@ if ae_cfg.get("system_prompt"):
 
 ## Recommendations
 
-1. **Make Answer Generation configurable**: Use `main_rag.system_prompt` from config, with a sensible default that can be customized per tenant/agent.
+✅ **IMPLEMENTED:** All recommendations have been implemented:
 
-2. **Make HyDE configurable**: Add `hyde.system_prompt` to config with a default that doesn't assume document format.
+1. ✅ **Answer Generation is now configurable**: `main_rag.system_prompt` is now fully wired up and functional through the Admin UI.
 
-3. **Review Question Evaluator default**: Consider making the default more generic or tenant-specific.
+2. ✅ **HyDE is now configurable**: `hyde.system_prompt` has been added to config with a generic default, and is accessible through the Admin UI.
 
-4. **Document the discrepancy**: The `main_rag.system_prompt` field exists in config but is not used - either remove it or implement it.
+3. ✅ **Question Evaluator default updated**: The default prompt has been made more generic (removed "municipal government" specific language).
+
+4. ✅ **JSON Repair prompt added**: `main_rag.json_repair_prompt` is now configurable through the Admin UI (Advanced Options).
+
+**See [`docs/system-prompts-configuration.md`](docs/system-prompts-configuration.md) for user-facing documentation on how to configure all system prompts.**
 

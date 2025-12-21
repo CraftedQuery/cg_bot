@@ -2,6 +2,9 @@
 
 This document explains what happens (and which external providers may be called) when a client sends `POST /chat`.
 
+**Related Documentation:**
+- [System Prompts Configuration Guide](./system-prompts-configuration.md) - How to configure the context for each LLM call
+
 The key point: **RAG is not just “1 evaluator call + 1 answer call.”** Retrieval typically requires **embeddings**, and this project also supports optional **HyDE** and optional **evaluation** stages that can add more calls.
 
 ## Summary: which steps make external calls

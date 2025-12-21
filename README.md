@@ -175,10 +175,12 @@ Set `RAG_CHATBOT_HOME` to an external volume in production so configs, uploads, 
 Every agent configuration includes a staged pipeline that can be tuned independently per tenant/agent pair:
 
 1. **Question evaluator (optional)** – Pre-processes the latest user message before retrieval. You can turn it on or off per agent, pick a provider (OpenAI, Anthropic, Vertex AI, or a custom endpoint), supply a dedicated API key/URL, and set model, temperature, token cap, and a stage-specific system prompt. Results are logged through `log_question_evaluation` so you can review how the guardrail behaved during a conversation.
-2. **Main RAG bot** – Always present and enabled by default. This stage gathers vector search results for the tenant/agent, separates template files from normal content, detects the user’s language, and builds a system prompt that enforces local-only answers when `local_only` is set. It then calls the selected model/provider with the configured temperature and token cap, and logs the interaction (latency, token counts, feedback hooks, and citations) via `log_chat`.
+2. **Main RAG bot** – Always present and enabled by default. This stage gathers vector search results for the tenant/agent, separates template files from normal content, detects the user's language, and builds a system prompt that enforces local-only answers when `local_only` is set. It then calls the selected model/provider with the configured temperature and token cap, and logs the interaction (latency, token counts, feedback hooks, and citations) via `log_chat`.
 3. **Answer evaluator (optional)** – Runs after a reply is generated. Like the question evaluator, it supports its own provider/model/API key, prompt, and generation settings. Its verdict and telemetry are captured through `log_answer_evaluation`, and the chat log links back to both evaluation stages for auditing.
 
-Stage defaults live in each agent’s config file (`configs/<tenant>/<agent>.json`), and `config.py` backfills missing blocks for older configs. The admin UI exposes toggles, provider/model pickers, API-key overrides, and readiness badges for each stage so you can validate the full pipeline before saving.
+Stage defaults live in each agent's config file (`configs/<tenant>/<agent>.json`), and `config.py` backfills missing blocks for older configs. The admin UI exposes toggles, provider/model pickers, API-key overrides, and readiness badges for each stage so you can validate the full pipeline before saving.
+
+**📖 Configuring System Prompts:** All system prompts for each LLM call are fully configurable through the Admin UI. See [`docs/system-prompts-configuration.md`](docs/system-prompts-configuration.md) for a complete guide on where and how to configure the context for each stage (Question Evaluator, Main RAG, HyDE, JSON Repair, and Answer Evaluator).
 
 ## RAG request flow and provider calls
 
