@@ -568,7 +568,19 @@
             display: block;
             margin-bottom: 8px;
             font-weight: 600;
-            color: var(--gray-600);
+            color: var(--gray-700);
+            font-size: 14px;
+            letter-spacing: -0.01em;
+        }
+        
+        .form-group label[for*="SystemPrompt"],
+        .form-group label[for="systemPrompt"] {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-weight: 700;
+            color: var(--gray-800);
+            margin-bottom: 10px;
         }
         
         .form-group input,
@@ -579,7 +591,37 @@
             border: 2px solid var(--gray-200);
             border-radius: 8px;
             font-size: 14px;
-            transition: border-color 0.2s;
+            transition: border-color 0.2s, box-shadow 0.2s;
+            resize: vertical;
+            font-family: inherit;
+            line-height: 1.5;
+        }
+        
+        /* Enhanced system prompt textareas */
+        .form-group textarea[id*="SystemPrompt"],
+        .form-group textarea[id="systemPrompt"] {
+            min-height: 150px;
+            resize: both;
+            font-family: 'Courier New', 'Monaco', 'Menlo', monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            padding: 14px;
+            background: var(--gray-50);
+            border: 2px solid var(--gray-300);
+            border-radius: 8px;
+        }
+        
+        .form-group textarea[id*="SystemPrompt"]:focus,
+        .form-group textarea[id="systemPrompt"]:focus {
+            background: var(--white);
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .form-group textarea[id*="SystemPrompt"]::placeholder,
+        .form-group textarea[id="systemPrompt"]::placeholder {
+            color: var(--gray-400);
+            font-style: italic;
         }
         
         .form-group input:focus,
@@ -587,6 +629,7 @@
         .form-group textarea:focus {
             outline: none;
             border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
         }
         
         .btn {
@@ -954,25 +997,116 @@
             overflow-y: auto;
         }
         
+        /* Resizable modal for agent configuration */
+        #agentConfigModal .modal-content {
+            max-width: 1400px;
+            width: 90vw;
+            height: 85vh;
+            min-width: 900px;
+            min-height: 600px;
+            max-height: 90vh;
+            resize: both;
+            overflow: auto;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            scroll-behavior: smooth;
+        }
+        
+        #agentConfigModal .modal-content::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            right: 0;
+            width: 20px;
+            height: 20px;
+            background: linear-gradient(-45deg, transparent 30%, var(--gray-400) 30%, var(--gray-400) 40%, transparent 40%, transparent 60%, var(--gray-400) 60%, var(--gray-400) 70%, transparent 70%);
+            cursor: nwse-resize;
+            z-index: 10;
+            border-radius: 0 0 12px 0;
+            opacity: 0.6;
+            transition: opacity 0.2s ease;
+        }
+        
+        #agentConfigModal .modal-content:hover::after {
+            opacity: 1;
+        }
+        
+        #agentConfigModal form {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            min-height: 0;
+        }
+        
+        /* Custom scrollbar for agent config modal */
+        #agentConfigModal .modal-content::-webkit-scrollbar,
+        #agentConfigModal .widget-config::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        
+        #agentConfigModal .modal-content::-webkit-scrollbar-track,
+        #agentConfigModal .widget-config::-webkit-scrollbar-track {
+            background: var(--gray-100);
+            border-radius: 4px;
+        }
+        
+        #agentConfigModal .modal-content::-webkit-scrollbar-thumb,
+        #agentConfigModal .widget-config::-webkit-scrollbar-thumb {
+            background: var(--gray-300);
+            border-radius: 4px;
+        }
+        
+        #agentConfigModal .modal-content::-webkit-scrollbar-thumb:hover,
+        #agentConfigModal .widget-config::-webkit-scrollbar-thumb:hover {
+            background: var(--gray-400);
+        }
+        
         .modal-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--gray-200);
+            flex-shrink: 0;
         }
         
+        #agentConfigModal .modal-header {
+            margin-bottom: 20px;
+        }
+
         .modal-title {
-            font-size: 20px;
-            font-weight: 600;
+            font-size: 22px;
+            font-weight: 700;
             color: var(--gray-800);
+            letter-spacing: -0.02em;
         }
         
         .close-btn {
             background: none;
             border: none;
-            font-size: 24px;
+            font-size: 28px;
             cursor: pointer;
             color: var(--gray-600);
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 6px;
+            transition: all 0.2s ease;
+        }
+        
+        .close-btn:hover {
+            background: var(--gray-100);
+            color: var(--gray-800);
+        }
+        
+        .close-btn:active {
+            transform: scale(0.95);
         }
         
         /* Form styling */
@@ -998,78 +1132,134 @@
         /* Widget Configuration */
         .widget-config {
             display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
             margin-top: 20px;
+            flex: 1;
+            overflow-y: auto;
+            padding-right: 8px;
+        }
+        
+        #agentConfigModal .widget-config {
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
         }
         
         .config-section {
             border: 1px solid var(--gray-200);
-            border-radius: 8px;
-            padding: 20px;
+            border-radius: 12px;
+            padding: 24px;
+            background: var(--white);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+            transition: box-shadow 0.2s ease;
+        }
+        
+        .config-section:hover {
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.07);
         }
         
         .config-section h4 {
-            margin-bottom: 15px;
+            margin-bottom: 20px;
             color: var(--primary);
             border-bottom: 2px solid var(--gray-200);
-            padding-bottom: 8px;
+            padding-bottom: 12px;
+            font-size: 1.125rem;
+            font-weight: 600;
         }
 
         .pipeline-grid {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-            gap: 15px;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
         }
 
         .pipeline-card {
             border: 1px solid var(--gray-200);
-            border-radius: 10px;
-            padding: 16px;
-            box-shadow: var(--shadow);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
             position: relative;
+            background: var(--white);
+            transition: all 0.2s ease;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .pipeline-card:hover {
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+            border-color: var(--gray-300);
+        }
+        
+        .pipeline-card .form-group:last-of-type {
+            margin-bottom: 0;
         }
 
         .stage-header {
             display: flex;
             align-items: center;
             gap: 12px;
-            margin-bottom: 10px;
+            margin-bottom: 12px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--gray-200);
         }
 
         .stage-order {
-            width: 32px;
-            height: 32px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
-            background: var(--primary);
+            background: linear-gradient(135deg, var(--primary) 0%, #059669 100%);
             color: var(--white);
             display: inline-flex;
             align-items: center;
             justify-content: center;
             font-weight: 700;
+            font-size: 14px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
         }
 
         .status-badge {
             display: inline-block;
-            padding: 4px 10px;
+            padding: 6px 12px;
             border-radius: 999px;
             font-size: 12px;
+            font-weight: 600;
             background: var(--gray-200);
             color: var(--gray-800);
+            transition: all 0.2s ease;
         }
 
-        .status-badge.success { background: #d1f2d9; color: #1b6b3a; }
-        .status-badge.warning { background: #fff3cd; color: #8a6d3b; }
-        .status-badge.muted { background: var(--gray-200); color: var(--gray-600); }
+        .status-badge.success { 
+            background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%); 
+            color: #065f46; 
+            box-shadow: 0 1px 2px rgba(16, 185, 129, 0.2);
+        }
+        .status-badge.warning { 
+            background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); 
+            color: #92400e; 
+            box-shadow: 0 1px 2px rgba(245, 158, 11, 0.2);
+        }
+        .status-badge.muted { 
+            background: var(--gray-200); 
+            color: var(--gray-600); 
+        }
 
         .toggle-switch {
             position: relative;
             display: inline-block;
-            width: 46px;
-            height: 24px;
+            width: 52px;
+            height: 28px;
+            flex-shrink: 0;
         }
 
-        .toggle-switch input { display: none; }
+        .toggle-switch input { 
+            display: none; 
+        }
+        
+        .toggle-switch input:focus-visible + .slider {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+        }
 
         .slider {
             position: absolute;
@@ -1078,29 +1268,42 @@
             left: 0;
             right: 0;
             bottom: 0;
-            background-color: #ccc;
-            transition: .2s;
-            border-radius: 24px;
+            background: linear-gradient(135deg, #d1d5db 0%, #9ca3af 100%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border-radius: 28px;
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+        
+        .slider:hover {
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 0 0 4px rgba(59, 130, 246, 0.1);
         }
 
         .slider:before {
             position: absolute;
             content: "";
-            height: 18px;
-            width: 18px;
+            height: 22px;
+            width: 22px;
             left: 3px;
             bottom: 3px;
-            background-color: white;
-            transition: .2s;
+            background: linear-gradient(135deg, #ffffff 0%, #f3f4f6 100%);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2), 0 1px 2px rgba(0, 0, 0, 0.1);
         }
 
         .toggle-switch input:checked + .slider {
-            background-color: #4CAF50;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.1), 0 0 0 4px rgba(16, 185, 129, 0.1);
+        }
+        
+        .toggle-switch input:checked + .slider:hover {
+            background: linear-gradient(135deg, #059669 0%, #047857 100%);
+            box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.15), 0 0 0 4px rgba(16, 185, 129, 0.2);
         }
 
         .toggle-switch input:checked + .slider:before {
-            transform: translateX(22px);
+            transform: translateX(24px);
+            box-shadow: 0 3px 6px rgba(0, 0, 0, 0.25), 0 2px 4px rgba(0, 0, 0, 0.15);
         }
         
         .checkbox-group {
@@ -1139,6 +1342,31 @@
             
             .form-row {
                 grid-template-columns: 1fr;
+            }
+            
+            #agentConfigModal .modal-content {
+                width: 95vw;
+                min-width: unset;
+                height: 90vh;
+                min-height: unset;
+            }
+            
+            #agentConfigModal .widget-config {
+                grid-template-columns: 1fr;
+            }
+            
+            .pipeline-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (min-width: 1200px) {
+            #agentConfigModal .widget-config {
+                grid-template-columns: repeat(auto-fit, minmax(450px, 1fr));
+            }
+            
+            .pipeline-grid {
+                grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
             }
         }
         
@@ -1742,11 +1970,11 @@
                 <h3 class="modal-title">Configure Agent</h3>
                 <button class="close-btn" onclick="closeModal('agentConfigModal')">&times;</button>
             </div>
-            <form id="agentConfigForm">
+            <form id="agentConfigForm" style="display: flex; flex-direction: column; height: 100%; overflow: hidden;">
                 <input type="hidden" id="configTenant" name="tenant">
                 <input type="hidden" id="configAgent" name="agent">
                 
-                <div class="widget-config">
+                <div class="widget-config" style="flex: 1; overflow-y: auto; padding-right: 8px; margin-right: -8px;">
                     <div class="config-section">
                         <h4>Basic Settings</h4>
                         <div class="form-group">
@@ -1755,7 +1983,7 @@
                         </div>
                         <div class="form-group">
                             <label for="systemPrompt">System Prompt</label>
-                            <textarea id="systemPrompt" name="system_prompt" rows="4" required></textarea>
+                            <textarea id="systemPrompt" name="system_prompt" rows="8" required></textarea>
                         </div>
                         <div class="form-group">
                             <label for="avatarUrl">Avatar URL</label>
@@ -1835,7 +2063,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="qeSystemPrompt">System Prompt</label>
-                                    <textarea id="qeSystemPrompt" rows="3" placeholder="You are a question analyzer..."></textarea>
+                                    <textarea id="qeSystemPrompt" rows="8" placeholder="You are a question analyzer..."></textarea>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
@@ -1890,8 +2118,8 @@
                                     <select id="llmModel" name="llm_model"></select>
                                 </div>
                                 <div class="form-group">
-                                    <label for="systemPrompt">System Prompt</label>
-                                    <textarea id="mainSystemPrompt" name="main_system_prompt" rows="3" placeholder="You are a helpful assistant."></textarea>
+                                    <label for="mainSystemPrompt">System Prompt</label>
+                                    <textarea id="mainSystemPrompt" name="main_system_prompt" rows="8" placeholder="You are a helpful assistant."></textarea>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
@@ -1960,7 +2188,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="hydeSystemPrompt">System Prompt</label>
-                                    <textarea id="hydeSystemPrompt" rows="4" placeholder="You write a hypothetical excerpt that would likely appear in the relevant document..."></textarea>
+                                    <textarea id="hydeSystemPrompt" rows="8" placeholder="You write a hypothetical excerpt that would likely appear in the relevant document..."></textarea>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
@@ -2016,7 +2244,7 @@
                                 </div>
                                 <div class="form-group">
                                     <label for="aeSystemPrompt">System Prompt</label>
-                                    <textarea id="aeSystemPrompt" rows="3" placeholder="You are an answer evaluator..."></textarea>
+                                    <textarea id="aeSystemPrompt" rows="8" placeholder="You are an answer evaluator..."></textarea>
                                 </div>
                                 <div class="form-row">
                                     <div class="form-group">
@@ -2060,7 +2288,7 @@
                     </div>
                 </div>
                 
-                <div style="margin-top: 20px; display: flex; gap: 10px; justify-content: flex-end;">
+                <div class="modal-footer" style="margin-top: 24px; padding-top: 20px; border-top: 1px solid var(--gray-200); display: flex; gap: 12px; justify-content: flex-end; flex-shrink: 0;">
                     <button type="button" class="btn btn-outline" onclick="closeModal('agentConfigModal')">Cancel</button>
                     <button type="submit" class="btn">Save Configuration</button>
                 </div>
