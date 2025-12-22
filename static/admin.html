@@ -2148,7 +2148,21 @@
                                     <summary style="cursor: pointer; font-weight: 500; color: var(--gray-700); margin-bottom: 10px;">Advanced Options</summary>
                                     <div class="form-group" style="margin-top: 10px;">
                                         <label for="mainStructuralRequirements">Structural Requirements</label>
-                                        <textarea id="mainStructuralRequirements" rows="12" placeholder="Leave empty to use default. Use {language} placeholder for dynamic language insertion."></textarea>
+                                        <textarea id="mainStructuralRequirements" rows="12">Respond in {language}.
+
+Output STRICT JSON only, matching this schema:
+{
+  "summary_bullets": [{"text": "...", "citation_id": "C1"}],
+  "key_quotes": [{"quote": "...", "citation_id": "C1"}],
+  "limitations": "..." | null
+}
+
+Style requirements:
+- summary_bullets: 5-8 bullets, concise, high-signal.
+- key_quotes: 3-6 items, short direct quotes copied from Evidence (no paraphrase).
+- Aim for ~1:5–1:6 compression vs the Evidence.
+
+Evidence:</textarea>
                                         <small style="color: var(--gray-600);">Custom JSON schema and style requirements. Default includes Summary and Key Quotes sections. Use {language} to insert the target language dynamically.</small>
                                     </div>
                                     <div class="form-group" style="margin-top: 10px;">
@@ -4544,7 +4558,22 @@
             document.getElementById('mainEndpoint').value = mainCfg.endpoint || '';
             document.getElementById('mainApiKey').value = mainCfg.api_key || '';
             document.getElementById('mainSystemPrompt').value = mainCfg.system_prompt || config.system_prompt || '';
-            document.getElementById('mainStructuralRequirements').value = mainCfg.structural_requirements || '';
+            const defaultStructuralRequirements = `Respond in {language}.
+
+Output STRICT JSON only, matching this schema:
+{
+  "summary_bullets": [{"text": "...", "citation_id": "C1"}],
+  "key_quotes": [{"quote": "...", "citation_id": "C1"}],
+  "limitations": "..." | null
+}
+
+Style requirements:
+- summary_bullets: 5-8 bullets, concise, high-signal.
+- key_quotes: 3-6 items, short direct quotes copied from Evidence (no paraphrase).
+- Aim for ~1:5–1:6 compression vs the Evidence.
+
+Evidence:`;
+            document.getElementById('mainStructuralRequirements').value = mainCfg.structural_requirements || defaultStructuralRequirements;
             document.getElementById('mainJsonRepairPrompt').value = mainCfg.json_repair_prompt || '';
             document.getElementById('maxTokens').value = mainCfg.max_tokens ?? '';
             document.getElementById('temperature').value = mainCfg.temperature ?? config.temperature ?? 0.3;
@@ -4618,7 +4647,25 @@
                 api_key: document.getElementById('mainApiKey').value,
                 model: document.getElementById('llmModel').value,
                 system_prompt: document.getElementById('mainSystemPrompt').value || formData.get('system_prompt'),
-                structural_requirements: (document.getElementById('mainStructuralRequirements').value || '').trim() || null,
+                structural_requirements: (() => {
+                    const defaultStructuralRequirements = `Respond in {language}.
+
+Output STRICT JSON only, matching this schema:
+{
+  "summary_bullets": [{"text": "...", "citation_id": "C1"}],
+  "key_quotes": [{"quote": "...", "citation_id": "C1"}],
+  "limitations": "..." | null
+}
+
+Style requirements:
+- summary_bullets: 5-8 bullets, concise, high-signal.
+- key_quotes: 3-6 items, short direct quotes copied from Evidence (no paraphrase).
+- Aim for ~1:5–1:6 compression vs the Evidence.
+
+Evidence:`;
+                    const value = (document.getElementById('mainStructuralRequirements').value || '').trim();
+                    return value === defaultStructuralRequirements ? null : (value || null);
+                })(),
                 json_repair_prompt: document.getElementById('mainJsonRepairPrompt').value || null,
                 max_tokens: parseIntOrNull(document.getElementById('maxTokens').value),
                 temperature: parseFloatOrDefault(document.getElementById('temperature').value, 0.3),
