@@ -2566,6 +2566,13 @@
                     updateStageStatus('ae');
                 });
             }
+            const hydeProvider = document.getElementById('hydeProvider');
+            if (hydeProvider) {
+                hydeProvider.addEventListener('change', function() {
+                    loadModels(this.value, null, 'hydeModel');
+                    updateStageStatus('hyde');
+                });
+            }
 
             document.querySelectorAll('.sub-tab').forEach(tab => {
                 tab.addEventListener('click', () => switchLogTab(tab.dataset.logtab));
@@ -4336,6 +4343,28 @@
             if (!select) return;
             select.innerHTML = '<option>Loading...</option>';
             let models = [];
+            
+            // For custom providers, don't try to fetch models from API
+            if (provider === 'custom') {
+                select.innerHTML = '';
+                if (currentModel) {
+                    const opt = document.createElement('option');
+                    opt.value = currentModel;
+                    opt.textContent = currentModel;
+                    select.appendChild(opt);
+                    select.value = currentModel;
+                } else {
+                    // Add placeholder option for custom provider
+                    const opt = document.createElement('option');
+                    opt.value = '';
+                    opt.textContent = 'Enter model name';
+                    opt.disabled = true;
+                    opt.selected = true;
+                    select.appendChild(opt);
+                }
+                return;
+            }
+            
             try {
                 const resp = await fetch(`${API_BASE}/llm_models?provider=${provider}`);
                 if (resp.ok) {
