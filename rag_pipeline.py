@@ -260,6 +260,7 @@ def _answer_system_prompt(
     evidence: list[EvidenceItem], 
     language: str,
     base_prompt: str | None = None,
+    structural_requirements: str | None = None,
 ) -> str:
     """
     Build the system prompt for answer generation.
@@ -268,6 +269,7 @@ def _answer_system_prompt(
         evidence: List of evidence items to include
         language: Target language for response
         base_prompt: Optional custom base prompt. If not provided, uses default.
+        structural_requirements: Optional custom structural requirements. If not provided, uses default.
     
     Returns:
         Complete system prompt with evidence formatting and JSON schema requirements.
@@ -291,8 +293,8 @@ def _answer_system_prompt(
     
     base = base_prompt.strip() if base_prompt and base_prompt.strip() else default_base
     
-    # Structural requirements (always appended)
-    structural_requirements = (
+    # Default structural requirements (backward compatible)
+    default_structural_requirements = (
         f"\nRespond in {language}.\n\n"
         "Output STRICT JSON only, matching this schema:\n"
         "{\n"
@@ -307,7 +309,17 @@ def _answer_system_prompt(
         "Evidence:\n"
     )
     
-    return base + structural_requirements + "\n\n".join(evidence_lines)
+    # Use custom structural requirements if provided, otherwise use default
+    # If custom is provided, replace {language} placeholder if present
+    if structural_requirements and structural_requirements.strip():
+        structural = structural_requirements.strip()
+        # Replace {language} placeholder if it exists in the custom prompt
+        if "{language}" in structural:
+            structural = structural.replace("{language}", language)
+    else:
+        structural = default_structural_requirements
+    
+    return base + structural + "\n\n".join(evidence_lines)
 
 
 def generate_structured_answer(
@@ -323,6 +335,7 @@ def generate_structured_answer(
     user: str,
     language: str,
     base_system_prompt: str | None = None,
+    structural_requirements: str | None = None,
     json_repair_prompt: str | None = None,
 ) -> tuple[StructuredAnswer, dict[str, Any]]:
     """
@@ -330,10 +343,16 @@ def generate_structured_answer(
     
     Args:
         base_system_prompt: Optional custom base prompt for answer generation
+        structural_requirements: Optional custom structural requirements for JSON schema
         json_repair_prompt: Optional custom prompt for JSON repair
     """
 
-    system = _answer_system_prompt(evidence=evidence, language=language, base_prompt=base_system_prompt)
+    system = _answer_system_prompt(
+        evidence=evidence, 
+        language=language, 
+        base_prompt=base_system_prompt,
+        structural_requirements=structural_requirements,
+    )
     base_messages = [{"role": "system", "content": system}, {"role": "user", "content": question}]
     rsp = get_llm_response(
         messages=base_messages,
@@ -432,6 +451,7 @@ def run_legal_rag(
     answer_temperature: float = 0.2,
     answer_max_tokens: int | None = 800,
     answer_system_prompt: str | None = None,
+    structural_requirements: str | None = None,
     json_repair_prompt: str | None = None,
 ) -> RAGResult:
     """End-to-end retrieval + structured answering suitable for UI citations."""
@@ -488,6 +508,7 @@ def run_legal_rag(
         user=user,
         language=language,
         base_system_prompt=answer_system_prompt,
+        structural_requirements=structural_requirements,
         json_repair_prompt=json_repair_prompt,
     )
     reply = render_answer_with_citations(structured, evidence_by_id)

@@ -298,6 +298,7 @@ async def chat(
                 answer_temperature=float(main_stage_cfg.get("temperature", cfg.get("temperature", 0.3))),
                 answer_max_tokens=main_stage_cfg.get("max_tokens"),
                 answer_system_prompt=main_stage_cfg.get("system_prompt"),
+                structural_requirements=main_stage_cfg.get("structural_requirements"),
                 json_repair_prompt=main_stage_cfg.get("json_repair_prompt"),
             )
         except HTTPException as exc:
