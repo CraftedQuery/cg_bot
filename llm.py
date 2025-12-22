@@ -452,9 +452,24 @@ def _get_vertexai_response(
 ) -> Dict:
     """Get response from Google Vertex AI"""
     try:
+        import vertexai
         from vertexai.generative_models import GenerativeModel
     except ImportError:
         raise ImportError("google-cloud-aiplatform package not installed")
+    
+    # Get project ID from environment variables
+    project_id = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT")
+    if not project_id:
+        raise ValueError(
+            "Google Cloud project ID not found. Please set GOOGLE_CLOUD_PROJECT or GCP_PROJECT environment variable. "
+            "You can also initialize Vertex AI programmatically using vertexai.init(project='your-project-id')."
+        )
+    
+    # Get location (region) from environment variable, default to us-central1
+    location = os.getenv("GOOGLE_CLOUD_LOCATION") or os.getenv("GCP_LOCATION") or "us-central1"
+    
+    # Initialize Vertex AI with project and location
+    vertexai.init(project=project_id, location=location)
     
     model_name = model or "gemini-1.5-pro"
     model = GenerativeModel(model_name)

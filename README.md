@@ -63,7 +63,9 @@ pip install -r requirements.txt
 | --- | --- |
 | `OPENAI_API_KEY` | Required for OpenAI chat + embeddings |
 | `ANTHROPIC_API_KEY` | Required when using Anthropic chat/embeddings |
-| `GOOGLE_APPLICATION_CREDENTIALS` | Service account JSON for Drive + Vertex AI |
+| `GOOGLE_APPLICATION_CREDENTIALS` | Service account JSON file path for Drive + Vertex AI |
+| `GOOGLE_CLOUD_PROJECT` or `GCP_PROJECT` | Required for Vertex AI (your Google Cloud project ID) |
+| `GOOGLE_CLOUD_LOCATION` or `GCP_LOCATION` | Optional for Vertex AI (region, defaults to us-central1) |
 | `JWT_SECRET_KEY` | Overrides the default JWT signing secret |
 | `RAG_CHATBOT_HOME` | Root directory for configs, uploads, vector stores, and the SQLite DB |
 | `AAD_TENANT_ID`, `AAD_CLIENT_ID`, `AAD_JWKS_PATH` | Enable optional Azure AD JWT validation |

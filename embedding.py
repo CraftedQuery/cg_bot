@@ -1,4 +1,5 @@
 """Embedding provider utilities"""
+import os
 from typing import Optional
 
 try:
@@ -28,10 +29,18 @@ def get_embedding_model(provider: str = "openai", model: Optional[str] = None):
         return AnthropicEmbeddings(model=model or "claude-3-embedding-001")
     elif provider in {"vertexai", "google"}:
         try:
+            import vertexai
             from langchain_google_vertexai import VertexAIEmbeddings
         except ModuleNotFoundError as e:  # pragma: no cover - optional deps
             log_llm_event("vertexai-embed", "error", str(e), model=model or "textembedding-gecko@001")
             raise ImportError("google-cloud-aiplatform package not installed") from e
+        
+        # Initialize Vertex AI with project and location from environment variables
+        project_id = os.getenv("GOOGLE_CLOUD_PROJECT") or os.getenv("GCP_PROJECT")
+        if project_id:
+            location = os.getenv("GOOGLE_CLOUD_LOCATION") or os.getenv("GCP_LOCATION") or "us-central1"
+            vertexai.init(project=project_id, location=location)
+        
         log_llm_event("vertexai-embed", "success", None, model=model or "textembedding-gecko@001")
         return VertexAIEmbeddings(model_name=model or "textembedding-gecko@001")
     elif provider == "local":
